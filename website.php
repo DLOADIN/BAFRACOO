@@ -487,6 +487,454 @@
       to { opacity: 1; }
     }
     
+    /* Categories Section */
+    .categories-section {
+      padding: var(--spacing-2xl) 0;
+      background: var(--white);
+    }
+    
+    .categories-section .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+    }
+    
+    .section-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700;
+      color: var(--gray-800);
+      text-align: center;
+      margin-bottom: var(--spacing-2xl);
+      position: relative;
+      padding-bottom: var(--spacing-lg);
+    }
+    
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: var(--radius-full);
+    }
+    
+    .categories {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--spacing-xl);
+    }
+    
+    .category-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: var(--transition);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .category-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow-xl);
+      border-color: var(--primary-color);
+    }
+    
+    .category-image {
+      width: 100%;
+      height: 200px;
+      overflow: hidden;
+      background: var(--gray-100);
+    }
+    
+    .category-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: var(--transition);
+    }
+    
+    .category-card:hover .category-image img {
+      transform: scale(1.05);
+    }
+    
+    .category-content {
+      padding: var(--spacing-lg);
+    }
+    
+    .category-content h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: var(--spacing-md);
+    }
+    
+    .category-content ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .category-content li {
+      color: var(--gray-600);
+      padding: var(--spacing-xs) 0;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    
+    .category-content li::before {
+      content: '✓';
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+    
+    /* Featured Section */
+    .featured-section {
+      padding: var(--spacing-2xl) 0;
+      background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
+    }
+    
+    .featured-section .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+    }
+    
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--spacing-xl);
+    }
+    
+    .featured-card {
+      min-height: 250px;
+      border-radius: var(--radius-xl);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      padding: var(--spacing-2xl);
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    
+    .featured-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      transition: var(--transition);
+    }
+    
+    .featured-card:hover::before {
+      background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .featured-card-1 {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .featured-card-2 {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .featured-content {
+      position: relative;
+      z-index: 2;
+      color: var(--white);
+    }
+    
+    .featured-content h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.25rem, 3vw, 1.75rem);
+      font-weight: 700;
+      margin-bottom: var(--spacing-sm);
+      line-height: 1.3;
+    }
+    
+    .featured-content p {
+      font-size: 1rem;
+      margin-bottom: var(--spacing-lg);
+      opacity: 0.9;
+    }
+    
+    .featured-content .btn-primary {
+      background: var(--white);
+      color: var(--gray-800);
+      font-size: 0.875rem;
+    }
+    
+    .featured-content .btn-primary:hover {
+      background: var(--gray-100);
+    }
+    
+    /* Services Section */
+    .services-section {
+      padding: var(--spacing-2xl) 0;
+      background: var(--white);
+    }
+    
+    .services-section .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+    }
+    
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--spacing-xl);
+    }
+    
+    .service-card {
+      background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
+      padding: var(--spacing-2xl);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200);
+      text-align: center;
+      transition: var(--transition);
+    }
+    
+    .service-card:hover {
+      transform: translateY(-8px);
+      border-color: var(--primary-color);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .service-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--spacing-lg);
+      font-size: 2rem;
+      color: var(--white);
+    }
+    
+    .service-card h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: var(--spacing-md);
+    }
+    
+    .service-card p {
+      color: var(--gray-600);
+      line-height: 1.6;
+    }
+    
+    /* CTA Section */
+    .cta-section {
+      padding: var(--spacing-2xl) 0;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    }
+    
+    .cta-section .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+    }
+    
+    .cta-content {
+      text-align: center;
+      color: var(--white);
+    }
+    
+    .cta-content h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700;
+      margin-bottom: var(--spacing-md);
+    }
+    
+    .cta-content p {
+      font-size: 1.125rem;
+      margin-bottom: var(--spacing-lg);
+      opacity: 0.9;
+    }
+    
+    /* Partners Section */
+    .partners-section {
+      padding: var(--spacing-2xl) 0;
+      background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
+    }
+    
+    .partners-section .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+    }
+    
+    .partners-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--spacing-xl);
+      align-items: center;
+    }
+    
+    .partner-card {
+      background: var(--white);
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 150px;
+      transition: var(--transition);
+    }
+    
+    .partner-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-color);
+    }
+    
+    .partner-card img {
+      max-width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+    }
+    
+    /* Footer */
+    .footer {
+      background: var(--gray-900);
+      color: var(--white);
+    }
+    
+    .footer-top {
+      padding: var(--spacing-2xl) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .footer-top .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-around;
+      gap: var(--spacing-xl);
+    }
+    
+    .footer-contact {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .footer-contact i {
+      font-size: 1.5rem;
+      color: var(--primary-color);
+      margin-top: var(--spacing-xs);
+    }
+    
+    .footer-contact h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: var(--spacing-xs);
+    }
+    
+    .footer-contact p {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      margin: 0;
+    }
+    
+    .footer-divider {
+      width: 1px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.2);
+      display: none;
+    }
+    
+    .footer-middle {
+      padding: var(--spacing-2xl) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .footer-middle .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-2xl);
+    }
+    
+    .footer-column h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: var(--spacing-md);
+    }
+    
+    .footer-column ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .footer-column li {
+      margin-bottom: var(--spacing-sm);
+    }
+    
+    .footer-column a {
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: var(--transition);
+    }
+    
+    .footer-column a:hover {
+      color: var(--primary-color);
+    }
+    
+    .payment-method img {
+      max-width: 100%;
+      max-height: 60px;
+      object-fit: contain;
+    }
+    
+    .payment-code {
+      font-size: 0.875rem;
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+    
+    .footer-bottom {
+      padding: var(--spacing-lg) 0;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .footer-bottom .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg);
+    }
+    
+    .footer-bottom p {
+      margin: 0;
+      font-size: 0.875rem;
+      opacity: 0.7;
+    }
+    
     /* Mobile Responsive */
     @media (max-width: 768px) {
       .header-main .container {
@@ -523,8 +971,33 @@
         grid-template-columns: 1fr;
         gap: var(--spacing-xl);
       }
+      
+      .categories {
+        grid-template-columns: 1fr !important;
+      }
+      
+      .toil {
+        flex-direction: column !important;
+      }
+      
+      .division {
+        grid-template-columns: 1fr !important;
+      }
+      
+      .fat {
+        grid-template-columns: 1fr !important;
+      }
+      
+      .divident {
+        flex-direction: column !important;
+      }
+      
+      .vl {
+        display: none !important;
+      }
     }
-  </style>
+    </style>
+  </div>
 </head>
 <body>
   <!-- Header -->
@@ -653,7 +1126,267 @@
     </div>
   </section>
 
-  <!-- Ion Icons -->
+  <!-- Categories Section -->
+  <section id="categories" class="categories-section">
+    <div class="container">
+      <h2 class="section-title">Top Categories</h2>
+      <div class="categories">
+        <div class="category-card">
+          <div class="category-image">
+            <img src="./images/hammer.jpeg" alt="Makita Tools - Corded">
+          </div>
+          <div class="category-content">
+            <h3>Makita Tools - Corded</h3>
+            <ul>
+              <li>Hammer Drill</li>
+              <li>Vacuum Cleaner</li>
+              <li>Rotary Hammer</li>
+              <li>Angle Grinder</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="category-card">
+          <div class="category-image">
+            <img src="./images/Cordless chain saw.jpeg" alt="Makita Tools - Cordless">
+          </div>
+          <div class="category-content">
+            <h3>Makita Tools - Cordless</h3>
+            <ul>
+              <li>Angle Grinder</li>
+              <li>Cordless Chain Saw</li>
+              <li>Pressure Washer</li>
+              <li>Hammer Driver Drill</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="category-card">
+          <div class="category-image">
+            <img src="./images/Cut-off wheel.jpeg" alt="Accessories">
+          </div>
+          <div class="category-content">
+            <h3>Accessories</h3>
+            <ul>
+              <li>Abrasive Belt</li>
+              <li>Bim Hole Saw</li>
+              <li>Cut-off Wheel</li>
+              <li>Center Caps</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="category-card">
+          <div class="category-image">
+            <img src="./images/Miniature Circuit Breakers.jpeg" alt="Safety Equipment">
+          </div>
+          <div class="category-content">
+            <h3>Safety Equipment</h3>
+            <ul>
+              <li>Fire Extinguishers</li>
+              <li>Fire Blanket</li>
+              <li>Safety Jacket | Helmet | Shoes</li>
+              <li>Fire Ball</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="category-card">
+          <div class="category-image">
+            <img src="./images/Fire extinguishers.jpeg" alt="Construction Tools">
+          </div>
+          <div class="category-content">
+            <h3>Construction Tools</h3>
+            <ul>
+              <li>Wires for Fence</li>
+              <li>Tiles</li>
+              <li>Construction Plastic Roll</li>
+              <li>Construction Scaffolding Net</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="category-card">
+          <div class="category-image">
+            <img src="./images/Led Home & Street Light.jpeg" alt="Electrical Tools">
+          </div>
+          <div class="category-content">
+            <h3>Electrical Tools</h3>
+            <ul>
+              <li>Miniature Circuit Breakers</li>
+              <li>Back up UPS</li>
+              <li>Contactors & Thermal Relays</li>
+              <li>Led Home & Street Light</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Categories -->
+  <section class="featured-section">
+    <div class="container">
+      <div class="featured-grid">
+        <div class="featured-card featured-card-1">
+          <div class="featured-content">
+            <h3>Professional Tools & DIY Equipment</h3>
+            <p>Just for your needs</p>
+            <a href="users/registrationuser.php" class="btn-primary">SHOP NOW</a>
+          </div>
+        </div>
+        <div class="featured-card featured-card-2">
+          <div class="featured-content">
+            <h3>Plumbing Materials & Bathroom Sets</h3>
+            <p>Tiles, tubs, toilets & more</p>
+            <a href="users/registrationuser.php" class="btn-primary">SHOP NOW</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Section -->
+  <section id="services" class="services-section">
+    <div class="container">
+      <h2 class="section-title">Other Services</h2>
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon">
+            <i class="fas fa-water"></i>
+          </div>
+          <h3>Fire Extinguisher Refill</h3>
+          <p>Existing water, foam and powder extinguishers can potentially be refilled, not replaced.</p>
+        </div>
+        <div class="service-card">
+          <div class="service-icon">
+            <i class="fas fa-truck"></i>
+          </div>
+          <h3>Transportation</h3>
+          <p>We offer land transport service and tailor-made distribution services across the entire African region.</p>
+        </div>
+        <div class="service-card">
+          <div class="service-icon">
+            <i class="fas fa-tools"></i>
+          </div>
+          <h3>Service Center for All Makita Machines</h3>
+          <p>We provide repair services or provide maintenance for all Makita products in Rwanda.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-content">
+        <h2>Live. Excel. Enjoy</h2>
+        <p>Discover our complete range of products</p>
+        <a href="users/registrationuser.php" class="btn-primary">SHOP NOW</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Partners Section -->
+  <section id="partners" class="partners-section">
+    <div class="container">
+      <h2 class="section-title">Our Partners</h2>
+      <div class="partners-grid">
+        <div class="partner-card">
+          <img src="./images/ff2a89dd1efe38d99fd4f9acb210e519.jpg" alt="Partner 1">
+        </div>
+        <div class="partner-card">
+          <img src="./images/gacia-ensure-your-safety-200.png" alt="Partner 2">
+        </div>
+        <div class="partner-card">
+          <img src="./images/sassin.png" alt="Partner 3">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="container">
+        <div class="footer-contact">
+          <i class="fas fa-address-book"></i>
+          <div>
+            <h4>Address</h4>
+            <p>KN 1 Rd 48, Kigali, Muhima road</p>
+            <p>P.O BOX: 3290</p>
+          </div>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-contact">
+          <i class="fas fa-recycle"></i>
+          <div>
+            <h4>Repair & Maintenance</h4>
+            <p>If goods have problems</p>
+          </div>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-contact">
+          <i class="fas fa-envelope"></i>
+          <div>
+            <h4>Get In Touch</h4>
+            <p>info@bafraco.com</p>
+          </div>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-contact">
+          <i class="fas fa-phone"></i>
+          <div>
+            <h4>Call Us</h4>
+            <p>0789059405 | 0786394551</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-middle">
+      <div class="container">
+        <div class="footer-column">
+          <h3>Our Brands</h3>
+          <ul>
+            <li><a href="#">Makita</a></li>
+            <li><a href="#">Sassin</a></li>
+            <li><a href="#">Gacia</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h3>Company</h3>
+          <ul>
+            <li><a href="#">About Bafraco</a></li>
+            <li><a href="#">Shop</a></li>
+            <li><a href="#">Our Gallery</a></li>
+            <li><a href="#">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h3>User Guidelines</h3>
+          <ul>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms & Conditions</a></li>
+            <li><a href="#">FAQs</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h3>Payment Methods</h3>
+          <p class="payment-method">
+            <img src="./images/mtn-momo-1024x576.jpg" alt="MTN Mobile Money">
+          </p>
+          <p class="payment-code">*182*8*1*077780#</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container">
+        <p>&copy; 2024 Bafraco Ltd. All Rights Reserved.</p>
+      </div>
+    </div>
+  </footer>  <!-- Ion Icons -->
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   
@@ -691,230 +1424,16 @@
     document.querySelectorAll('.mission-card').forEach(card => {
       observer.observe(card);
     });
+    
+    // Observe category cards
+    document.querySelectorAll('.category-card').forEach(card => {
+      observer.observe(card);
+    });
+    
+    // Observe service cards
+    document.querySelectorAll('.service-card').forEach(card => {
+      observer.observe(card);
+    });
   </script>
-</body>
-</html>
-  </div>
-</div>
-<h1 id="categories" class="categories-1">TOP CATEGORIES</h1>
-  <div class="categories">
-    <div class="cause">
-      <div class="just-cause">
-      <img src="./images/hammer.jpeg" alt="">
-      <div class="texto">
-      <h1> Makita Tools- Corded</h1>
-      <p>Hammer Drill</p>
-      <p>Vacuum Cleaner</p>
-      <p>Rotary Hammer</p>
-      <p>Angle glinder</p>
-    </div>
-      </div>
-    </div>
-
-    <div class="cause">
-      <div class="just-cause">
-      <img src="./images/Cordless chain saw.jpeg" alt="">
-      <div class="texto">
-      <h1> Makita Tools- Cordless</h1>
-      <p>Angle grinder</p>
-      <p>Cordless chain saw</p>
-      <p>Pressure Washer</p>
-      <p>hammer driver drill</p>
-    </div>
-      </div>
-    </div>
-
-    <div class="cause">
-      <div class="just-cause">
-      <img src="./images/Cut-off wheel.jpeg" alt="">
-      <div class="texto">
-      <h1>Accessories</h1>
-      <p>Abrasive belt</p>
-      <p>Bim hole saw</p>
-      <p>Cut-off wheel</p>
-      <p>Center Caps</p>
-    </div>
-      </div>
-    </div>
-
-    <div class="cause">
-      <div class="just-cause">
-      <img src="./images/Miniature Circuit Breakers.jpeg" alt="">
-      <div class="texto">
-      <h1>Safety Equipments</h1>
-      <p>Fire extinguishers</p>
-      <p>Fire blanket</p>
-      <p>Safety jacket | helmet | shoes</p>
-      <p>Fire ball</p>
-    </div>
-      </div>
-    </div>
-
-    <div class="cause">
-      <div class="just-cause">
-      <img src="./images/Fire extinguishers.jpeg" alt="">
-      <div class="texto">
-      <h1>Construction Tools</h1>
-      <p>Wires for fence</p>
-      <p>Tiles</p>
-      <p>Construction Plastic Roll</p>
-      <p>Construction Scaffolding Net</p>
-    </div>
-      </div>
-    </div>
-
-    <div class="cause">
-      <div class="just-cause">
-      <img src="./images/Led Home & Street Light.jpeg" alt="">
-      <div class="texto">
-      <h1>Electrical Tools</h1>
-      <p>Miniature Circuit Breakers</p>
-      <p>Back up UPS</p>
-      <p>Contactors & Thermal
-        Relays</p>
-      <p>Led Home & Street Light</p>
-    </div>
-      </div>
-    </div>
-  </div>
-  <div class="toil">
-    <div class="toil-1">
-      <p class="paint">
-        Professional Tools<br>
-        & DIY equipment</p>
-      <p class="pain">
-        Just for your needs</p>
-        <button>
-          <a href="users/registrationuser.php">
-          SHOP NOW</a></button>
-    </div>
-    <div class="toil-2">
-      <p class="paint">
-        Plumbing materials <br>
-& Bathroom sets</p>
-      <p class="pain-2">
-        tiles tubs, toilet… Off</p>
-        <button>
-          <a href="users/registrationuser.php">
-          SHOP NOW</a></button>
-    </div>
-  </div>
-  <h1 class="categories-1" id="services">OTHER SERVICES</h1><br><br>
-  <div class="division">
-    <div class="div">
-      <h2>Fire Extinguisher Refill</h2>
-      <hr><br>
-      <p>
-        Existing water, foam and powder extinguishers <br>
-can potentially be refilled,not replaced.
-      </p>
-    </div>
-    <div class="div">
-      <h2>Transportation</h2>
-      <hr><br>
-      <p>
-        We offer land transport service and tailor-made <br>
-distribution services across the entire African region.
-      </p>
-    </div>
-    <div class="div">
-      <h2>Service Center for all Makita machines</h2>
-      <hr><br>
-      <p>
-        We provide repair services or provide maintenance for all <br>
-Makita products in Rwanda.
-      </p>
-    </div>
-  </div>
-
-  <div class="foil">
-    <h3>
-      Live.Excel.Enjoy
-    </h3>
-    <button>
-      <a href="users/registrationuser.php">
-      SHOP NOW</a></button>
-  </div><br><br>
-
-  <h1 class="categories-1" id="partners">PARTNERS</h1><br><br>
-  <div class="fat">
-    <div class="fat-1">
-      <img src="./images/ff2a89dd1efe38d99fd4f9acb210e519.jpg" alt="">
-    </div>
-    <div class="fat-1">
-      <img src="./images/gacia-ensure-your-safety-200.png" alt="">
-    </div>
-    <div class="fat-1">
-      <img src="./images/sassin.png" alt="">
-    </div>
-  </div>
-  <footer>
-    <div class="divident">
-    <div class="dare">
-      <i class="fa-solid fa-address-book"></i>
-      <div class="talk">
-        <h4>KN 1 Rd 48, Kigali</h4>
-        <h5>Muhima road, P.O BOX:3290</h5>
-      </div>
-    </div>
-    <div class="vl"></div>
-    <div class="dare">
-      <i class="fa-solid fa-recycle"></i>
-      <div class="talk">
-        <h4>Repair & maintenance</h4>
-        <h5>If goods have problems</h5>
-      </div>
-    </div>
-    <div class="vl"></div>
-    <div class="dare">
-      <i class="fa-solid fa-envelope"></i>
-      <div class="talk">
-        <h4>Get In touch</h4>
-        <h5>info@bafraco.com</h5>
-      </div>
-    </div>
-    <div class="vl"></div>
-    <div class="dare">
-      <i class="fa-solid fa-comments"></i>
-      <div class="talk">
-        <h4>KN 1 Rd 48, Kigali</h4>
-        <h5>0789059405 | 0786394551</h5>
-      </div>
-    </div>
-    </div>
-    <hr class="hr-hr">
-    <div class="divident">
-      <div class="dividends">
-      <h3>Our brands</h3><br>
-      <p>Makita</p>
-      <p>Sassin</p>
-      <p>Gacia</p>
-      </div>
-      <div class="dividends">
-      <h3>Our brands</h3><br>
-      <p>About Sofaru</p>
-      <p>Shop</p>
-      <p>Our gallery</p>
-      <p>Contact us</p>
-      </div>
-      <div class="dividends">
-      <h3>User Guidelines</h3><br>
-      <p>Policy</p>
-      <p>Terms & Conditions</p>
-      <p>FAQs</p>
-      </div>
-      <div class="dividends">
-      <h3>We use safe payments</h3><br>
-      <p>
-        <img src="./images/mtn-momo-1024x576.jpg" alt="">
-      </p>
-      <p>*182*8*1*077780#</p>
-      </div>
-    </div>
-    <hr class="hr-hr">
-    <div class="divident">
-      <h4 class="©-2023">© 2024 Bafraco Ltd. All Rights Reserved.</h4><br>
-  </footer>
-  </div>
 </body>
 </html>
