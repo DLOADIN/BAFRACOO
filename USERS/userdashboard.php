@@ -257,60 +257,85 @@
         </div>
 
         <!-- Recent Orders Section -->
-        <div class="dashboard-card">
-          <div class="card-header">
-            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">Recent Orders</h3>
-            <a href="orders.php" class="text-primary font-medium">View All</a>
+        <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-lg); border-bottom: 1px solid var(--gray-200);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <ion-icon name="time-outline" style="font-size: 1.5rem; color: var(--primary-color);"></ion-icon>
+              <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">Recent Orders</h3>
+            </div>
+            <a href="orders.php" style="color: var(--primary-color); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; font-size: 0.875rem; transition: all 0.2s;" onmouseover="this.style.gap='8px'" onmouseout="this.style.gap='4px'">
+              View All <ion-icon name="arrow-forward-outline"></ion-icon>
+            </a>
           </div>
           <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="border-bottom: 1px solid var(--gray-200);">
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Order ID</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Tool</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Amount</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Status</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Date</th>
+                <tr style="border-bottom: 2px solid var(--gray-200); background: var(--gray-50);">
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Order ID</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Tool Name</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
                 </tr>
               </thead>
               <tbody>
                 <?php
                 $recent_user_orders = mysqli_query($con, "
-                  SELECT o.*, t.t_name 
-                  FROM `order` o 
-                  LEFT JOIN `tool` t ON o.t_id = t.id 
-                  WHERE o.user_id = '$id'
-                  ORDER BY o.id DESC 
+                  SELECT * 
+                  FROM `order` 
+                  WHERE user_id = '$id'
+                  ORDER BY id DESC 
                   LIMIT 5
                 ");
                 
-                if(mysqli_num_rows($recent_user_orders) > 0):
+                if($recent_user_orders && mysqli_num_rows($recent_user_orders) > 0):
                   while($order = mysqli_fetch_assoc($recent_user_orders)):
+                    $status = $order['status'] ?? 'Pending';
                     $status_class = '';
-                    switch($order['status']) {
-                      case 'Completed': $status_class = 'text-success'; break;
-                      case 'Pending': $status_class = 'text-warning'; break;
-                      case 'Cancelled': $status_class = 'text-error'; break;
-                      default: $status_class = 'text-primary';
+                    $status_bg = '';
+                    switch($status) {
+                      case 'Completed': 
+                        $status_class = 'color: #10b981;'; 
+                        $status_bg = 'background: #d1fae5; padding: 4px 12px; border-radius: 12px;';
+                        break;
+                      case 'Pending': 
+                        $status_class = 'color: #f59e0b;'; 
+                        $status_bg = 'background: #fef3c7; padding: 4px 12px; border-radius: 12px;';
+                        break;
+                      case 'Cancelled': 
+                        $status_class = 'color: #ef4444;'; 
+                        $status_bg = 'background: #fee2e2; padding: 4px 12px; border-radius: 12px;';
+                        break;
+                      default: 
+                        $status_class = 'color: #2563eb;'; 
+                        $status_bg = 'background: #dbeafe; padding: 4px 12px; border-radius: 12px;';
                     }
                 ?>
-                <tr style="border-bottom: 1px solid var(--gray-100);">
-                  <td style="padding: 12px; font-weight: 500;">#<?php echo $order['id']; ?></td>
-                  <td style="padding: 12px;"><?php echo htmlspecialchars($order['t_name'] ?? 'N/A'); ?></td>
-                  <td style="padding: 12px; font-weight: 600;"><?php echo number_format($order['u_price']); ?> RWF</td>
+                <tr style="border-bottom: 1px solid var(--gray-100); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='transparent'">
+                  <td style="padding: 12px; font-weight: 500; color: var(--gray-900);">#<?php echo str_pad($order['id'], 4, '0', STR_PAD_LEFT); ?></td>
+                  <td style="padding: 12px; color: var(--gray-700);"><?php echo htmlspecialchars($order['u_toolname'] ?? 'N/A'); ?></td>
+                  <td style="padding: 12px; font-weight: 600; color: var(--gray-900);">
+                    <?php echo number_format($order['u_totalprice'] ?? $order['u_price'] ?? 0); ?> <span style="color: var(--gray-500); font-size: 0.875rem;">RWF</span>
+                  </td>
                   <td style="padding: 12px;">
-                    <span class="<?php echo $status_class; ?>" style="font-weight: 500;">
-                      <?php echo $order['status'] ?? 'Pending'; ?>
+                    <span style="<?php echo $status_class . $status_bg; ?> font-weight: 500; font-size: 0.875rem; display: inline-block;">
+                      <?php echo $status; ?>
                     </span>
                   </td>
-                  <td style="padding: 12px; color: var(--gray-500);">
-                    <?php echo date('M d, Y', strtotime($order['created_at'] ?? 'now')); ?>
+                  <td style="padding: 12px; color: var(--gray-500); font-size: 0.875rem;">
+                    <?php echo date('M d, Y', strtotime($order['u_date'] ?? 'now')); ?>
                   </td>
                 </tr>
                 <?php endwhile; else: ?>
                 <tr>
-                  <td colspan="5" style="padding: 24px; text-align: center; color: var(--gray-500);">
-                    No orders found. <a href="stock.php" class="text-primary">Start shopping!</a>
+                  <td colspan="5" style="padding: 32px; text-align: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                      <ion-icon name="bag-outline" style="font-size: 48px; color: var(--gray-400);"></ion-icon>
+                      <p style="color: var(--gray-500); margin: 0; font-size: 1rem;">No orders yet</p>
+                      <a href="stock.php" style="color: var(--primary-color); font-weight: 600; text-decoration: none; padding: 8px 16px; border: 2px solid var(--primary-color); border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='var(--primary-color)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-color)'">
+                        Start Shopping <ion-icon name="arrow-forward-outline" style="vertical-align: middle;"></ion-icon>
+                      </a>
+                    </div>
                   </td>
                 </tr>
                 <?php endif; ?>
@@ -324,59 +349,5 @@
 
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <script src="../JS/file.js"></script>
-</body>
-</html>
-          <div class="base-1">
-          <h3>TOTAL TOOLS REGISTERED</h3>
-          <div class="grill">
-            <div class="peng-black">
-              <i class="fa-solid fa-box"></i></div>
-              <h1><?php
-                 $sql=mysqli_query($con,"SELECT * from `tool`" );
-                 if($row=mysqli_num_rows($sql));
-                 { 
-               ?>
-               <tr>
-                 <td><?php echo $row?></td></tr>
-                 <?php
-               }
-                ?></h1></div>
-          </div>
-          <div class="base-1">
-          <h3>TOTAL USERS REGISTERED</h3>
-          <div class="grill">
-            <div class="peng-black">
-              <i class="fa-solid fa-xmark"></i></div>
-              <h1><?php
-                 $sql=mysqli_query($con,"SELECT * from `user`" );
-                 if($row=mysqli_num_rows($sql));
-                 { 
-               ?>
-               <tr>
-                 <td><?php echo $row?></td></tr>
-                 <?php
-               }
-                ?></h1></div>
-          </div>
-          <div class="base-1">
-          <h3>TOTAL REVENUE GENERATED BY YOU</h3>
-          <div class="grill">
-            <div class="peng-black">
-              <i class="fa-solid fa-bag-shopping"></i></div>
-              <h1><?php
-                 $sql = mysqli_query($con, "SELECT SUM(u_totalprice) AS total FROM `order` WHERE user_id='$id'");
-                 $row = mysqli_fetch_assoc($sql);
-                 $total = $row['total'];
-               ?>
-               <tr>
-                 <td><?php echo $total;?></td></tr>
-                </h1></div>
-          </div>
-         </div>
-        </div>
-<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-<script src="../JS/file.js"></script>
-</body>
-</html>
+  <!--   <!-- <script src="../JS/file.js"></script> -->
+ -->

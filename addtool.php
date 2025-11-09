@@ -40,7 +40,8 @@
       $sql = mysqli_query($con, "UPDATE `order` SET user_id='$user_id', u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_price='$price', u_totalprice='$totalprice' WHERE id='$order_id'");
       
       if($sql){
-        echo "<script>alert('Order updated successfully!'); window.location.href='orders.php';</script>";
+        header('Location: orders.php');
+        exit();
       } else {
         echo "<script>alert('Error updating order. Please try again.');</script>";
       }
@@ -50,7 +51,8 @@
       $sql = mysqli_query($con, "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice) VALUES ('$user_id', '$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', '$totalprice')");
       
       if($sql){
-        echo "<script>alert('Order added successfully!'); window.location.href='orders.php';</script>";
+        header('Location: orders.php');
+        exit();
       } else {
         echo "<script>alert('Error adding order. Please try again.');</script>";
       }
@@ -71,7 +73,7 @@
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Add Order</title>
-  <script src="./JS/file.js"></script>
+  <!-- <script src="./JS/file.js"></script> -->
 </head>
 <body>
   <div class="dashboard-container">
@@ -110,7 +112,7 @@
                 <span class="nav-text">Orders</span>
                 <?php 
                 $pending_orders = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
-                $pending_count = $pending_orders ? mysqli_num_rows($pending_orders) : 0;
+                $pending_count = ($pending_orders && $pending_orders !== false) ? mysqli_num_rows($pending_orders) : 0;
                 if($pending_count > 0): ?>
                   <span class="nav-badge"><?php echo $pending_count; ?></span>
                 <?php endif; ?>

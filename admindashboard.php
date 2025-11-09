@@ -58,7 +58,13 @@
                 <span class="nav-text">Orders</span>
                 <?php 
                 $pending_orders = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
-                $pending_count = $pending_orders ? mysqli_num_rows($pending_orders) : 0;
+                if($pending_orders === false) {
+                  // Query failed - log error
+                  error_log("Dashboard query failed: " . mysqli_error($con));
+                  $pending_count = 0;
+                } else {
+                  $pending_count = mysqli_num_rows($pending_orders);
+                }
                 if($pending_count > 0): ?>
                   <span class="nav-badge"><?php echo $pending_count; ?></span>
                 <?php endif; ?>
@@ -282,7 +288,9 @@
                   LIMIT 10
                 ");
                 
-                if($recent_orders && mysqli_num_rows($recent_orders) > 0):
+                if($recent_orders === false) {
+                  echo "<tr><td colspan='7' style='text-align: center; color: red;'>Database error: " . htmlspecialchars(mysqli_error($con)) . "</td></tr>";
+                } else if(mysqli_num_rows($recent_orders) > 0):
                   while($order = mysqli_fetch_assoc($recent_orders)):
                     $status_class = '';
                     $status_bg = '';
@@ -374,7 +382,9 @@
                   LIMIT 10
                 ");
                 
-                if($tools_query && mysqli_num_rows($tools_query) > 0):
+                if($tools_query === false) {
+                  echo "<tr><td colspan='7' style='text-align: center; color: red;'>Database error: " . htmlspecialchars(mysqli_error($con)) . "</td></tr>";
+                } else if(mysqli_num_rows($tools_query) > 0):
                   while($tool = mysqli_fetch_assoc($tools_query)):
                     $status_class = '';
                     $status_bg = '';
@@ -439,6 +449,6 @@
 
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <script src="./JS/file.js"></script>
+  <!-- <script src="./JS/file.js"></script> -->
 </body>
 </html>

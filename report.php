@@ -188,7 +188,9 @@
                 
                 $query .= " ORDER BY o.u_totalprice DESC";
                 $sql = mysqli_query($con, $query);
-                if($sql && mysqli_num_rows($sql) > 0) {
+                if($sql === false) {
+                  echo "<tr><td colspan='8' style='text-align: center; color: red; padding: 20px;'>Database error: " . htmlspecialchars(mysqli_error($con)) . "</td></tr>";
+                } elseif(mysqli_num_rows($sql) > 0) {
                   while($data = mysqli_fetch_array($sql)) { 
                 ?>
                 <tr>
@@ -316,7 +318,7 @@
 
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <script src="./JS/file.js"></script>
+  <!-- <script src="./JS/file.js"></script> -->
   
   <script>
     function confirmDelete(id) {

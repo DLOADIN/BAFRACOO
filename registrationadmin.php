@@ -8,7 +8,7 @@
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon" class="link">
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <script src="./JS/file.js"></script>
+  <!-- <script src="./JS/file.js"></script> -->
 </body>
   <title>REGISTRATION PAGE</title>
 </head>

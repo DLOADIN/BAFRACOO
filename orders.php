@@ -22,7 +22,7 @@
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Orders</title>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script src="./JS/file.js"></script>
+  <!-- <script src="./JS/file.js"></script> -->
 </head>
 <body>
   <div class="dashboard-container">
@@ -61,7 +61,7 @@
                 <span class="nav-text">Orders</span>
                 <?php 
                 $pending_orders_count = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
-                $pending_count = $pending_orders_count ? mysqli_num_rows($pending_orders_count) : 0;
+                $pending_count = ($pending_orders_count && $pending_orders_count !== false) ? mysqli_num_rows($pending_orders_count) : 0;
                 if($pending_count > 0): ?>
                   <span class="nav-badge"><?php echo $pending_count; ?></span>
                 <?php endif; ?>

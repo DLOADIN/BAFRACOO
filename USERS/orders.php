@@ -8,6 +8,7 @@
   else{
   header('location:loginuser.php');
   } 
+  ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +20,8 @@
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - My Orders</title>
-  <script src="../JS/file.js"></script>
+    <!-- <script src="../JS/file.js"></script>
+ -->
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 </head>
 <body>
@@ -30,75 +32,123 @@
         <img src="../images/Captured.JPG" alt="BAFRACOO Logo">
         <span class="logo-text">BAFRACOO</span>
       </div>
-      <ul class="menu">
-        <li>
-          <a href="userdashboard.php">
-            <ion-icon name="home-outline"></ion-icon>
-            <span>DASHBOARD</span>
-          </a>
-        </li>
-        <li>
-          <a href="orders.php">
-            <ion-icon name="bag-handle-outline"></ion-icon>
-            <span>ORDERS</span>
-          </a>
-        </li>
-        <li>
-          <a href="stock.php">
-            <ion-icon name="pricetags-outline"></ion-icon>
-            <span>STOCK</span>
-          </a>
-        </li>
-        <li>
-          <a href="transactions.php">
-            <ion-icon name="git-compare-outline"></ion-icon>
-            <span>TRANSACTIONS</span>
-          </a>
-        </li>
-        <li>
-          <a href="userprofile.php">
-            <ion-icon name="person-circle-outline"></ion-icon>
-            <span>PROFILE</span>
-          </a>
-        </li>
-        <li>
-          <a href="../website.php">
-            <ion-icon name="planet-outline"></ion-icon>
-            <span>HOME SITE</span>
-          </a>
-        </li>
-    </ul>
-  </div>
-
-    <div class="main-content" id="main-content">
-      <div class="header-wrapper">
-        <div class="header-title">
-          <h1>ORDERS</h1>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <h3 class="nav-section-title">Main Menu</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="userdashboard.php" class="nav-link">
+                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Dashboard</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="stock.php" class="nav-link">
+                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Browse Tools</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="orders.php" class="nav-link active">
+                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">My Orders</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="transactions.php" class="nav-link">
+                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Transactions</span>
+              </a>
+            </li>
+          </ul>
         </div>
-        <div class="user-info">
-          <div class="gango">
-          <h3 class="my-account-header">USER 001</h3>
-          <p>USER PANEL</p></div>  
-          <button name="submit" type="submit" class="btn-3" >
-            <a href="logout.php">LOGOUT</a>
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Account</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="userprofile.php" class="nav-link">
+                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Profile</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Website</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="../website.php" class="nav-link">
+                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Visit Website</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar">
+            <?php echo strtoupper(substr($row['u_name'] ?? 'U', 0, 2)); ?>
+          </div>
+          <div class="user-info">
+            <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'User'); ?></div>
+            <div class="user-role">Customer</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <button class="mobile-menu-btn">
+            <ion-icon name="menu-outline"></ion-icon>
           </button>
-        </div>       
-         </div>
-         <div class="new-amounts"> 
-          <div class="title">
-          <h2 class="h2">ENTRY/STOCK DATA</h2>
-          </div><table><tr>
-              <th>#</th>
-              <TH>USER NAME</TH>
-              <TH>TOOL NAME</TH>
-              <th>TYPE</th>
-              <th>NUMBER OF ITEMS</th>
-              <th>TOOL DESCRIPTION</th>
-              <th>PRICE</th>
-              <th>TOTAL PRICE TO BE PAID</th>
-              <th>DATE</th>
-              <th>PAY</th>
+          <button class="sidebar-toggle">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+          <h1 class="page-title">My Orders</h1>
+        </div>
+        <div class="header-right">
+          <a href="logout.php" class="logout-btn">
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+          </a>
+        </div>
+      </header>
+      
+      <!-- Page Content -->
+      <div class="content-wrapper">
+        <div class="content-header">
+          <h2 class="content-title">Your Order History</h2>
+          <p class="content-subtitle">Track and manage your orders</p>
+        </div>
+        
+        <div class="table-container">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>User Name</th>
+                <th>Tool Name</th>
+                <th>Quantity</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Unit Price</th>
+                <th>Total Price</th>
+                <th>Date</th>
+                <th>Action</th>
               </tr>
+            </thead>
+            <tbody>
             <?php
             $number=0;
              $sql = "SELECT `order`.*, user.u_name FROM `order`INNER JOIN user ON `order`.user_id = user.id WHERE `order`.user_id = '$id'";
@@ -108,26 +158,64 @@
                   $number++;
             ?>
             <tr>
-              <td><?php echo  $number?></td>
-              <td><?php echo $row['u_name']?></td>
-              <td><?php echo $row['u_toolname']?></td>
-              <td><?php echo $row['u_itemsnumber']?></td>
-              <td><?php echo $row['u_type']?></td>
-              <td><?php echo $row['u_tooldescription']?></td>
-              <td><?php echo $row['u_price']?></td>
-              <td><?php echo $row['u_totalprice']?></td>
-              <td><?php echo $row['u_date']?></td>
+              <td><strong>#<?php echo str_pad($number, 3, '0', STR_PAD_LEFT)?></strong></td>
+              <td><?php echo htmlspecialchars($row['u_name'])?></td>
+              <td><strong><?php echo htmlspecialchars($row['u_toolname'])?></strong></td>
+              <td>
+                <span style="display: inline-block; padding: 4px 12px; background: var(--primary-color); color: white; border-radius: 12px; font-size: 0.875rem; font-weight: 600;">
+                  <?php echo $row['u_itemsnumber']?> items
+                </span>
+              </td>
+              <td>
+                <span style="display: inline-block; padding: 4px 12px; background: var(--gray-100); color: var(--gray-700); border-radius: 12px; font-size: 0.875rem; font-weight: 500;">
+                  <?php echo htmlspecialchars($row['u_type'])?>
+                </span>
+              </td>
+              <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <?php echo htmlspecialchars($row['u_tooldescription'])?>
+              </td>
+              <td>
+                <span style="color: var(--gray-600); font-size: 0.875rem;">RWF <?php echo number_format($row['u_price'])?></span>
+              </td>
+              <td>
+                <strong style="color: var(--primary-color); font-size: 1rem;">RWF <?php echo number_format($row['u_totalprice'])?></strong>
+              </td>
+              <td style="color: var(--gray-600);"><?php echo date('M d, Y', strtotime($row['u_date']))?></td>
               <td>  
-                <button class="lebutton"><a href="pay.php?o_id=<?php echo $row['id']?>">PAY UP</a></button>
+                <a href="pay.php?o_id=<?php echo $row['id']?>" 
+                  style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);"
+                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.35)';"
+                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.25)';">
+                  <ion-icon name="card-outline"></ion-icon>
+                  Pay Now
+                </a>
               </td>
               <?php
-          }
-        }
+                }
+              } else {
+                ?>
+                <tr>
+                  <td colspan="10" style="text-align: center; padding: var(--spacing-xl);">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); padding: var(--spacing-xl);">
+                      <ion-icon name="bag-outline" style="font-size: 4rem; color: var(--gray-400);"></ion-icon>
+                      <h3 style="color: var(--gray-700); margin: 0;">No Orders Yet</h3>
+                      <p style="color: var(--gray-500); margin: 0;">You haven't placed any orders yet. Start shopping now!</p>
+                      <a href="stock.php" style="margin-top: var(--spacing-sm); padding: 10px 20px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+                        <ion-icon name="cart-outline"></ion-icon>
+                        Browse Tools
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                <?php
+              }
               ?>
-          </tr>
-        </table>
+            </tbody>
+          </table>
         </div>
-         </div>
+      </div>
+    </main>
+  </div>
 
 <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
 <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>

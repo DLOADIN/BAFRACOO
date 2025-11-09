@@ -2,20 +2,18 @@
   require 'connection.php';
   
   if(isset($_POST['submit'])){
-    $email = $_POST['u_email'];
-    $password = $_POST['u_password'];
-    $sql=mysqli_query($con,"SELECT * FROM `user` WHERE u_email = '$email' AND u_password = '$password' ");
-    $query=mysqli_fetch_array($sql);
+    $email = mysqli_real_escape_string($con, $_POST['u_email']);
+    $password = mysqli_real_escape_string($con, $_POST['u_password']);
+    $sql = mysqli_query($con, "SELECT * FROM `user` WHERE u_email = '$email' AND u_password = '$password'");
     
-    if(mysqli_num_rows($sql) > 0){
-      if($password===$query["u_password"]);
+    if($sql && mysqli_num_rows($sql) > 0){
+      $query = mysqli_fetch_array($sql);
       $_SESSION["login"] = true;
       $_SESSION["id"] = $query["id"];
       header('location:userdashboard.php');
-    }
-  
-    else{
-      echo "<script>alert('WRONG USERNAME OR PASSWORD')</script>";
+      exit();
+    } else {
+      echo "<script>alert('WRONG USERNAME OR PASSWORD');</script>";
     }
   }
 ?>
@@ -29,7 +27,8 @@
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <script src="../JS/file.js"></script>
+   <!--   <!-- <script src="../JS/file.js"></script> -->
+ --> 
 </body>
   <title>LOGIN PAGE</title>
 </head>
