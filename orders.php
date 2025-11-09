@@ -10,136 +10,363 @@
   } 
   error_reporting(0);
 ?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="./CSS/newfriend.css">
-  <link rel="stylesheet" href="./CSS/form.css">
-  <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon" class="link">
+  <link rel="stylesheet" href="./CSS/modern-dashboard.css">
+  <link rel="stylesheet" href="./CSS/modern-tables.css">
+  <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>ORDERS</title>
+  <title>BAFRACOO - Orders</title>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script src="./JS/file.js"></script>
 </head>
 <body>
-  
-  <div class="sidebar">
-    <div class="logo">
-      <img src="./images/Captured.JPG" alt="">
-    </div>
-      <ul class="menu">
-        <li>
-          <a href="admindashboard.php">
-            <ion-icon name="home-outline"></ion-icon>
-            <span>DASHBOARD</span>
-          </a>
-        </li>
-        <li>
-          <a href="addtool.php">
-            <ion-icon name="add-outline"></ion-icon>
-            <span>ADD TOOL</span>
-          </a>
-        </li>
-        <li>
-          <a href="orders.php">
-            <ion-icon name="bag-handle-outline"></ion-icon>
-            <span>ORDERS</span>
-          </a>
-        </li>
-        <li>
-          <a href="stock.php">
-            <ion-icon name="pricetags-outline"></ion-icon>
-            <span>STOCK</span>
-          </a>
-        </li>
-        <li>
-          <a href="transactions.php">
-            <ion-icon name="git-compare-outline"></ion-icon>
-            <span>TRANSACTIONS</span>
-          </a>
-        </li>
-        <li>
-          <a href="report.php">
-            <ion-icon name="bar-chart-outline"></ion-icon>
-            <span>REPORTS</span>
-          </a>
-        </li>
-        <li>
-          <a href="adminprofile.php">
-            <ion-icon name="person-circle-outline"></ion-icon>
-            <span>PROFILE</span>
-          </a>
-        </li>
-        <li>
-          <a href="website.php">
-            <ion-icon name="planet-outline"></ion-icon>
-            <span>HOME SITE</span>
-          </a>
-        </li>
-    </ul>
-  </div>
-
-    <div class="main-content" id="main-content">
-      <div class="header-wrapper">
-        <div class="header-title">
-          <h1>Report/Orders</h1>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <img src="./images/Captured.JPG" alt="BAFRACOO Logo">
+        <span class="logo-text">BAFRACOO</span>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <h3 class="nav-section-title">Main Menu</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="admindashboard.php" class="nav-link">
+                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Dashboard</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="addtool.php" class="nav-link">
+                <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Add Tool</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="orders.php" class="nav-link active">
+                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Orders</span>
+                <?php 
+                $pending_orders_count = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
+                $pending_count = $pending_orders_count ? mysqli_num_rows($pending_orders_count) : 0;
+                if($pending_count > 0): ?>
+                  <span class="nav-badge"><?php echo $pending_count; ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="stock.php" class="nav-link">
+                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Inventory</span>
+              </a>
+            </li>
+          </ul>
         </div>
-        <div class="user-info">
-          <div class="gango">
-          <h3 class="my-account-header">Kelly Nikuze</h3>
-          <p>Manager</p></div>  
-          <button name="submit" type="submit" class="btn-3" >
-            <a href="logout.php">LOGOUT</a>
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Management</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="transactions.php" class="nav-link">
+                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Transactions</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="report.php" class="nav-link">
+                <ion-icon name="document-text-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Reports</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="adminprofile.php" class="nav-link">
+                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Profile</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Website</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="website.php" class="nav-link">
+                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Visit Website</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar">
+            <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
+          </div>
+          <div class="user-info">
+            <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <button class="mobile-menu-btn">
+            <ion-icon name="menu-outline"></ion-icon>
           </button>
-        </div>       
-         </div>
-         <div class="new-amounts"> 
-          <div class="title">
-          <h2 class="h2">ENTRY/STOCK DATA</h2>
-          </div><table><tr>
-              <th>#</th>
-              <TH>USER NAME</TH>
-              <TH>TOOL NAME</TH>
-              <th>TYPE</th>
-              <th>NUMBER OF ITEMS</th>
-              <th>TOOL DESCRIPTION</th>
-              <th>PRICES</th>
-              <th>TOTAL PRICE</th>
-              <th>DATE</th>
-              <th>DELETE</th>
-              </tr>
+          <button class="sidebar-toggle">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+          <h1 class="page-title">Orders Management</h1>
+        </div>
+        <div class="header-right">
+          <a href="logout.php" class="logout-btn">
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Orders Summary Cards -->
+        <div class="dashboard-grid" style="margin-bottom: var(--spacing-xl);">
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: var(--primary-color);">
+                <ion-icon name="bag-handle-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL ORDERS</h3>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
+                  <?php
+                    $total_orders = mysqli_query($con, "SELECT COUNT(*) as count FROM `order`");
+                    echo $total_orders ? mysqli_fetch_assoc($total_orders)['count'] : '0';
+                  ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--success-color); font-weight: 500;">
+                  <ion-icon name="trending-up-outline" style="margin-right: 4px;"></ion-icon>
+                  +12% from last month
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: var(--warning-color);">
+                <ion-icon name="time-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">PENDING ORDERS</h3>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
+                  <?php
+                    $pending_orders = mysqli_query($con, "SELECT COUNT(*) as count FROM `order` WHERE status='Pending'");
+                    echo $pending_orders ? mysqli_fetch_assoc($pending_orders)['count'] : '0';
+                  ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--warning-color); font-weight: 500;">
+                  <ion-icon name="alert-circle-outline" style="margin-right: 4px;"></ion-icon>
+                  Needs attention
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: var(--success-color);">
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">COMPLETED ORDERS</h3>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
+                  <?php
+                    $completed_orders = mysqli_query($con, "SELECT COUNT(*) as count FROM `order` WHERE status='Completed'");
+                    echo $completed_orders ? mysqli_fetch_assoc($completed_orders)['count'] : '0';
+                  ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--success-color); font-weight: 500;">
+                  <ion-icon name="trending-up-outline" style="margin-right: 4px;"></ion-icon>
+                  +8% this week
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: var(--info-color);">
+                <ion-icon name="cash-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL REVENUE</h3>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
+                  <?php
+                    $total_revenue = mysqli_query($con, "SELECT SUM(total_price) as total FROM `order` WHERE status='Completed'");
+                    $revenue = $total_revenue ? mysqli_fetch_assoc($total_revenue)['total'] ?? 0 : 0;
+                    echo number_format($revenue) . ' RWF';
+                  ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--success-color); font-weight: 500;">
+                  <ion-icon name="trending-up-outline" style="margin-right: 4px;"></ion-icon>
+                  +15% this month
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">
+              <ion-icon name="list-outline" style="margin-right: var(--spacing-sm);"></ion-icon>
+              All Orders
+            </h3>
+            <div style="display: flex; gap: var(--spacing-md);">
+              <button class="btn-secondary" style="width:20vh;height:5vh; border-radius:15px;">
+                <ion-icon name="filter-outline"></ion-icon>
+                Filter
+              </button>
+              <button class="btn-primary" style="width:20vh;height:5vh; border-radius:15px;">
+                <ion-icon name="add-outline"></ion-icon>
+                New Order
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Customer</th>
+                  <th>Tool Name</th>
+                  <th>Type</th>
+                  <th>Quantity</th>
+                  <th>Description</th>
+                  <th>Unit Price</th>
+                  <th>Total Price</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
             <?php
-             $sql = "SELECT `order`.*, user.u_name FROM `order`INNER JOIN user ON `order`.user_id = user.id";
+             $sql = "SELECT `order`.*, user.u_name FROM `order` INNER JOIN user ON `order`.user_id = user.id ORDER BY `order`.id DESC";
                 $result = mysqli_query($con, $sql);
                 if ($result && mysqli_num_rows($result) > 0) {
                 while ($row = mysqli_fetch_array($result)) {
+                  $status_class = '';
+                  $status_text = $row['status'] ?? 'Pending';
+                  switch(strtolower($status_text)) {
+                    case 'completed':
+                      $status_class = 'status-completed';
+                      break;
+                    case 'pending':
+                      $status_class = 'status-pending';
+                      break;
+                    case 'processing':
+                      $status_class = 'status-processing';
+                      break;
+                    default:
+                      $status_class = 'status-pending';
+                  }
             ?>
-            <tr>
-              <td><?php echo $row['id']?></td>
-              <td><?php echo $row['u_name']?></td>
-              <td><?php echo $row['u_toolname']?></td>
-              <td><?php echo $row['u_itemsnumber']?></td>
-              <td><?php echo $row['u_type']?></td>
-              <td><?php echo $row['u_tooldescription']?></td>
-              <td><?php echo $row['u_price']?></td>
-              <td><?php echo $row['u_totalprice']?></td>
-              <td><?php echo $row['u_date']?></td>
-              <td>  
-              <button class="lebutton" onclick="alert('Are You Really Sure You Want To Delete This')"><a style="color: red;" href="./delete/deleteorder.php?id=<?php echo $row['id']?>">DELETE</a></button>
-              </td>
+                <tr>
+                  <td><?php echo $row['id']; ?></td>
+                  <td>
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                        <?php echo strtoupper(substr($row['u_name'], 0, 2)); ?>
+                      </div>
+                      <div>
+                        <div style="font-weight: 500;"><?php echo htmlspecialchars($row['u_name']); ?></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><?php echo htmlspecialchars($row['u_toolname']); ?></td>
+                  <td><?php echo htmlspecialchars($row['u_type']); ?></td>
+                  <td><?php echo $row['u_itemsnumber']; ?></td>
+                  <td><?php echo htmlspecialchars($row['u_tooldescription']); ?></td>
+                  <td><?php echo number_format($row['u_price']); ?> RWF</td>
+                  <td style="font-weight: 600;"><?php echo number_format($row['total_price'] ?? $row['u_totalprice']); ?> RWF</td>
+                  <td><?php echo date('M d, Y', strtotime($row['u_date'])); ?></td>
+                  <td>
+                    <span class="status-badge <?php echo $status_class; ?>">
+                      <?php echo ucfirst($status_text); ?>
+                    </span>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn-icon btn-edit" onclick="editOrder(<?php echo $row['id']; ?>)">
+                        <ion-icon name="create-outline"></ion-icon>
+                      </button>
+                      <button class="btn-icon btn-delete" onclick="confirmDelete(<?php echo $row['id']; ?>)">
+                        <ion-icon name="trash-outline"></ion-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               <?php
-          }
-        }
+                }
+              } else {
               ?>
-          </tr>
-        </table>
+                <tr>
+                  <td colspan="11" style="text-align: center; padding: var(--spacing-xl); color: var(--gray-600);">
+                    <ion-icon name="document-outline" style="font-size: 3rem; margin-bottom: var(--spacing-md);"></ion-icon>
+                    <div>No orders found yet. Orders will appear here once customers start placing them.</div>
+                  </td>
+                </tr>
+              <?php
+              }
+              ?>
+              </tbody>
+            </table>
+          </div>
         </div>
-         </div>
-         </div>
+      </div>
+    </main>
+  </div>
 
-<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  
+  <script>
+    function confirmDelete(orderId) {
+      if (confirm('Are you really sure you want to delete this order?')) {
+        window.location.href = './delete/deleteorder.php?id=' + orderId;
+      }
+    }
+    
+    function editOrder(orderId) {
+      // Add edit functionality here
+      alert('Edit functionality to be implemented');
+    }
+    
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof window.Dashboard !== 'undefined') {
+        new window.Dashboard();
+      }
+    });
+  </script>
 </body>
 </html>

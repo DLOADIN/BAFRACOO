@@ -8,26 +8,28 @@
   else{
   header('location:loginuser.php');
   } 
-?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="../CSS/newfriend.css">
-  <link rel="stylesheet" href="../CSS/form.css">
-  <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon" class="link">
+  <link rel="stylesheet" href="../CSS/modern-dashboard.css">
+  <link rel="stylesheet" href="../CSS/modern-tables.css">
+  <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>ORDERS</title>
+  <title>BAFRACOO - My Orders</title>
   <script src="../JS/file.js"></script>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 </head>
 <body>
-  
-  <div class="sidebar">
-    <div class="logo">
-      <img src="../images/Captured.JPG" alt="">
-    </div>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <img src="../images/Captured.JPG" alt="BAFRACOO Logo">
+        <span class="logo-text">BAFRACOO</span>
+      </div>
       <ul class="menu">
         <li>
           <a href="userdashboard.php">

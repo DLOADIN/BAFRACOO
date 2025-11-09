@@ -1,168 +1,536 @@
 <?php
+  // Start session and require database connection
   require "connection.php";
+  
+  // Initialize variables
+  $success_message = '';
+  $error_message = '';
+  $row = array();
+  
+  // Check if user is logged in
   if(!empty($_SESSION["id"])){
-  $id = $_SESSION["id"];
-  $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+    $id = intval($_SESSION["id"]); // Ensure ID is integer
+    
+    // Fetch current admin data
+    $check = mysqli_query($con, "SELECT * FROM `admin` WHERE id = $id");
+    
+    if($check && mysqli_num_rows($check) > 0){
+      $row = mysqli_fetch_assoc($check);
+    } else {
+      // If user not found, redirect to login
+      session_destroy();
+      header('Location: loginadmin.php');
+      exit();
+    }
+  } else {
+    // Not logged in, redirect to login
+    header('Location: loginadmin.php');
+    exit();
   }
-  else{
-  header('location:loginadmin.php');
-  } 
+  
+  // Handle profile update
+  if(isset($_POST['submit']) && $_SERVER['REQUEST_METHOD'] === 'POST'){
+    
+    // Validate and sanitize inputs
+    $name = trim($_POST['u_name']);
+    $email = trim($_POST['u_email']);
+    $phonenumber = trim($_POST['u_phonenumber']);
+    $address = trim($_POST['u_address']);
+    $password = trim($_POST['u_password']);
+    
+    // Validation
+    $errors = array();
+    
+    if(empty($name)){
+      $errors[] = "Name is required.";
+    }
+    
+    if(empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)){
+      $errors[] = "Valid email is required.";
+    }
+    
+    if(empty($phonenumber)){
+      $errors[] = "Phone number is required.";
+    } elseif(!is_numeric($phonenumber)){
+      $errors[] = "Phone number must contain only numbers.";
+    }
+    
+    if(empty($address)){
+      $errors[] = "Address is required.";
+    }
+    
+    // If no validation errors, proceed with update
+    if(empty($errors)){
+      
+      // Escape strings for SQL
+      $name = mysqli_real_escape_string($con, $name);
+      $email = mysqli_real_escape_string($con, $email);
+      $phonenumber = intval($phonenumber); // Convert to integer for database
+      $address = mysqli_real_escape_string($con, $address);
+      
+      // Build update query based on whether password is provided
+      if(!empty($password)){
+        // Update with new password
+        $password = mysqli_real_escape_string($con, $password);
+        $update_query = "UPDATE `admin` SET 
+                        u_name = '$name', 
+                        u_email = '$email', 
+                        u_phonenumber = $phonenumber, 
+                        u_address = '$address', 
+                        u_password = '$password' 
+                        WHERE id = $id";
+      } else {
+        // Update without changing password
+        $update_query = "UPDATE `admin` SET 
+                        u_name = '$name', 
+                        u_email = '$email', 
+                        u_phonenumber = $phonenumber, 
+                        u_address = '$address' 
+                        WHERE id = $id";
+      }
+      
+      // Execute update query
+      $update_result = mysqli_query($con, $update_query);
+      
+      if($update_result){
+        if(mysqli_affected_rows($con) > 0){
+          $success_message = "Profile updated successfully!";
+          
+          // Refresh admin data to show updated information
+          $check = mysqli_query($con, "SELECT * FROM `admin` WHERE id = $id");
+          if($check && mysqli_num_rows($check) > 0){
+            $row = mysqli_fetch_assoc($check);
+          }
+        } else {
+          $success_message = "No changes were made to your profile.";
+        }
+      } else {
+        $error_message = "Database error: " . mysqli_error($con);
+      }
+      
+    } else {
+      // Display validation errors
+      $error_message = implode("<br>", $errors);
+    }
+  }
 ?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="./CSS/newfriend.css">
-  <link rel="stylesheet" href="./CSS/form.css">
-  <link rel="stylesheet" href="./CSS/gravity.css">
-  <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon" class="link">
+  <link rel="stylesheet" href="./CSS/modern-dashboard.css">
+  <link rel="stylesheet" href="./CSS/modern-tables.css">
+  <link rel="stylesheet" href="./CSS/modern-forms.css">
+  <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>ADMIN PROFILE</title>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script src="./JS/file.js"></script>
+  <title>BAFRACOO - Admin Profile</title>
 </head>
 <body>
-  
-  <div class="sidebar">
-    <div class="logo">
-      <img src="./images/Captured.JPG" alt="">
-    </div>
-      <ul class="menu">
-        <li>
-          <a href="admindashboard.php">
-            <ion-icon name="home-outline"></ion-icon>
-            <span>DASHBOARD</span>
-          </a>
-        </li>
-        <li>
-          <a href="addtool.php">
-            <ion-icon name="add-outline"></ion-icon>
-            <span>ADD TOOL</span>
-          </a>
-        </li>
-        <li>
-          <a href="orders.php">
-            <ion-icon name="bag-handle-outline"></ion-icon>
-            <span>ORDERS</span>
-          </a>
-        </li>
-        <li>
-          <a href="stock.php">
-            <ion-icon name="pricetags-outline"></ion-icon>
-            <span>STOCK</span>
-          </a>
-        </li>
-        <li>
-          <a href="transactions.php">
-            <ion-icon name="git-compare-outline"></ion-icon>
-            <span class="Transaction">TRANSACTIONS</span>
-          </a>
-        </li>
-        <li>
-          <a href="adminprofile.php">
-            <ion-icon name="person-circle-outline"></ion-icon>
-            <span>PROFILE</span>
-          </a>
-        </li>
-        <li>
-          <a href="website.php">
-            <ion-icon name="planet-outline"></ion-icon>
-            <span>HOME SITE</span>
-          </a>
-        </li>
-    </ul>
-  </div>
-
-    <div class="main-content" id="main-content">
-      <div class="header-wrapper">
-        <div class="header-title">
-          <h1>ADMIN PROFILE</h1>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <img src="./images/Captured.JPG" alt="BAFRACOO Logo">
+        <span class="logo-text">BAFRACOO</span>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <h3 class="nav-section-title">Main Menu</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="admindashboard.php" class="nav-link">
+                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Dashboard</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="addtool.php" class="nav-link">
+                <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Add Tool</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="orders.php" class="nav-link">
+                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Orders</span>
+                <?php 
+                $pending_orders = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
+                $pending_count = $pending_orders ? mysqli_num_rows($pending_orders) : 0;
+                if($pending_count > 0): ?>
+                  <span class="nav-badge"><?php echo $pending_count; ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="stock.php" class="nav-link">
+                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Inventory</span>
+              </a>
+            </li>
+          </ul>
         </div>
-        <div class="user-info">
-          <div class="gango">
-          <h3 class="my-account-header">Kelly Nikuze</h3>
-          <p>Manager</p></div>  
-          <button name="submit" type="submit" class="btn-3" >
-            <a href="logout.php">LOGOUT</a>
-          </button>
-        </div>       
-         </div>
-         <div class="duke">
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Management</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="transactions.php" class="nav-link">
+                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Transactions</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="report.php" class="nav-link">
+                <ion-icon name="document-text-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Reports</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="adminprofile.php" class="nav-link active">
+                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Profile</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Website</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="website.php" class="nav-link">
+                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Visit Website</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar">
+            <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
+          </div>
+          <div class="user-info">
+            <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
 
-          <div class="hastings">
-            <img src="./images/_ANTINOUS_ _ Oil on canvas _ 120 x 150 cm.jpg" alt="">
-            <?php $sql=mysqli_query($con,"SELECT u_name FROM `admin`");
-            $row = mysqli_num_rows($sql);
-            if($row){
-              while($row=mysqli_fetch_array($sql))
-              { ?>
-            <h2><?php echo $row['u_name']?></h2>
-            <?php 
-              }
-            }
-            ?>
-            <h3>ADMIN</h3>
-            <hr>
-            <h3><i class="fa-solid fa-person"></i>UI - INTERN</h3>
-            <h3><i class="fa-solid fa-ban"></i>ON TEAK</h3>
-            <hr>
-            <h3><i class="fa-solid fa-phone"></i>+91 7048119291</h3>
-            <h3><i class="fa-regular fa-envelope"></i>yghori@asite.com</h3>
-            <h3><i class="fa-regular fa-images"></i>PDT -I</h3>
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <button class="mobile-menu-btn">
+            <ion-icon name="menu-outline"></ion-icon>
+          </button>
+          <button class="sidebar-toggle">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+          <h1 class="page-title">Admin Profile</h1>
+        </div>
+        <div class="header-right">
+          <a href="logout.php" class="logout-btn">
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <?php if(isset($success_message)): ?>
+          <div class="alert alert-success">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            <?php echo $success_message; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if(isset($error_message)): ?>
+          <div class="alert alert-error">
+            <ion-icon name="alert-circle-outline"></ion-icon>
+            <?php echo $error_message; ?>
+          </div>
+        <?php endif; ?>
+
+        <div class="profile-layout">
+          
+          <!-- Profile Card -->
+          <div class="dashboard-card profile-card">
+            <div class="profile-header">
+              <div class="profile-avatar">
+                <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
+              </div>
+              
+              <h2 class="profile-name">
+                <?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?>
+              </h2>
+              
+              <p class="profile-role">Administrator</p>
+              
+              <div class="profile-details">
+                <div class="profile-detail">
+                  <ion-icon name="mail-outline"></ion-icon>
+                  <span><?php echo htmlspecialchars($row['u_email'] ?? 'N/A'); ?></span>
+                </div>
+                
+                <div class="profile-detail">
+                  <ion-icon name="call-outline"></ion-icon>
+                  <span><?php echo htmlspecialchars($row['u_phonenumber'] ?? 'N/A'); ?></span>
+                </div>
+                
+                <div class="profile-detail">
+                  <ion-icon name="location-outline"></ion-icon>
+                  <span><?php echo htmlspecialchars($row['u_address'] ?? 'N/A'); ?></span>
+                </div>
+                
+                <div class="profile-detail">
+                  <ion-icon name="shield-checkmark-outline"></ion-icon>
+                  <span>Active Admin</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="hastings-1">
-            <H1>YOUR OVERALL INFORMATION</H1>
-            <?php
-          if(isset($_GET['id'])){
-          $id=$_GET['id'];
-        }
-          $sql=mysqli_query($con,"SELECT * FROM `admin` WHERE id='$id' ");
-          $row = mysqli_fetch_array($sql);
-          ?>
-            <form action="" method="post" class="formation">
-              <div class="real-form">
-                <label for="">YOUR NAMES</label>
-                <input type="text" name="u_name" value="<?php echo $row['u_name']?>" required>
-                <label for="">E-MAIL</label>
-                <input type="email" name="u_email" value="<?php echo $row['u_email']?>" required>
+          <!-- Edit Profile Form -->
+          <div class="dashboard-card form-card">
+            <div class="card-header">
+              <h3>
+                <ion-icon name="create-outline"></ion-icon>
+                Edit Profile Information
+              </h3>
+            </div>
+            
+            <form method="post" class="form-modern">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="u_name">Full Name</label>
+                  <input type="text" id="u_name" name="u_name" value="<?php echo htmlspecialchars($row['u_name'] ?? ''); ?>" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="u_email">Email Address</label>
+                  <input type="email" id="u_email" name="u_email" value="<?php echo htmlspecialchars($row['u_email'] ?? ''); ?>" required>
+                </div>
               </div>
-              <div class="real-form">
-                <label for="">PHONENUMBER</label>
-                <input type="text" name="u_phonenumber" required maxlength="15" value="<?php echo $row['u_phonenumber']?>">
-                <label for="">ADDRESS</label>
-                <input type="text" name="u_address" required value="<?php echo $row['u_address']?>">
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="u_phonenumber">Phone Number</label>
+                  <input type="text" id="u_phonenumber" name="u_phonenumber" value="<?php echo htmlspecialchars($row['u_phonenumber'] ?? ''); ?>" required maxlength="15">
+                </div>
+                
+                <div class="form-group">
+                  <label for="u_address">Address</label>
+                  <input type="text" id="u_address" name="u_address" value="<?php echo htmlspecialchars($row['u_address'] ?? ''); ?>" required>
+                </div>
               </div>
-              <div class="real-form">
-                <label for="">PASSWORD</label>
-                <input type="text" name="u_password" required value="<?php echo $row['u_password']?>">
-                <button name="submit" type="submit" class="btn-2" id="btns">SAVE</button></div>
+              
+              <div class="form-group">
+                <label for="u_password">Password</label>
+                <input type="password" id="u_password" name="u_password" placeholder="Leave blank to keep current password">
+                <small class="form-text">Leave blank if you don't want to change your password</small>
+              </div>
+              
+              <div class="form-actions">
+                <button type="submit" name="submit" class="btn btn-primary btn-lg">
+                  <ion-icon name="save-outline"></ion-icon>
+                  <span>Save Changes</span>
+                </button>
+              </div>
             </form>
           </div>
-
-         </div>
         </div>
+      </div>
+    </main>
+  </div>
 
-<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <style>
+    /* Profile page specific styles */
+    .profile-layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: var(--spacing-xl);
+      align-items: start;
+    }
+
+    .profile-card .profile-header {
+      text-align: center;
+      padding: var(--spacing-lg);
+    }
+
+    .profile-avatar {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto var(--spacing-lg);
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2.5rem;
+      font-weight: 700;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .profile-name {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: var(--spacing-sm);
+      color: var(--gray-900);
+    }
+
+    .profile-role {
+      color: var(--gray-600);
+      font-weight: 500;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .profile-details {
+      border-top: 1px solid var(--gray-200);
+      padding-top: var(--spacing-lg);
+      text-align: left;
+    }
+
+    .profile-detail {
+      display: flex;
+      align-items: center;
+      margin-bottom: var(--spacing-md);
+      color: var(--gray-600);
+    }
+
+    .profile-detail ion-icon {
+      margin-right: var(--spacing-md);
+      font-size: 1.25rem;
+    }
+
+    .profile-detail span {
+      font-size: 0.875rem;
+    }
+
+    .alert {
+      padding: var(--spacing-md);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-lg);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .alert-success {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .alert-error {
+      background: var(--error-color);
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .profile-layout {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
+
+  <script>
+    // Form validation and enhancement
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.querySelector('.form-modern');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      
+      // Add form submission handling
+      form.addEventListener('submit', function(e) {
+        // Add loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon><span>Saving...</span>';
+        
+        // Validate email format
+        const email = form.querySelector('input[name="u_email"]').value;
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(email)) {
+          e.preventDefault();
+          alert('Please enter a valid email address.');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<ion-icon name="save-outline"></ion-icon><span>Save Changes</span>';
+          return;
+        }
+        
+        // Validate phone number
+        const phone = form.querySelector('input[name="u_phonenumber"]').value;
+        const phonePattern = /^[\d\s\-\+\(\)]+$/;
+        if (phone && !phonePattern.test(phone)) {
+          e.preventDefault();
+          alert('Please enter a valid phone number.');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<ion-icon name="save-outline"></ion-icon><span>Save Changes</span>';
+          return;
+        }
+      });
+
+      // Enhanced sidebar functionality
+      const sidebar = document.getElementById('sidebar');
+      const toggleBtn = document.querySelector('.sidebar-toggle');
+      const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+      const overlay = document.querySelector('.sidebar-overlay');
+
+      function toggleSidebar() {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+      }
+
+      function showSidebar() {
+        sidebar.classList.add('show');
+        overlay.style.display = 'block';
+      }
+
+      function hideSidebar() {
+        sidebar.classList.remove('show');
+        overlay.style.display = 'none';
+      }
+
+      // Initialize sidebar state
+      if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+      }
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleSidebar);
+      }
+
+      if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', showSidebar);
+      }
+
+      if (overlay) {
+        overlay.addEventListener('click', hideSidebar);
+      }
+
+      // Mobile responsiveness
+      function handleResize() {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('collapsed');
+        }
+      }
+
+      window.addEventListener('resize', handleResize);
+      handleResize();
+    });
+  </script>
+
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <script src="./JS/file.js"></script>
 </body>
 </html>
-<?php
-  if(isset($_POST['submit'])){
-    $name = $_POST['u_name'];
-    $email = $_POST['u_email'];
-    $phonenumber = $_POST['u_phonenumber'];
-    $address = $_POST['u_address'];
-    $password = $_POST['u_password'];
-    $sql=mysqli_query($con,"UPDATE `admin` SET u_name='$name', u_email='$email', u_phonenumber='$phonenumber',u_address='$address',u_password='$password' WHERE id='$id' ");
-    
-    if($sql){
-      echo "<script>alert('Updated Successfully')</script>";
-    }
-    else{
-      echo "<script>alert('failed to update')</script>";
-    }
-  }
-?>
