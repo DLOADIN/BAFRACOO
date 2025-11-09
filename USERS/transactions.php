@@ -22,6 +22,26 @@
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Transactions</title>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    /* Ensure Ionicons display properly */
+    ion-icon {
+      display: inline-block;
+      vertical-align: middle;
+    }
+    
+    .nav-icon {
+      font-size: 1.25rem;
+      width: 24px;
+      height: 24px;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .nav-link ion-icon {
+      flex-shrink: 0;
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-container">
