@@ -149,6 +149,12 @@
             <li class="nav-item">
               <a href="addtool.php" class="nav-link">
                 <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Add Order</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="addorder.php" class="nav-link">
+                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Add Tool</span>
               </a>
             </li>
@@ -245,21 +251,6 @@
           </a>
         </div>
       </header>
-
-      <div class="content-area">
-        <?php if(isset($success_message)): ?>
-          <div class="alert alert-success">
-            <ion-icon name="checkmark-circle-outline"></ion-icon>
-            <?php echo $success_message; ?>
-          </div>
-        <?php endif; ?>
-
-        <?php if(isset($error_message)): ?>
-          <div class="alert alert-error">
-            <ion-icon name="alert-circle-outline"></ion-icon>
-            <?php echo $error_message; ?>
-          </div>
-        <?php endif; ?>
 
         <div class="profile-layout">
           

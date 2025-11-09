@@ -9,56 +9,51 @@
   header('location:loginadmin.php');
   } 
   
-  // Check if editing existing order
+  // Check if editing existing tool
   $is_edit = false;
-  $order_data = null;
+  $tool_data = null;
   if(isset($_GET['id']) && !empty($_GET['id'])){
     $is_edit = true;
-    $order_id = mysqli_real_escape_string($con, $_GET['id']);
-    $order_query = mysqli_query($con, "SELECT * FROM `order` WHERE id='$order_id'");
-    if($order_query && mysqli_num_rows($order_query) > 0){
-      $order_data = mysqli_fetch_assoc($order_query);
+    $tool_id = mysqli_real_escape_string($con, $_GET['id']);
+    $tool_query = mysqli_query($con, "SELECT * FROM `tool` WHERE id='$tool_id'");
+    if($tool_query && mysqli_num_rows($tool_query) > 0){
+      $tool_data = mysqli_fetch_assoc($tool_query);
     } else {
-      echo "<script>alert('Order not found!'); window.location.href='orders.php';</script>";
+      echo "<script>alert('Tool not found!'); window.location.href='stock.php';</script>";
       exit();
     }
   }
   
   // Handle form submission
   if(isset($_POST['submit'])){
-    $user_id = mysqli_real_escape_string($con, $_POST['user_id']);
     $toolname = mysqli_real_escape_string($con, $_POST['u_toolname']);
     $itemsnumber = mysqli_real_escape_string($con, $_POST['u_itemsnumber']);
     $type = mysqli_real_escape_string($con, $_POST['u_type']);
     $tooldescription = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
     $price = mysqli_real_escape_string($con, $_POST['u_price']);
-    $totalprice = $itemsnumber * $price;
     
-    if($is_edit && isset($_POST['order_id'])){
-      // Update existing order
-      $order_id = mysqli_real_escape_string($con, $_POST['order_id']);
-      $sql = mysqli_query($con, "UPDATE `order` SET user_id='$user_id', u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_price='$price', u_totalprice='$totalprice' WHERE id='$order_id'");
+    if($is_edit && isset($_POST['tool_id'])){
+      // Update existing tool
+      $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
+      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_price='$price' WHERE id='$tool_id'");
       
       if($sql){
-        echo "<script>alert('Order updated successfully!'); window.location.href='orders.php';</script>";
+        echo "<script>alert('Tool updated successfully!'); window.location.href='stock.php';</script>";
       } else {
-        echo "<script>alert('Error updating order. Please try again.');</script>";
+        echo "<script>alert('Error updating tool. Please try again.');</script>";
       }
     } else {
-      // Insert new order
+      // Insert new tool
       $date = date('Y-m-d');
-      $sql = mysqli_query($con, "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice) VALUES ('$user_id', '$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', '$totalprice')");
+      $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price')");
       
       if($sql){
-        echo "<script>alert('Order added successfully!'); window.location.href='orders.php';</script>";
+        echo "<script>alert('Tool added successfully!'); window.location.href='stock.php';</script>";
       } else {
-        echo "<script>alert('Error adding order. Please try again.');</script>";
+        echo "<script>alert('Error adding tool. Please try again.');</script>";
       }
     }
   }
-  
-  // Get list of users
-  $users_query = mysqli_query($con, "SELECT id, u_name, u_email FROM `user` ORDER BY u_name ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -70,7 +65,7 @@
   <link rel="stylesheet" href="./CSS/modern-forms.css">
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>BAFRACOO - Add Order</title>
+  <title>BAFRACOO - Add Tool</title>
   <script src="./JS/file.js"></script>
 </head>
 <body>
@@ -93,13 +88,13 @@
               </a>
             </li>
             <li class="nav-item">
-              <a href="addtool.php" class="nav-link active">
+              <a href="addtool.php" class="nav-link">
                 <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Add Order</span>
               </a>
             </li>
             <li class="nav-item">
-              <a href="addorder.php" class="nav-link">
+              <a href="addorder.php" class="nav-link active">
                 <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Add Tool</span>
               </a>
@@ -117,7 +112,7 @@
               </a>
             </li>
             <li class="nav-item">
-              <a href="stock.php" class="nav-link">
+              <a href="stock.php" class="nav-link active">
                 <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Inventory</span>
               </a>
@@ -188,7 +183,7 @@
           <button class="sidebar-toggle">
             <ion-icon name="chevron-back-outline"></ion-icon>
           </button>
-          <h1 class="page-title"><?php echo $is_edit ? 'Edit Order' : 'Add New Order'; ?></h1>
+          <h1 class="page-title"><?php echo $is_edit ? 'Edit Tool' : 'Add New Tool'; ?></h1>
         </div>
         <div class="header-right">
           <a href="logout.php" class="logout-btn">
@@ -201,69 +196,44 @@
       <div class="content-area">
         <!-- Breadcrumb -->
         <div style="margin-bottom: var(--spacing-xl); display: flex; align-items: center; gap: var(--spacing-sm); color: var(--gray-600); font-size: 0.875rem;">
-          <a href="orders.php" style="color: var(--primary-color); text-decoration: none;">
-            <ion-icon name="bag-handle-outline"></ion-icon> Orders
+          <a href="stock.php" style="color: var(--primary-color); text-decoration: none;">
+            <ion-icon name="cube-outline"></ion-icon> Inventory
           </a>
           <span>/</span>
-          <span style="color: var(--gray-900); font-weight: 500;"><?php echo $is_edit ? 'Edit Order' : 'Add New Order'; ?></span>
+          <span style="color: var(--gray-900); font-weight: 500;"><?php echo $is_edit ? 'Edit Tool' : 'Add New Tool'; ?></span>
         </div>
 
-        <!-- Add Order Form Card -->
+        <!-- Add Tool Form Card -->
         <div class="dashboard-card" style="max-width: 900px; margin: 0 auto;">
           <div class="card-header">
             <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">
               <ion-icon name="<?php echo $is_edit ? 'create-outline' : 'add-circle-outline'; ?>" style="margin-right: var(--spacing-sm);"></ion-icon>
-              Order Information
+              Tool Information
             </h3>
             <p style="margin: var(--spacing-sm) 0 0 0; color: var(--gray-600); font-size: 0.875rem;">
-              <?php echo $is_edit ? 'Update the order details below' : 'Fill in the details below to create a new order for a customer'; ?>
+              <?php echo $is_edit ? 'Update the tool details below' : 'Fill in the details below to add a new tool to your inventory'; ?>
             </p>
           </div>
 
           <div style="padding: var(--spacing-xl);">
-            <form method="POST" action="" id="addOrderForm">
+            <form method="POST" action="" id="addToolForm">
               <?php if($is_edit): ?>
-                <input type="hidden" name="order_id" value="<?php echo $order_data['id']; ?>">
+                <input type="hidden" name="tool_id" value="<?php echo $tool_data['id']; ?>">
               <?php endif; ?>
-              <!-- Customer Selection -->
-              <div class="form-group" style="margin-bottom: var(--spacing-lg);">
-                <label for="user_id" class="form-label">
-                  <ion-icon name="person-outline" style="margin-right: 4px;"></ion-icon>
-                  Select Customer *
-                </label>
-                <select 
-                  id="user_id" 
-                  name="user_id" 
-                  class="form-control" 
-                  required
-                  style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem; background: white;"
-                >
-                  <option value="">-- Select a customer --</option>
-                  <?php 
-                  if($users_query && mysqli_num_rows($users_query) > 0){
-                    while($user = mysqli_fetch_assoc($users_query)){
-                      $selected = ($is_edit && $order_data && $order_data['user_id'] == $user['id']) ? 'selected' : '';
-                      echo '<option value="'.$user['id'].'" '.$selected.'>'.$user['u_name'].' ('.$user['u_email'].')</option>';
-                    }
-                  }
-                  ?>
-                </select>
-              </div>
-
-              <!-- Product Name and Type Row -->
+              <!-- Tool Name and Type Row -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
                 <div class="form-group">
                   <label for="u_toolname" class="form-label">
-                    <ion-icon name="cube-outline" style="margin-right: 4px;"></ion-icon>
-                    Product/Tool Name *
+                    <ion-icon name="construct-outline" style="margin-right: 4px;"></ion-icon>
+                    Tool Name *
                   </label>
                   <input 
                     type="text" 
                     id="u_toolname" 
                     name="u_toolname" 
                     class="form-control" 
-                    placeholder="e.g., APPLES, Mangos, Silicone 500mg" 
-                    value="<?php echo $is_edit && $order_data ? htmlspecialchars($order_data['u_toolname']) : ''; ?>"
+                    placeholder="e.g., APPLES, Silicone 500mg" 
+                    value="<?php echo $is_edit && $tool_data ? htmlspecialchars($tool_data['u_toolname']) : ''; ?>"
                     required
                     style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
                   >
@@ -280,7 +250,7 @@
                     name="u_type" 
                     class="form-control" 
                     placeholder="e.g., Very Good, Not Good" 
-                    value="<?php echo $is_edit && $order_data ? htmlspecialchars($order_data['u_type']) : ''; ?>"
+                    value="<?php echo $is_edit && $tool_data ? htmlspecialchars($tool_data['u_type']) : ''; ?>"
                     required
                     style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
                   >
@@ -300,10 +270,9 @@
                     name="u_itemsnumber" 
                     class="form-control" 
                     placeholder="Enter quantity"
-                    value="<?php echo $is_edit && $order_data ? $order_data['u_itemsnumber'] : ''; ?>"
-                    min="1"
+                    value="<?php echo $is_edit && $tool_data ? $tool_data['u_itemsnumber'] : ''; ?>"
+                    min="0"
                     required
-                    oninput="calculateTotal()"
                     style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
                   >
                 </div>
@@ -318,11 +287,10 @@
                     id="u_price" 
                     name="u_price" 
                     class="form-control" 
-                    placeholder="Enter price per unit"
-                    value="<?php echo $is_edit && $order_data ? $order_data['u_price'] : ''; ?>"
+                    placeholder="Enter price in RWF"
+                    value="<?php echo $is_edit && $tool_data ? $tool_data['u_price'] : ''; ?>"
                     min="0"
                     required
-                    oninput="calculateTotal()"
                     style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
                   >
                 </div>
@@ -338,11 +306,11 @@
                   id="u_tooldescription" 
                   name="u_tooldescription" 
                   class="form-control" 
-                  placeholder="Please provide order details or special instructions"
+                  placeholder="Please provide more details about the tool/product"
                   rows="4"
                   required
                   style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem; resize: vertical;"
-                ><?php echo $is_edit && $order_data ? htmlspecialchars($order_data['u_tooldescription']) : ''; ?></textarea>
+                ><?php echo $is_edit && $tool_data ? htmlspecialchars($tool_data['u_tooldescription']) : ''; ?></textarea>
               </div>
 
               <!-- Terms and Conditions -->
@@ -356,14 +324,14 @@
                     style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer;"
                   >
                   <span style="font-size: 0.875rem; color: var(--gray-700); line-height: 1.5;">
-                    I confirm that I have verified the order details and accepted the <a href="#" style="color: var(--primary-color); text-decoration: none;">terms and conditions</a> and <a href="#" style="color: var(--primary-color); text-decoration: none;">privacy policy</a>
+                    I confirm that I have read and accepted the <a href="#" style="color: var(--primary-color); text-decoration: none;">terms and conditions</a> and <a href="#" style="color: var(--primary-color); text-decoration: none;">privacy policy</a>
                   </span>
                 </label>
               </div>
 
               <!-- Action Buttons -->
               <div style="display: flex; gap: var(--spacing-md); justify-content: flex-end; padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-200);">
-                <a href="orders.php" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-md) var(--spacing-xl); border-radius: var(--radius-md);">
+                <a href="stock.php" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-md) var(--spacing-xl); border-radius: var(--radius-md);">
                   <ion-icon name="close-outline"></ion-icon>
                   Cancel
                 </a>
@@ -374,7 +342,7 @@
                   style="display: inline-flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-md) var(--spacing-xl); border-radius: var(--radius-md);"
                 >
                   <ion-icon name="<?php echo $is_edit ? 'save-outline' : 'checkmark-circle-outline'; ?>"></ion-icon>
-                  <?php echo $is_edit ? 'Update Order' : 'Create Order'; ?>
+                  <?php echo $is_edit ? 'Update Tool' : 'Add Tool to Inventory'; ?>
                 </button>
               </div>
             </form>
@@ -383,15 +351,16 @@
 
         <!-- Help Card -->
         <div class="dashboard-card" style="max-width: 900px; margin: var(--spacing-xl) auto 0;">
-          <div style="padding: var(--spacing-lg); background: linear-gradient(135deg, var(--success-light) 0%, var(--info-light) 100%); border-radius: var(--radius-lg);">
+          <div style="padding: var(--spacing-lg); background: linear-gradient(135deg, var(--primary-light) 0%, var(--info-light) 100%); border-radius: var(--radius-lg);">
             <div style="display: flex; align-items: start; gap: var(--spacing-md);">
-              <div style="width: 40px; height: 40px; background: var(--success-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+              <div style="width: 40px; height: 40px; background: var(--primary-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
                 <ion-icon name="information-circle-outline" style="font-size: 1.5rem;"></ion-icon>
               </div>
               <div>
-                <h4 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-900); font-weight: 600;">Order Information</h4>
+                <h4 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-900); font-weight: 600;">Need Help?</h4>
                 <p style="margin: 0; color: var(--gray-700); font-size: 0.875rem; line-height: 1.6;">
-                  <?php echo $is_edit ? 'Update the order details and click "Update Order" to save your changes. The total price will be automatically recalculated based on quantity and unit price.' : 'Select a customer from the dropdown to create an order for them. The total price will be automatically calculated based on quantity and unit price. The order will be set to "Pending" status by default and the date will be automatically recorded.'; ?>
+                  Make sure to fill in all required fields marked with an asterisk (*). The date will be automatically set to today. 
+                  Once added, the tool will appear in your inventory list where you can edit or delete it if needed.
                 </p>
               </div>
             </div>
@@ -405,40 +374,21 @@
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   
   <script>
-    // Calculate total price
-    function calculateTotal() {
-      const quantity = document.getElementById('u_itemsnumber').value || 0;
-      const price = document.getElementById('u_price').value || 0;
-      const total = quantity * price;
-      
-      document.getElementById('totalPriceDisplay').textContent = new Intl.NumberFormat().format(total) + ' RWF';
-    }
-    
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof window.Dashboard !== 'undefined') {
         new window.Dashboard();
       }
       
-      // Calculate total on page load (for edit mode)
-      calculateTotal();
-      
       // Form validation
-      const form = document.getElementById('addOrderForm');
+      const form = document.getElementById('addToolForm');
       form.addEventListener('submit', function(e) {
         const quantity = document.getElementById('u_itemsnumber').value;
         const price = document.getElementById('u_price').value;
-        const userId = document.getElementById('user_id').value;
         
-        if (!userId) {
+        if (quantity < 0 || price < 0) {
           e.preventDefault();
-          alert('Please select a customer');
-          return false;
-        }
-        
-        if (quantity <= 0 || price < 0) {
-          e.preventDefault();
-          alert('Quantity must be greater than 0 and Price must be positive');
+          alert('Quantity and Price must be positive numbers');
           return false;
         }
       });

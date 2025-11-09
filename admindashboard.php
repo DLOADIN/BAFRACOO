@@ -41,8 +41,14 @@
               </a>
             </li>
             <li class="nav-item">
-              <a href="addtool.php" class="nav-link" data-tooltip="Add Tool">
+              <a href="addtool.php" class="nav-link" data-tooltip="Add Order">
                 <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Add Order</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="addorder.php" class="nav-link" data-tooltip="Add Tool">
+                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Add Tool</span>
               </a>
             </li>
@@ -244,60 +250,182 @@
           </div>
         </div>
 
-        <!-- Recent Activity Section -->
+        <!-- Recent Orders Section -->
         <div class="dashboard-card">
           <div class="card-header">
-            <h3 class="card-title">Recent Orders</h3>
-            <a href="orders.php" class="text-primary font-medium">View All</a>
+            <h3 class="card-title">
+              <ion-icon name="bag-handle-outline" style="margin-right: 8px;"></ion-icon>
+              All Orders
+            </h3>
+            <a href="orders.php" class="text-primary font-medium" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">View All →</a>
           </div>
           <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr style="border-bottom: 1px solid var(--gray-200);">
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Order ID</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Customer</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Amount</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Status</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600);">Date</th>
+                <tr style="border-bottom: 2px solid var(--gray-200);">
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Order ID</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Customer</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Product</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Quantity</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Total Price</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Status</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Date</th>
                 </tr>
               </thead>
               <tbody>
                 <?php
                 $recent_orders = mysqli_query($con, "
-                  SELECT o.*, u.u_name, u.email 
+                  SELECT o.*, u.u_name 
                   FROM `order` o 
                   LEFT JOIN `user` u ON o.user_id = u.id 
                   ORDER BY o.id DESC 
-                  LIMIT 5
+                  LIMIT 10
                 ");
                 
                 if($recent_orders && mysqli_num_rows($recent_orders) > 0):
                   while($order = mysqli_fetch_assoc($recent_orders)):
                     $status_class = '';
+                    $status_bg = '';
                     switch($order['status'] ?? 'Pending') {
-                      case 'Completed': $status_class = 'text-success'; break;
-                      case 'Pending': $status_class = 'text-warning'; break;
-                      case 'Cancelled': $status_class = 'text-error'; break;
-                      default: $status_class = 'text-primary';
+                      case 'Completed': 
+                        $status_class = 'var(--success-color)'; 
+                        $status_bg = 'rgba(5, 150, 105, 0.1)';
+                        break;
+                      case 'Pending': 
+                        $status_class = 'var(--warning-color)'; 
+                        $status_bg = 'rgba(245, 158, 11, 0.1)';
+                        break;
+                      case 'Cancelled': 
+                        $status_class = 'var(--error-color)'; 
+                        $status_bg = 'rgba(239, 68, 68, 0.1)';
+                        break;
+                      default: 
+                        $status_class = 'var(--primary-color)';
+                        $status_bg = 'rgba(37, 99, 235, 0.1)';
                     }
                 ?>
-                <tr style="border-bottom: 1px solid var(--gray-100);">
-                  <td style="padding: 12px; font-weight: 500;">#<?php echo $order['id']; ?></td>
-                  <td style="padding: 12px;"><?php echo htmlspecialchars($order['u_name'] ?? 'N/A'); ?></td>
-                  <td style="padding: 12px; font-weight: 600;"><?php echo number_format($order['u_price'] ?? 0); ?> RWF</td>
-                  <td style="padding: 12px;">
-                    <span class="<?php echo $status_class; ?>" style="font-weight: 500;">
+                <tr style="border-bottom: 1px solid var(--gray-100); transition: background 0.2s;">
+                  <td style="padding: 16px; font-weight: 600; color: var(--primary-color);">#<?php echo str_pad($order['id'], 4, '0', STR_PAD_LEFT); ?></td>
+                  <td style="padding: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                        <?php echo strtoupper(substr($order['u_name'] ?? 'N', 0, 2)); ?>
+                      </div>
+                      <span style="font-weight: 500;"><?php echo htmlspecialchars($order['u_name'] ?? 'N/A'); ?></span>
+                    </div>
+                  </td>
+                  <td style="padding: 16px; color: var(--gray-800);"><?php echo htmlspecialchars($order['u_toolname'] ?? 'N/A'); ?></td>
+                  <td style="padding: 16px; font-weight: 600; color: var(--gray-800);"><?php echo $order['u_itemsnumber'] ?? 0; ?></td>
+                  <td style="padding: 16px; font-weight: 700; color: var(--gray-900);"><?php echo number_format($order['u_totalprice'] ?? 0); ?> RWF</td>
+                  <td style="padding: 16px;">
+                    <span style="background: <?php echo $status_bg; ?>; color: <?php echo $status_class; ?>; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.75rem; display: inline-block;">
                       <?php echo $order['status'] ?? 'Pending'; ?>
                     </span>
                   </td>
-                  <td style="padding: 12px; color: var(--gray-500);">
-                    <?php echo date('M d, Y', strtotime($order['created_at'] ?? 'now')); ?>
+                  <td style="padding: 16px; color: var(--gray-600); font-size: 0.875rem;">
+                    <?php echo date('M d, Y', strtotime($order['u_date'] ?? 'now')); ?>
                   </td>
                 </tr>
                 <?php endwhile; else: ?>
                 <tr>
-                  <td colspan="5" style="padding: 24px; text-align: center; color: var(--gray-500);">
-                    No orders found yet. Orders will appear here once customers start placing them.
+                  <td colspan="7" style="padding: 48px; text-align: center;">
+                    <ion-icon name="bag-handle-outline" style="font-size: 3rem; color: var(--gray-400); margin-bottom: 16px;"></ion-icon>
+                    <div style="color: var(--gray-600); font-size: 1rem; margin-bottom: 8px;">No orders found yet</div>
+                    <div style="color: var(--gray-500); font-size: 0.875rem;">Orders will appear here once customers start placing them</div>
+                    <a href="addtool.php" style="display: inline-block; margin-top: 16px; padding: 10px 24px; background: var(--primary-color); color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                      <ion-icon name="add-outline" style="margin-right: 4px;"></ion-icon>
+                      Add First Order
+                    </a>
+                  </td>
+                </tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tools Inventory Section -->
+        <div class="dashboard-card" style="margin-top: 32px;">
+          <div class="card-header">
+            <h3 class="card-title">
+              <ion-icon name="cube-outline" style="margin-right: 8px;"></ion-icon>
+              Tools Inventory
+            </h3>
+            <a href="stock.php" class="text-primary font-medium" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">View All →</a>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--gray-200);">
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">ID</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Tool Name</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Type</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Quantity</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Unit Price</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Total Value</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $tools_query = mysqli_query($con, "
+                  SELECT * FROM `tool` 
+                  ORDER BY u_date DESC 
+                  LIMIT 10
+                ");
+                
+                if($tools_query && mysqli_num_rows($tools_query) > 0):
+                  while($tool = mysqli_fetch_assoc($tools_query)):
+                    $status_class = '';
+                    $status_bg = '';
+                    $status_text = '';
+                    if ($tool['u_itemsnumber'] <= 0) {
+                      $status_class = 'var(--error-color)';
+                      $status_bg = 'rgba(239, 68, 68, 0.1)';
+                      $status_text = 'Out of Stock';
+                    } elseif ($tool['u_itemsnumber'] < 10) {
+                      $status_class = 'var(--warning-color)';
+                      $status_bg = 'rgba(245, 158, 11, 0.1)';
+                      $status_text = 'Low Stock';
+                    } else {
+                      $status_class = 'var(--success-color)';
+                      $status_bg = 'rgba(5, 150, 105, 0.1)';
+                      $status_text = 'In Stock';
+                    }
+                    $total_value = $tool['u_price'] * $tool['u_itemsnumber'];
+                ?>
+                <tr style="border-bottom: 1px solid var(--gray-100); transition: background 0.2s;">
+                  <td style="padding: 16px; font-weight: 600; color: var(--primary-color);">#<?php echo str_pad($tool['id'], 3, '0', STR_PAD_LEFT); ?></td>
+                  <td style="padding: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+                        <ion-icon name="construct-outline" style="font-size: 1.25rem;"></ion-icon>
+                      </div>
+                      <span style="font-weight: 500; color: var(--gray-900);"><?php echo htmlspecialchars($tool['u_toolname']); ?></span>
+                    </div>
+                  </td>
+                  <td style="padding: 16px; color: var(--gray-700);"><?php echo htmlspecialchars($tool['u_type']); ?></td>
+                  <td style="padding: 16px; font-weight: 700; color: <?php echo $tool['u_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
+                    <?php echo $tool['u_itemsnumber']; ?>
+                  </td>
+                  <td style="padding: 16px; font-weight: 600; color: var(--gray-800);"><?php echo number_format($tool['u_price']); ?> RWF</td>
+                  <td style="padding: 16px; font-weight: 700; color: var(--gray-900);"><?php echo number_format($total_value); ?> RWF</td>
+                  <td style="padding: 16px;">
+                    <span style="background: <?php echo $status_bg; ?>; color: <?php echo $status_class; ?>; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.75rem; display: inline-block;">
+                      <?php echo $status_text; ?>
+                    </span>
+                  </td>
+                </tr>
+                <?php endwhile; else: ?>
+                <tr>
+                  <td colspan="7" style="padding: 48px; text-align: center;">
+                    <ion-icon name="cube-outline" style="font-size: 3rem; color: var(--gray-400); margin-bottom: 16px;"></ion-icon>
+                    <div style="color: var(--gray-600); font-size: 1rem; margin-bottom: 8px;">No tools in inventory yet</div>
+                    <div style="color: var(--gray-500); font-size: 0.875rem;">Add tools to start managing your inventory</div>
+                    <a href="addorder.php" style="display: inline-block; margin-top: 16px; padding: 10px 24px; background: var(--primary-color); color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                      <ion-icon name="add-outline" style="margin-right: 4px;"></ion-icon>
+                      Add First Tool
+                    </a>
                   </td>
                 </tr>
                 <?php endif; ?>

@@ -43,8 +43,14 @@
               </a>
             </li>
             <li class="nav-item">
-              <a href="addtool.php" class="nav-link" data-tooltip="Add Tool">
+              <a href="addtool.php" class="nav-link" data-tooltip="Add Order">
                 <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Add Order</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="addorder.php" class="nav-link" data-tooltip="Add Tool">
+                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Add Tool</span>
               </a>
             </li>
@@ -237,13 +243,13 @@
               Transaction History
             </h3>
             <div class="table-actions">
-              <button class="btn-secondary" style="width:20vh;height:5vh; border-radius:15px;">
+              <button class="btn-secondary" onclick="openDateFilterModal()" style="width:20vh;height:5vh; border-radius:15px;">
                 <ion-icon name="filter-outline"></ion-icon>
                 Filter by Date
               </button>
-              <button class="btn-secondary" style="width:20vh;height:5vh; border-radius:15px;">
+              <button class="btn-secondary" onclick="exportTransactionsPDF()" style="width:20vh;height:5vh; border-radius:15px;">
                 <ion-icon name="download-outline" ></ion-icon>
-                Export
+                Export PDF
               </button>
             </div>
           </div>
@@ -265,7 +271,17 @@
               </thead>
               <tbody>
                 <?php
-                $sql = "SELECT `order`.*, user.u_name FROM `order` INNER JOIN user ON `order`.user_id = user.id ORDER BY `order`.u_date DESC";
+                // Build SQL query with optional date filtering
+                $sql = "SELECT `order`.*, user.u_name FROM `order` INNER JOIN user ON `order`.user_id = user.id";
+                
+                // Add date filter if provided
+                if(isset($_GET['start_date']) && isset($_GET['end_date'])){
+                  $start_date = mysqli_real_escape_string($con, $_GET['start_date']);
+                  $end_date = mysqli_real_escape_string($con, $_GET['end_date']);
+                  $sql .= " WHERE DATE(`order`.u_date) BETWEEN '$start_date' AND '$end_date'";
+                }
+                
+                $sql .= " ORDER BY `order`.u_date DESC";
                 $result = mysqli_query($con, $sql);
                 if ($result && mysqli_num_rows($result) > 0) {
                   while ($row = mysqli_fetch_array($result)) {
@@ -430,5 +446,68 @@
       }
     });
   </script>
+
+  <!-- Date Filter Modal -->
+  <div id="dateFilterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <ion-icon name="calendar-outline"></ion-icon>
+          Filter by Date Range
+        </h3>
+        <button class="modal-close" onclick="closeDateFilterModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form method="GET" action="">
+          <div style="display: grid; gap: var(--spacing-md);">
+            <div class="form-group">
+              <label for="start_date" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 500;">Start Date</label>
+              <input type="date" id="start_date" name="start_date" class="form-control" required style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--gray-300); border-radius: var(--radius-md);">
+            </div>
+            <div class="form-group">
+              <label for="end_date" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 500;">End Date</label>
+              <input type="date" id="end_date" name="end_date" class="form-control" required style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--gray-300); border-radius: var(--radius-md);">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeDateFilterModal()">Cancel</button>
+            <button type="submit" class="btn-primary">Apply Filter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openDateFilterModal() {
+      document.getElementById('dateFilterModal').classList.add('active');
+    }
+    
+    function closeDateFilterModal() {
+      document.getElementById('dateFilterModal').classList.remove('active');
+    }
+    
+    function exportTransactionsPDF() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const startDate = urlParams.get('start_date');
+      const endDate = urlParams.get('end_date');
+      
+      let exportUrl = 'export_pdf.php?type=transactions';
+      if (startDate && endDate) {
+        exportUrl += '&start_date=' + startDate + '&end_date=' + endDate;
+      }
+      
+      window.open(exportUrl, '_blank');
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('dateFilterModal');
+      if (event.target == modal) {
+        closeDateFilterModal();
+      }
+    }
+  </script>
+
 </body>
 </html>

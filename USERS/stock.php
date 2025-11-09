@@ -8,6 +8,7 @@
   else{
   header('location:loginuser.php');
   } 
+  ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

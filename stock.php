@@ -48,6 +48,12 @@
             <li class="nav-item">
               <a href="addtool.php" class="nav-link">
                 <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Add Order</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="addorder.php" class="nav-link">
+                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Add Tool</span>
               </a>
             </li>
@@ -242,13 +248,16 @@
               All Tools in Inventory
             </h3>
             <div style="display: flex; gap: var(--spacing-md);">
-              <button class="btn-secondary" style="width:20vh;height:5vh; border-radius:15px;">
+              <button class="btn-secondary" onclick="openDateFilterModal()" style="width:20vh;height:5vh; border-radius:15px;">
                 <ion-icon name="filter-outline"></ion-icon>
-                Filter
+                Filter by Date
               </button>
-              
-               <button type="submit" name="submit" class="btn-primary" style="width:20vh;height:5vh; border-radius:15px;">
-                <a href="addtool.php" class="btn-primary" style="text-decoration:none; color:black;">
+              <button class="btn-secondary" onclick="exportStockPDF()" style="width:20vh;height:5vh; border-radius:15px;">
+                <ion-icon name="download-outline"></ion-icon>
+                Export PDF
+              </button>
+              <button type="submit" name="submit" class="btn-primary" style="width:20vh;height:5vh; border-radius:15px;">
+                <a href="addorder.php" class="btn-primary" style="text-decoration:none; color:black;">
                 <ion-icon name="add-outline"></ion-icon>
                 Add Tool
               </a>
@@ -274,16 +283,26 @@
               </thead>
               <tbody>
                 <?php
-                $sql = "SELECT * FROM `tool` ORDER BY t_date DESC";
+                // Build SQL query with optional date filtering
+                $sql = "SELECT * FROM `tool`";
+                
+                // Add date filter if provided
+                if(isset($_GET['start_date']) && isset($_GET['end_date'])){
+                  $start_date = mysqli_real_escape_string($con, $_GET['start_date']);
+                  $end_date = mysqli_real_escape_string($con, $_GET['end_date']);
+                  $sql .= " WHERE DATE(u_date) BETWEEN '$start_date' AND '$end_date'";
+                }
+                
+                $sql .= " ORDER BY u_date DESC";
                 $result = mysqli_query($con, $sql);
                 if ($result && mysqli_num_rows($result) > 0) {
                   while ($row = mysqli_fetch_array($result)) {
                     $status_class = '';
                     $status_text = '';
-                    if ($row['t_itemsnumber'] <= 0) {
+                    if ($row['u_itemsnumber'] <= 0) {
                       $status_class = 'status-out-of-stock';
                       $status_text = 'Out of Stock';
-                    } elseif ($row['t_itemsnumber'] < 10) {
+                    } elseif ($row['u_itemsnumber'] < 10) {
                       $status_class = 'status-low-stock';
                       $status_text = 'Low Stock';
                     } else {
@@ -299,21 +318,21 @@
                         <ion-icon name="construct-outline"></ion-icon>
                       </div>
                       <div>
-                        <div style="font-weight: 500;"><?php echo htmlspecialchars($row['t_toolname']); ?></div>
+                        <div style="font-weight: 500;"><?php echo htmlspecialchars($row['u_toolname']); ?></div>
                         <div style="font-size: 0.75rem; color: var(--gray-500);">ID: <?php echo $row['id']; ?></div>
                       </div>
                     </div>
                   </td>
-                  <td><?php echo htmlspecialchars($row['t_type']); ?></td>
+                  <td><?php echo htmlspecialchars($row['u_type']); ?></td>
                   <td>
-                    <span style="font-weight: 600; color: <?php echo $row['t_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
-                      <?php echo $row['t_itemsnumber']; ?>
+                    <span style="font-weight: 600; color: <?php echo $row['u_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
+                      <?php echo $row['u_itemsnumber']; ?>
                     </span>
                   </td>
-                  <td><?php echo number_format($row['t_price']); ?> RWF</td>
-                  <td style="font-weight: 600;"><?php echo number_format($row['t_price'] * $row['t_itemsnumber']); ?> RWF</td>
-                  <td><?php echo htmlspecialchars(substr($row['t_tooldescription'], 0, 50)) . '...'; ?></td>
-                  <td><?php echo date('M d, Y', strtotime($row['t_date'])); ?></td>
+                  <td><?php echo number_format($row['u_price']); ?> RWF</td>
+                  <td style="font-weight: 600;"><?php echo number_format($row['u_price'] * $row['u_itemsnumber']); ?> RWF</td>
+                  <td><?php echo htmlspecialchars(substr($row['u_tooldescription'], 0, 50)) . '...'; ?></td>
+                  <td><?php echo date('M d, Y', strtotime($row['u_date'])); ?></td>
                   <td>
                     <span class="status-badge <?php echo $status_class; ?>">
                       <?php echo $status_text; ?>
@@ -337,7 +356,7 @@
                 <tr>
                   <td colspan="10" style="text-align: center; padding: var(--spacing-xl); color: var(--gray-600);">
                     <ion-icon name="cube-outline" style="font-size: 3rem; margin-bottom: var(--spacing-md);"></ion-icon>
-                    <div>No tools found in inventory. <a href="addtool.php" style="color: var(--primary-color); text-decoration: none;">Add your first tool</a></div>
+                    <div>No tools found in inventory. <a href="addorder.php" style="color: var(--primary-color); text-decoration: none;">Add your first tool</a></div>
                   </td>
                 </tr>
                 <?php
@@ -362,10 +381,8 @@
     }
     
     function editTool(toolId) {
-      // Add edit functionality here
-      alert('Edit functionality to be implemented');
+      window.location.href = 'addorder.php?id=' + toolId;
     }
-    
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof window.Dashboard !== 'undefined') {
@@ -375,94 +392,23 @@
   </script>
 </body>
 </html>
-              </tr>
-            <?php
-            $sql=mysqli_query($con,"SELECT * FROM `tool`");
-            $row = mysqli_num_rows($sql);
-            if($row){
-              while($row=mysqli_fetch_array($sql))
-              { 
-            ?>
-            <tr>
-              <td><?php echo $row['id']?></td>
-              <td><?php echo $row['u_toolname']?></td>
-              <td><?php echo $row['u_itemsnumber']?></td>
-              <td><?php echo $row['u_type']?></td>
-              <td><?php echo $row['u_date']?></td>
-              <td><?php echo $row['u_tooldescription']?></td>
-              <td><?php echo $row['u_price']?></td>
-              <td>  
-                <button class="lebutton"><a href="stock.php?id=<?php echo $row['id']?>">UPDATE</a></button>
-              </td>
-              <td>  
-              <button class="lebutton" onclick="alert('Are You Really Sure You Want To Delete This')"><a style="color: red;" href="./delete/deletestock.php?id=<?php echo $row['id']?>">DELETE</a></button>
-              </td>
-              </td>
-              <?php
-            }
-          }
-              ?>
-          </tr>
-        </table>
-        </div>
 
-        <div class="graded" id="graded">
-          <?php
-          if(isset($_GET['id'])){
-          $id=$_GET['id'];
-        }
-          $sql=mysqli_query($con,"SELECT * FROM tool WHERE id='$id' ");
-          $row = mysqli_fetch_array($sql);
-          ?>
-          <form action="" method="post">
-            <div class="real-form">
-              <label for="">Tool Name</label>
-              <input type="text" name="u_toolname" placeholder="NAMES OF THE TOOL" value="<?php echo $row['u_toolname']?>" required>
-              <label for="">Number Of Items</label>
-              <input type="number" name="u_itemsnumber" placeholder="RWF" value="<?php echo $row['u_itemsnumber']?>" required>
-            </div>
-            <div class="real-form">
-              <label for="">TYPE</label>
-              <input type="text" name="u_type" placeholder="SHOW TYPE" value="<?php echo $row['u_type']?>" required>
-              <label for="">Tool Description</label>
-              <input type="text" name="u_tooldescription" placeholder="Please Tell Us More About The Product/Tool" value="<?php echo $row['u_tooldescription']?>" required>
-            </div>
-            <div class="real-form">
-              <label for="">PRICE</label>
-              <input type="text" name="u_price" value="<?php echo $row['u_price']?>">
-              <label for="">ITEM REGISTERED DATE</label>
-              <input type="text" name="u_date" class="moon-walk" value="<?php echo $row['u_date']?>" readonly>
-            </div>
-        
-            <div class="checkbox">
-              <input type="checkbox" name="" id="" required>
-              <h3>I confirm that I have read and accepted the terms and conditions and privacy policy</h3>
-            </div>
-            <div id="btn-2">
-              <button name="submit" type="submit" class="button-1">SAVE</button>
-            </div>
-          </form></div>
-        </div>
-         </div>
-         
-<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-</body>
-</html>
-<!-- ANYTHING THAT IS IN PHP !!! PLEASE DON'T MESS WITH IT -->
 <?php
-  if(isset($_POST['submit'])){
-    $toolname = $_POST['u_toolname'];
-    $nitems = $_POST['u_itemsnumber'];
-    $type = $_POST['u_type'];
-    $tooldescription = $_POST['u_tooldescription'];
-    $date = date('Y-m-d',strtotime($_POST['u_date']));
-    $price= $_POST['u_price'];
-    $sql=mysqli_query($con,"UPDATE tool SET u_toolname='$toolname', u_itemsnumber='$nitems', u_type='$type', u_tooldescription='$tooldescription', u_date='$date', u_price='$price' WHERE id='$id' ");
+// Handle form submission for updating tools
+if(isset($_POST['submit']) && isset($_GET['id'])){
+  $id = mysqli_real_escape_string($con, $_GET['id']);
+  $toolname = mysqli_real_escape_string($con, $_POST['u_toolname']);
+  $nitems = mysqli_real_escape_string($con, $_POST['u_itemsnumber']);
+  $type = mysqli_real_escape_string($con, $_POST['u_type']);
+  $tooldescription = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
+  $date = date('Y-m-d',strtotime($_POST['u_date']));
+  $price = mysqli_real_escape_string($con, $_POST['u_price']);
+  
+  $sql = mysqli_query($con, "UPDATE tool SET u_toolname='$toolname', u_itemsnumber='$nitems', u_type='$type', u_tooldescription='$tooldescription', u_date='$date', u_price='$price' WHERE id='$id'");
+  
+  if($sql){
     header('location:stock.php');
-    
-    if($sql){
-     echo "<script>alert('PLEASE RELOAD THE PAGE IF YOU FIND ANY ERROR')</script>" ; 
-    }
+    exit();
   }
+}
 ?>
