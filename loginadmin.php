@@ -1,7 +1,4 @@
 <?php
-  var_dump($_POST);
-  
-
   require 'connection.php';
 
   // Handle login before any HTML output so header() redirects work reliably
