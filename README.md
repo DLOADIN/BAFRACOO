@@ -30,4 +30,4 @@ The **Bafraco Conservation System** is a web-based application designed to facil
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/DLOADIN/PROJECT-HYDRA/
+   git clone https://github.com/DLOADIN/BAFRACOO/
