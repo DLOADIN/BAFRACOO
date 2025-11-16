@@ -1,14 +1,63 @@
 <?php
   require "connection.php";
+  require "../InventoryManager.php"; // Include the inventory manager
+  
   if(!empty($_SESSION["id"])){
-  $id = $_SESSION["id"];
-  $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+    $id = $_SESSION["id"];
+    $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
+    $row = mysqli_fetch_array($check);
   }
   else{
-  header('location:loginuser.php');
+    header('location:loginuser.php');
   } 
-  ?>
+  
+  // Initialize Inventory Manager
+  $inventoryManager = new InventoryManager($con);
+  
+  // Handle form submission
+  if(isset($_POST['order_tool'])){
+    $user_id = mysqli_real_escape_string($con, $_POST['user_id']);
+    $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
+    $tool_name = mysqli_real_escape_string($con, $_POST['u_toolname']);
+    $quantity = (int)$_POST['u_itemsnumber'];
+    $type = mysqli_real_escape_string($con, $_POST['u_type']);
+    $description = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
+    $price = (float)$_POST['u_price'];
+    $total_price = $price * $quantity;
+    $order_date = date('Y-m-d');
+    
+    // Check available stock using inventory manager
+    $available_stock = $inventoryManager->getAvailableStock($tool_id);
+    
+    if($available_stock < $quantity) {
+      $error_message = "Insufficient stock! Only $available_stock items available.";
+    } else {
+      // Insert order first
+      $order_query = "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
+                      VALUES ('$user_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', 'PENDING')";
+      
+      if(mysqli_query($con, $order_query)) {
+        $order_id = mysqli_insert_id($con);
+        
+        // Process inventory using FIFO/LIFO
+        $result = $inventoryManager->processOrder($tool_id, $quantity, $order_id, $price);
+        
+        if($result['success']) {
+          $success_message = "Order placed successfully! Method used: " . $result['method_used'] . ". Remaining stock: " . $result['remaining_stock'];
+          // Redirect to prevent resubmission
+          header("Location: orders.php?success=1");
+          exit();
+        } else {
+          $error_message = $result['message'];
+          // Delete the order since inventory couldn't be processed
+          mysqli_query($con, "DELETE FROM `order` WHERE id = '$order_id'");
+        }
+      } else {
+        $error_message = "Error placing order. Please try again.";
+      }
+    }
+  }
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -141,7 +190,8 @@
                 <th>Tool Name</th>
                 <th>Type</th>
                 <th>Description</th>
-                <th>Date</th>
+                <th>Available Stock</th>
+                <th>Inventory Method</th>
                 <th>Price</th>
                 <th>Action</th>
               </tr>
@@ -149,40 +199,68 @@
             <tbody>
             <?php
             $sql=mysqli_query($con,"SELECT * FROM `tool`");
-            $row = mysqli_num_rows($sql);
-            if($row){
-              while($row=mysqli_fetch_array($sql))
+            $row_count = mysqli_num_rows($sql);
+            if($row_count){
+              while($tool_row=mysqli_fetch_array($sql))
               { 
+                // Get available stock and inventory method
+                $available_stock = $inventoryManager->getAvailableStock($tool_row['id']);
+                $inventory_method = $inventoryManager->getInventoryMethod($tool_row['id']);
             ?>
             <tr>
-              <td><?php echo $row['id']?></td>
-              <td><strong><?php echo htmlspecialchars($row['u_toolname'])?></strong></td>
+              <td><?php echo $tool_row['id']?></td>
+              <td><strong><?php echo htmlspecialchars($tool_row['u_toolname'])?></strong></td>
               <td>
                 <span style="display: inline-block; padding: 4px 12px; background: var(--gray-100); color: var(--gray-700); border-radius: 12px; font-size: 0.875rem; font-weight: 500;">
-                  <?php echo htmlspecialchars($row['u_type'])?>
+                  <?php echo htmlspecialchars($tool_row['u_type'])?>
                 </span>
               </td>
               <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <?php echo htmlspecialchars($row['u_tooldescription'])?>
+                <?php echo htmlspecialchars($tool_row['u_tooldescription'])?>
               </td>
-              <td><?php echo date('M d, Y', strtotime($row['u_date']))?></td>
               <td>
-                <strong style="color: var(--primary-color);">RWF <?php echo number_format($row['u_price'])?></strong>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $available_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
+                    <?php echo $available_stock; ?> units
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span style="display: inline-block; padding: 4px 10px; background: <?php echo $inventory_method === 'FIFO' ? '#3b82f6' : '#8b5cf6'; ?>; color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.5px;">
+                  <?php echo $inventory_method; ?>
+                </span>
+              </td>
+              <td>
+                <strong style="color: var(--primary-color);">RWF <?php echo number_format($tool_row['u_price'])?></strong>
               </td>
               <td>  
-                <a href="stock.php?id=<?php echo $row['id']?>" 
+                <?php if($available_stock > 0): ?>
+                <a href="stock.php?id=<?php echo $tool_row['id']?>" 
                   style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);"
                   onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.35)';"
                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(37, 99, 235, 0.25)';">
                   <ion-icon name="cart-outline"></ion-icon>
                   Order Now
                 </a>
+                <?php else: ?>
+                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--gray-300); color: var(--gray-600); border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
+                  <ion-icon name="ban-outline"></ion-icon>
+                  Out of Stock
+                </span>
+                <?php endif; ?>
               </td>
               <?php
             }
+          } else {
+            ?>
+            <tr>
+              <td colspan="8" style="text-align: center; padding: var(--spacing-xl); color: var(--gray-500);">
+                No tools available
+              </td>
+            </tr>
+            <?php
           }
               ?>
-          </tr>
             </tbody>
           </table>
         </div>
@@ -220,11 +298,56 @@
             </div>
             
             <div style="padding: var(--spacing-xl);">
+              
+              <!-- Display success/error messages -->
+              <?php if(isset($success_message)): ?>
+              <div style="padding: var(--spacing-md); margin-bottom: var(--spacing-lg); background: #dcfce7; border: 1px solid #16a34a; border-radius: var(--radius-md); color: #15803d;">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                  <ion-icon name="checkmark-circle-outline"></ion-icon>
+                  <span><?php echo $success_message; ?></span>
+                </div>
+              </div>
+              <?php endif; ?>
+              
+              <?php if(isset($error_message)): ?>
+              <div style="padding: var(--spacing-md); margin-bottom: var(--spacing-lg); background: #fef2f2; border: 1px solid #ef4444; border-radius: var(--radius-md); color: #dc2626;">
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                  <ion-icon name="alert-circle-outline"></ion-icon>
+                  <span><?php echo $error_message; ?></span>
+                </div>
+              </div>
+              <?php endif; ?>
+              
+              <!-- Stock Information -->
+              <?php 
+              $current_stock = $inventoryManager->getAvailableStock($tool_id);
+              $current_method = $inventoryManager->getInventoryMethod($tool_id);
+              ?>
+              <div style="padding: var(--spacing-md); margin-bottom: var(--spacing-lg); background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-900);">Stock Information</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+                  <div>
+                    <strong>Available Stock:</strong> 
+                    <span style="color: <?php echo $current_stock > 0 ? '#16a34a' : '#dc2626'; ?>;">
+                      <?php echo $current_stock; ?> units
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Inventory Method:</strong> 
+                    <span style="padding: 2px 8px; background: <?php echo $current_method === 'FIFO' ? '#3b82f6' : '#8b5cf6'; ?>; color: white; border-radius: 4px; font-size: 0.75rem;">
+                      <?php echo $current_method; ?>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <form method="POST" action="" id="orderToolForm">
                 <input type="hidden" name="user_id" value="<?php echo $user_row['id']; ?>">
+                <input type="hidden" name="tool_id" value="<?php echo $tool_id; ?>">
+                <input type="hidden" name="u_price" value="<?php echo $tool_row['u_price']; ?>" id="unit_price">
                 
                 <!-- Tool Name and Quantity Row -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">;
                   <!-- Tool Name -->
                   <div class="form-group">
                     <label for="u_toolname" class="form-label">
@@ -246,7 +369,7 @@
                   <div class="form-group">
                     <label for="u_itemsnumber" class="form-label">
                       <ion-icon name="layers-outline" style="margin-right: 4px;"></ion-icon>
-                      Number of Items *
+                      Number of Items * (Max: <?php echo $current_stock; ?>)
                     </label>
                     <input 
                       type="number" 
@@ -254,10 +377,12 @@
                       name="u_itemsnumber" 
                       class="form-control" 
                       min="1" 
+                      max="<?php echo $current_stock; ?>"
                       value="1" 
                       placeholder="Enter quantity"
                       oninput="calculateTotal()"
                       required
+                      <?php echo $current_stock == 0 ? 'disabled' : ''; ?>
                       style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;">
                   </div>
                 </div>
@@ -365,12 +490,13 @@
                     <ion-icon name="close-outline"></ion-icon>
                     Cancel
                   </a>
-                  <button type="submit" name="submit" class="btn btn-primary" 
+                  <button type="submit" name="order_tool" class="btn btn-primary" 
                     style="padding: 12px 32px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);"
+                    <?php echo $current_stock == 0 ? 'disabled' : ''; ?>
                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(37, 99, 235, 0.35)';"
                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.25)';">
                     <ion-icon name="checkmark-circle-outline"></ion-icon>
-                    Complete Purchase
+                    <?php echo $current_stock > 0 ? 'Complete Purchase' : 'Out of Stock'; ?>
                   </button>
                 </div>
               </form>
@@ -403,23 +529,3 @@
 <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </body>
 </html>
-<?php
-  if(isset($_POST['submit'])){
-    $user_id=$_POST['user_id'];
-    $toolname = $_POST['u_toolname'];
-    $nitems = $_POST['u_itemsnumber'];
-    $type = $_POST['u_type'];
-    $tooldescription = $_POST['u_tooldescription'];
-    $date = date('Y-m-d',strtotime($_POST['u_date']));
-    $price= $_POST['u_price'];
-    $total_price = $nitems * $price;
-    $sql=mysqli_query($con,"INSERT INTO `order` VALUES ('','$user_id', '$toolname', '$nitems', '$type', '$tooldescription', '$date', '$price','$total_price')");
-    
-    if($sql){
-      echo "<script>alert('Order Placed Successfully!'); window.location.href='orders.php';</script>";
-    }
-    else{
-      echo "<script>alert('Failed to place order. Please try again.');</script>";
-    }
-  }
-?>
