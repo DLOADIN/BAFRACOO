@@ -45,6 +45,34 @@ class EnhancedInventoryManager {
     }
     
     /**
+     * Get current inventory method status (general system overview)
+     */
+    public function getCurrentInventoryMethod() {
+        // Get the most common method used across all tools
+        $query = "SELECT method, COUNT(*) as count FROM inventory_method GROUP BY method ORDER BY count DESC LIMIT 1";
+        $result = mysqli_query($this->connection, $query);
+        
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $dominant_method = $row['method'];
+            $count = $row['count'];
+            
+            // Get total tools count
+            $total_query = "SELECT COUNT(*) as total FROM inventory_method";
+            $total_result = mysqli_query($this->connection, $total_query);
+            $total_tools = mysqli_fetch_assoc($total_result)['total'];
+            
+            if ($count == $total_tools) {
+                return "All {$dominant_method}";
+            } else {
+                return "Mixed ({$dominant_method} dominant)";
+            }
+        }
+        
+        return "FIFO (Default)";
+    }
+    
+    /**
      * Get available stock for a tool across all locations
      */
     public function getAvailableStock($tool_id, $location_id = null) {
@@ -355,6 +383,97 @@ class EnhancedInventoryManager {
             ];
         } finally {
             mysqli_autocommit($this->connection, true);
+        }
+    }
+    
+    /**
+     * Get returns summary statistics
+     */
+    public function getReturnsSummary() {
+        $summary = [];
+        
+        // Total returns
+        $query = "SELECT COUNT(*) as count FROM returns";
+        $result = mysqli_query($this->connection, $query);
+        $summary['total_returns'] = mysqli_fetch_assoc($result)['count'];
+        
+        // Pending returns
+        $query = "SELECT COUNT(*) as count FROM returns WHERE return_status = 'PENDING'";
+        $result = mysqli_query($this->connection, $query);
+        $summary['pending_returns'] = mysqli_fetch_assoc($result)['count'];
+        
+        // Approved returns
+        $query = "SELECT COUNT(*) as count FROM returns WHERE return_status = 'APPROVED'";
+        $result = mysqli_query($this->connection, $query);
+        $summary['approved_returns'] = mysqli_fetch_assoc($result)['count'];
+        
+        // Rejected returns  
+        $query = "SELECT COUNT(*) as count FROM returns WHERE return_status = 'REJECTED'";
+        $result = mysqli_query($this->connection, $query);
+        $summary['rejected_returns'] = mysqli_fetch_assoc($result)['count'];
+        
+        // Total refund amount
+        $query = "SELECT COALESCE(SUM(refund_amount), 0) as total FROM returns WHERE return_status = 'APPROVED'";
+        $result = mysqli_query($this->connection, $query);
+        $summary['total_refund_amount'] = mysqli_fetch_assoc($result)['total'];
+        
+        // Recent returns (last 30 days)
+        $query = "SELECT COUNT(*) as count FROM returns WHERE return_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        $result = mysqli_query($this->connection, $query);
+        $summary['recent_returns'] = mysqli_fetch_assoc($result)['count'];
+        
+        return $summary;
+    }
+    
+    /**
+     * Get returns with optional filtering
+     */
+    public function getReturns($filter_status = '', $filter_condition = '') {
+        $query = "SELECT r.*, u.u_name as customer_name, l.location_name 
+                  FROM returns r 
+                  LEFT JOIN user u ON r.user_id = u.id 
+                  LEFT JOIN locations l ON r.restock_location_id = l.id 
+                  WHERE 1=1";
+        
+        $params = [];
+        $types = "";
+        
+        // Add status filter
+        if (!empty($filter_status)) {
+            $query .= " AND r.return_status = ?";
+            $params[] = $filter_status;
+            $types .= "s";
+        }
+        
+        // Add condition filter
+        if (!empty($filter_condition)) {
+            $query .= " AND r.item_condition = ?";
+            $params[] = $filter_condition;
+            $types .= "s";
+        }
+        
+        $query .= " ORDER BY r.return_date DESC, r.created_at DESC";
+        
+        // Use prepared statement if there are parameters
+        if (!empty($params)) {
+            $stmt = mysqli_prepare($this->connection, $query);
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+                mysqli_stmt_execute($stmt);
+                $result = mysqli_stmt_get_result($stmt);
+                return $result;
+            } else {
+                error_log("Failed to prepare returns query: " . mysqli_error($this->connection));
+                return false;
+            }
+        } else {
+            // No parameters, use simple query
+            $result = mysqli_query($this->connection, $query);
+            if (!$result) {
+                error_log("Returns query failed: " . mysqli_error($this->connection));
+                return false;
+            }
+            return $result;
         }
     }
     
