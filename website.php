@@ -1,13 +1,7 @@
 <?php
-  require "connection.php";
-  if(!empty($_SESSION["id"])){
-  $id = $_SESSION["id"];
-  $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
-  }
-  else{
-  header('location:loginadmin.php');
-  } 
+  // This is the public website - no authentication required
+  // Only include connection for potential database queries (optional)
+  // require "connection.php"; // Commented out as not needed for public site
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1010,7 +1004,7 @@
     </div>
     <div class="header-main">
       <div class="container">
-        <a href="#" class="logo">
+        <a href="website.php" class="logo">
           <img src="./images/Captured.JPG" alt="BAFRACOO Logo">
           <span class="logo-text">BAFRACOO</span>
         </a>
@@ -1040,7 +1034,7 @@
     <div class="container">
       <ul class="nav-menu">
         <li class="nav-item">
-          <a href="#" class="nav-link">HOME</a>
+          <a href="website.php" class="nav-link">HOME</a>
         </li>
         <li class="nav-item">
           <a href="#mission" class="nav-link">MISSION</a>
@@ -1058,7 +1052,7 @@
           <a href="loginadmin.php" class="nav-link">ADMIN</a>
         </li>
         <li class="nav-item">
-          <a href="users/loginuser.php" class="nav-link">LOGIN</a>
+          <a href="USERS/loginuser.php" class="nav-link">LOGIN</a>
         </li>
       </ul>
     </div>
@@ -1073,7 +1067,7 @@
         <p class="hero-subtitle">Professional Fire Safety Equipment</p>
         <p class="hero-description">CO₂: 3 - 50kg | Powder: 0.5 - 50kg<br>Protecting lives and property with quality fire safety solutions</p>
         <div class="cta-buttons">
-          <a href="users/registrationuser.php" class="btn-primary">
+          <a href="USERS/registrationuser.php" class="btn-primary">
             <i class="fas fa-shopping-cart"></i>
             SHOP NOW
           </a>
@@ -1232,14 +1226,14 @@
           <div class="featured-content">
             <h3>Professional Tools & DIY Equipment</h3>
             <p>Just for your needs</p>
-            <a href="users/registrationuser.php" class="btn-primary">SHOP NOW</a>
+            <a href="USERS/registrationuser.php" class="btn-primary">SHOP NOW</a>
           </div>
         </div>
         <div class="featured-card featured-card-2">
           <div class="featured-content">
             <h3>Plumbing Materials & Bathroom Sets</h3>
             <p>Tiles, tubs, toilets & more</p>
-            <a href="users/registrationuser.php" class="btn-primary">SHOP NOW</a>
+            <a href="USERS/registrationuser.php" class="btn-primary">SHOP NOW</a>
           </div>
         </div>
       </div>
@@ -1282,7 +1276,7 @@
       <div class="cta-content">
         <h2>Live. Excel. Enjoy</h2>
         <p>Discover our complete range of products</p>
-        <a href="users/registrationuser.php" class="btn-primary">SHOP NOW</a>
+        <a href="USERS/registrationuser.php" class="btn-primary">SHOP NOW</a>
       </div>
     </div>
   </section>
@@ -1376,7 +1370,7 @@
           <p class="payment-method">
             <img src="./images/mtn-momo-1024x576.jpg" alt="MTN Mobile Money">
           </p>
-          <p class="payment-code">*182*8*1*077780#</p>
+          <!-- <p class="payment-code">*182*8*1*077780#</p> -->
         </div>
       </div>
     </div>

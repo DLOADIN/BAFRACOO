@@ -1,13 +1,47 @@
 <?php
   require "connection.php";
+  require "../EnhancedInventoryManager.php"; // Add enhanced inventory manager
+  
   if(!empty($_SESSION["id"])){
-  $id = $_SESSION["id"];
-  $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+    $id = $_SESSION["id"];
+    $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
+    $row = mysqli_fetch_array($check);
   }
   else{
-  header('location:loginuser.php');
+    header('location:loginuser.php');
   } 
+  
+  // Initialize Enhanced Inventory Manager
+  $inventoryManager = new EnhancedInventoryManager($con);
+  
+  // Handle return request
+  if(isset($_POST['request_return'])) {
+    $order_id = (int)$_POST['order_id'];
+    $return_reason = mysqli_real_escape_string($con, $_POST['return_reason']);
+    
+    // Get order details
+    $order_query = "SELECT * FROM `order` WHERE id = $order_id AND user_id = $id";
+    $order_result = mysqli_query($con, $order_query);
+    
+    if($order_row = mysqli_fetch_array($order_result)) {
+      $tool_id = $order_row['tool_id'] ?? 0;
+      $customer_name = $row['firstName'] . ' ' . $row['lastName'];
+      $purchase_date = $order_row['u_date'];
+      
+      try {
+        $result = $inventoryManager->registerReturn($tool_id, $customer_name, $purchase_date, $return_reason, '');
+        if($result) {
+          $success_message = "Return request submitted successfully!";
+        } else {
+          $error_message = "Failed to submit return request. Please try again.";
+        }
+      } catch(Exception $e) {
+        $error_message = "Error: " . $e->getMessage();
+      }
+    } else {
+      $error_message = "Invalid order selected.";
+    }
+  }
   ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -125,45 +159,117 @@
         </div>
       </header>
       
-      <!-- Page Content -->
-      <div class="content-wrapper">
-        <div class="content-header">
-          <h2 class="content-title">Your Order History</h2>
-          <p class="content-subtitle">Track and manage your orders</p>
-        </div>
+          <div class="content-wrapper">
+            <?php if(isset($success_message)): ?>
+            <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; background: #dcfce7; border: 1px solid #16a34a; color: #15803d;">
+              <?php echo $success_message; ?>
+            </div>
+            <?php endif; ?>
+            <?php if(isset($error_message)): ?>
+            <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; background: #fef2f2; border: 1px solid #ef4444; color: #dc2626;">
+              <?php echo $error_message; ?>
+            </div>
+            <?php endif; ?>
+            
+            <div class="content-header">
+              <h2 class="content-title">Your Order History</h2>
+              <p class="content-subtitle">Track and manage your orders across all locations</p>
+            </div>
         
-        <div class="table-container">
-          <table class="modern-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>User Name</th>
-                <th>Tool Name</th>
-                <th>Quantity</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Unit Price</th>
-                <th>Total Price</th>
-                <th>Date</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-            <?php
-            $number=0;
-             $sql = "SELECT `order`.*, user.u_name FROM `order`INNER JOIN user ON `order`.user_id = user.id WHERE `order`.user_id = '$id'";
-                $result = mysqli_query($con, $sql);
-                if ($result && mysqli_num_rows($result) > 0) {
-                while ($row = mysqli_fetch_array($result)) {
+          <div class="table-container">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tool Name</th>
+                  <th>Quantity</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                  <th>Unit Price</th>
+                  <th>Total Price</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+              <?php
+              $number=0;
+              // Updated query to include location information
+              $sql = "SELECT `order`.*, user.u_name, user.firstName, user.lastName, l.location_name 
+                      FROM `order` 
+                      INNER JOIN user ON `order`.user_id = user.id 
+                      LEFT JOIN locations l ON `order`.location_id = l.id
+                      WHERE `order`.user_id = '$id' 
+                      ORDER BY `order`.u_date DESC";
+              $result = mysqli_query($con, $sql);
+              if ($result && mysqli_num_rows($result) > 0) {
+                while ($order_row = mysqli_fetch_array($result)) {
                   $number++;
-            ?>
-            <tr>
-              <td><strong>#<?php echo str_pad($number, 3, '0', STR_PAD_LEFT)?></strong></td>
-              <td><?php echo htmlspecialchars($row['u_name'])?></td>
-              <td><strong><?php echo htmlspecialchars($row['u_toolname'])?></strong></td>
-              <td>
-                <span style="display: inline-block; padding: 4px 12px; background: var(--primary-color); color: white; border-radius: 12px; font-size: 0.875rem; font-weight: 600;">
-                  <?php echo $row['u_itemsnumber']?> items
+                  $days_since_order = floor((time() - strtotime($order_row['u_date'])) / 86400);
+                  $can_return = $days_since_order <= 30 && $order_row['status'] !== 'CANCELLED';
+              ?>
+              <tr>
+                <td><strong>#<?php echo str_pad($number, 3, '0', STR_PAD_LEFT)?></strong></td>
+                <td><strong><?php echo htmlspecialchars($order_row['u_toolname'])?></strong></td>
+                <td>
+                  <span style="display: inline-block; padding: 4px 12px; background: var(--primary-color); color: white; border-radius: 12px; font-size: 0.875rem; font-weight: 600;">
+                    <?php echo $order_row['u_itemsnumber']?> items
+                  </span>
+                </td>
+                <td>
+                  <?php if($order_row['location_name']): ?>
+                  <span style="display: inline-block; padding: 4px 10px; background: #06b6d4; color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                    <ion-icon name="location-outline" style="margin-right: 2px;"></ion-icon>
+                    <?php echo htmlspecialchars($order_row['location_name']); ?>
+                  </span>
+                  <?php else: ?>
+                  <span style="color: #6b7280; font-size: 0.875rem;">Location not specified</span>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <?php
+                  $status = $order_row['status'] ?? 'PENDING';
+                  $status_colors = [
+                    'PENDING' => '#f59e0b',
+                    'CONFIRMED' => '#3b82f6', 
+                    'SHIPPED' => '#8b5cf6',
+                    'DELIVERED' => '#10b981',
+                    'CANCELLED' => '#ef4444'
+                  ];
+                  $color = $status_colors[$status] ?? '#6b7280';
+                  ?>
+                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $color; ?>; color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                    <?php echo $status; ?>
+                  </span>
+                </td>
+                <td><strong style="color: var(--primary-color);">RWF <?php echo number_format($order_row['u_price'])?></strong></td>
+                <td><strong style="color: #059669;">RWF <?php echo number_format($order_row['u_totalprice'])?></strong></td>
+                <td>
+                  <div style="font-size: 0.875rem;">
+                    <?php echo date('M d, Y', strtotime($order_row['u_date'])); ?>
+                    <br><small style="color: #6b7280;"><?php echo $days_since_order; ?> days ago</small>
+                  </div>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 4px; flex-direction: column;">
+                    <?php if($can_return): ?>
+                    <button onclick="requestReturn(<?php echo $order_row['id']; ?>, '<?php echo addslashes($order_row['u_toolname']); ?>')" 
+                            style="padding: 4px 8px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem; white-space: nowrap;">
+                      <ion-icon name="return-up-back-outline"></ion-icon> Return
+                    </button>
+                    <?php else: ?>
+                    <span style="color: #6b7280; font-size: 0.75rem;">
+                      <?php echo $days_since_order > 30 ? 'Return period expired' : 'Not returnable'; ?>
+                    </span>
+                    <?php endif; ?>
+                    
+                    <a href="pay.php?id=<?php echo $order_row['id']?>" 
+                       style="padding: 4px 8px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem; text-align: center; white-space: nowrap;">
+                      <ion-icon name="card-outline"></ion-icon> Pay
+                    </a>
+                  </div>
+                </td>
+              </tr>
                 </span>
               </td>
               <td>
@@ -217,7 +323,79 @@
     </main>
   </div>
 
-<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <!-- Return Request Modal -->
+  <div id="returnModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: white; margin: 10% auto; padding: 2rem; border-radius: 12px; width: 90%; max-width: 500px;">
+      <h3>Request Return</h3>
+      <form method="POST" id="returnForm">
+        <input type="hidden" name="order_id" id="return_order_id">
+        
+        <div id="returnOrderDetails" style="background: #f8fafc; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+          <!-- Order details will be populated by JavaScript -->
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Return Reason:</label>
+          <select name="return_reason" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="">Select reason</option>
+            <option value="Defective Product">Defective Product</option>
+            <option value="Wrong Item">Wrong Item Received</option>
+            <option value="Not as Described">Not as Described</option>
+            <option value="Changed Mind">Changed Mind</option>
+            <option value="Damaged in Shipping">Damaged in Shipping</option>
+            <option value="Quality Issues">Quality Issues</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Additional Notes:</label>
+          <textarea name="additional_notes" rows="3" placeholder="Describe the issue in detail..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+        </div>
+        
+        <div style="background: #fef3c7; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+          <p style="margin: 0; font-size: 0.875rem; color: #92400e;">
+            <ion-icon name="information-circle-outline"></ion-icon>
+            <strong>Return Policy:</strong> Returns are accepted within 30 days of purchase. Refund amount depends on item condition.
+          </p>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+          <button type="button" onclick="closeReturnModal()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            Cancel
+          </button>
+          <button type="submit" name="request_return" style="padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            <ion-icon name="return-up-back-outline"></ion-icon> Submit Return Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  
+  <script>
+    function requestReturn(orderId, toolName) {
+      document.getElementById('return_order_id').value = orderId;
+      document.getElementById('returnOrderDetails').innerHTML = 
+        '<h4 style="margin: 0 0 0.5rem 0;">Order Details</h4>' +
+        '<p style="margin: 0.25rem 0;"><strong>Tool:</strong> ' + toolName + '</p>' +
+        '<p style="margin: 0.25rem 0;"><strong>Order ID:</strong> #' + orderId.toString().padStart(3, '0') + '</p>';
+      document.getElementById('returnModal').style.display = 'block';
+    }
+    
+    function closeReturnModal() {
+      document.getElementById('returnModal').style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('returnModal');
+      if (event.target === modal) {
+        closeReturnModal();
+      }
+    }
+  </script>
 </body>
 </html>

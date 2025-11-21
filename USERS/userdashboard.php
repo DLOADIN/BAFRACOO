@@ -1,15 +1,29 @@
 <?php
   require "connection.php";
+  require "../EnhancedInventoryManager.php"; // Add enhanced inventory manager
+  
   if(!empty($_SESSION["id"])){
-  $id = $_SESSION["id"];
-  $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+    $id = $_SESSION["id"];
+    $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
+    $row = mysqli_fetch_array($check);
   }
   else{
-  header('location:loginuser.php');
+    header('location:loginuser.php');
   } 
+  
+  // Initialize Enhanced Inventory Manager
+  $inventoryManager = new EnhancedInventoryManager($con);
+  
+  // Get user statistics
+  $user_orders = mysqli_query($con, "SELECT COUNT(*) as order_count, SUM(u_totalprice) as total_spent FROM `order` WHERE user_id = $id");
+  $user_stats = mysqli_fetch_array($user_orders);
+  
+  // Get available locations
+  $locations = $inventoryManager->getAllLocations();
+  $location_count = mysqli_num_rows($locations);
+  
   error_reporting(0);
-?>
+  ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -253,6 +267,62 @@
                 <div style="font-size: 0.875rem; opacity: 0.9;">Manage your account</div>
               </div>
             </a>
+          </div>
+        </div>
+
+        <!-- Available Locations Section -->
+        <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
+          <div class="card-header">
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <ion-icon name="location-outline" style="color: var(--primary-color);"></ion-icon>
+              Available Pickup Locations
+            </h3>
+            <p style="margin: 8px 0 0 0; color: var(--gray-600); font-size: 0.875rem;">Choose from <?php echo $location_count; ?> convenient locations across Rwanda</p>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-md); padding: var(--spacing-lg);">
+            <?php
+            mysqli_data_seek($locations, 0); // Reset the result set
+            while($location = mysqli_fetch_array($locations)):
+              // Get total products available at this location
+              $location_inventory = mysqli_query($con, "
+                SELECT COUNT(DISTINCT sb.tool_id) as product_count, SUM(sb.quantity_remaining) as total_stock 
+                FROM stock_batches sb 
+                WHERE sb.location_id = {$location['id']} AND sb.quantity_remaining > 0
+              ");
+              $location_stats = mysqli_fetch_array($location_inventory);
+            ?>
+            <div style="padding: var(--spacing-lg); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); background: white; transition: all 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
+              <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--gray-900);">
+                    <?php echo htmlspecialchars($location['location_name']); ?>
+                  </h4>
+                  <p style="margin: 4px 0 0 0; font-size: 0.875rem; color: var(--gray-600);">
+                    <?php echo htmlspecialchars($location['address']); ?>
+                  </p>
+                </div>
+                <div style="padding: 4px 8px; background: #06b6d4; color: white; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                  <?php echo $location['location_type']; ?>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: between; align-items: center;">
+                <div style="display: flex; gap: 16px;">
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px;">Products</span>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">
+                      <?php echo $location_stats['product_count'] ?? 0; ?>
+                    </div>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px;">Stock</span>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--success-color);">
+                      <?php echo $location_stats['total_stock'] ?? 0; ?>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <?php endwhile; ?>
           </div>
         </div>
 

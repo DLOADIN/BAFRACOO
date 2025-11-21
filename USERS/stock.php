@@ -1,6 +1,6 @@
 <?php
   require "connection.php";
-  require "../InventoryManager.php"; // Include the inventory manager
+  require "../EnhancedInventoryManager.php"; // Include the enhanced inventory manager
   
   if(!empty($_SESSION["id"])){
     $id = $_SESSION["id"];
@@ -11,8 +11,8 @@
     header('location:loginuser.php');
   } 
   
-  // Initialize Inventory Manager
-  $inventoryManager = new InventoryManager($con);
+  // Initialize Enhanced Inventory Manager
+  $inventoryManager = new EnhancedInventoryManager($con);
   
   // Handle form submission
   if(isset($_POST['order_tool'])){
@@ -20,30 +20,31 @@
     $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
     $tool_name = mysqli_real_escape_string($con, $_POST['u_toolname']);
     $quantity = (int)$_POST['u_itemsnumber'];
+    $location_id = (int)$_POST['location_id']; // New location selection
     $type = mysqli_real_escape_string($con, $_POST['u_type']);
     $description = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
     $price = (float)$_POST['u_price'];
     $total_price = $price * $quantity;
     $order_date = date('Y-m-d');
     
-    // Check available stock using inventory manager
-    $available_stock = $inventoryManager->getAvailableStock($tool_id);
+    // Check available stock using enhanced inventory manager with location
+    $available_stock = $inventoryManager->getAvailableStock($tool_id, $location_id);
     
     if($available_stock < $quantity) {
-      $error_message = "Insufficient stock! Only $available_stock items available.";
+      $error_message = "Insufficient stock! Only $available_stock items available at selected location.";
     } else {
-      // Insert order first
-      $order_query = "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
-                      VALUES ('$user_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', 'PENDING')";
+      // Insert order first with location information
+      $order_query = "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, location_id, status) 
+                      VALUES ('$user_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', '$location_id', 'PENDING')";
       
       if(mysqli_query($con, $order_query)) {
         $order_id = mysqli_insert_id($con);
         
-        // Process inventory using FIFO/LIFO
-        $result = $inventoryManager->processOrder($tool_id, $quantity, $order_id, $price);
+        // Process inventory using enhanced FIFO/LIFO with location
+        $result = $inventoryManager->processOrder($tool_id, $quantity, $location_id, $order_id, $user_id);
         
         if($result['success']) {
-          $success_message = "Order placed successfully! Method used: " . $result['method_used'] . ". Remaining stock: " . $result['remaining_stock'];
+          $success_message = "Order placed successfully! Method used: " . $result['method_used'] . ". Remaining stock: " . $result['remaining_stock'] . " at " . $result['location_name'];
           // Redirect to prevent resubmission
           header("Location: orders.php?success=1");
           exit();
@@ -203,9 +204,24 @@
             if($row_count){
               while($tool_row=mysqli_fetch_array($sql))
               { 
-                // Get available stock and inventory method
-                $available_stock = $inventoryManager->getAvailableStock($tool_row['id']);
-                $inventory_method = $inventoryManager->getInventoryMethod($tool_row['id']);
+                // Get total available stock across all locations
+                $total_stock = 0;
+                $locations = $inventoryManager->getAllLocations();
+                $location_stocks = [];
+                
+                while($location = mysqli_fetch_array($locations)) {
+                  $location_stock = $inventoryManager->getAvailableStock($tool_row['id'], $location['id']);
+                  $location_stocks[$location['id']] = [
+                    'name' => $location['location_name'],
+                    'stock' => $location_stock
+                  ];
+                  $total_stock += $location_stock;
+                }
+                
+                // Reset location result for reuse
+                mysqli_data_seek($locations, 0);
+                
+                $inventory_method = $inventoryManager->getCurrentInventoryMethod();
             ?>
             <tr>
               <td><?php echo $tool_row['id']?></td>
@@ -219,10 +235,15 @@
                 <?php echo htmlspecialchars($tool_row['u_tooldescription'])?>
               </td>
               <td>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $available_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
-                    <?php echo $available_stock; ?> units
+                <div style="display: flex; align-items: center; gap: 6px; flex-direction: column;">
+                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $total_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
+                    <?php echo $total_stock; ?> units total
                   </span>
+                  <?php if($total_stock > 0): ?>
+                  <small style="color: #6b7280; font-size: 0.75rem;">
+                    Available at <?php echo count(array_filter($location_stocks, function($loc) { return $loc['stock'] > 0; })); ?> locations
+                  </small>
+                  <?php endif; ?>
                 </div>
               </td>
               <td>
@@ -234,7 +255,7 @@
                 <strong style="color: var(--primary-color);">RWF <?php echo number_format($tool_row['u_price'])?></strong>
               </td>
               <td>  
-                <?php if($available_stock > 0): ?>
+                <?php if($total_stock > 0): ?>
                 <a href="stock.php?id=<?php echo $tool_row['id']?>" 
                   style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);"
                   onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.35)';"
@@ -345,6 +366,37 @@
                 <input type="hidden" name="user_id" value="<?php echo $user_row['id']; ?>">
                 <input type="hidden" name="tool_id" value="<?php echo $tool_id; ?>">
                 <input type="hidden" name="u_price" value="<?php echo $tool_row['u_price']; ?>" id="unit_price">
+                
+                <!-- Location Selection -->
+                <div class="form-group" style="margin-bottom: var(--spacing-lg);">
+                  <label for="location_id" class="form-label">
+                    <ion-icon name="location-outline" style="margin-right: 4px; color: #dc2626;"></ion-icon>
+                    Select Pickup Location *
+                  </label>
+                  <select 
+                    id="location_id" 
+                    name="location_id" 
+                    required
+                    onchange="updateLocationStock()"
+                    style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;">
+                    <option value="">Choose a location</option>
+                    <?php
+                    $locations_result = $inventoryManager->getAllLocations();
+                    while($location = mysqli_fetch_array($locations_result)):
+                      $location_stock = $inventoryManager->getAvailableStock($tool_id, $location['id']);
+                    ?>
+                    <option value="<?php echo $location['id']; ?>" <?php echo $location_stock == 0 ? 'disabled' : ''; ?>>
+                      <?php echo htmlspecialchars($location['location_name']); ?> 
+                      (<?php echo $location_stock; ?> available)
+                      <?php echo $location_stock == 0 ? ' - Out of Stock' : ''; ?>
+                    </option>
+                    <?php endwhile; ?>
+                  </select>
+                  <div id="location-stock-info" style="margin-top: 0.5rem; padding: 0.5rem; background: #f3f4f6; border-radius: 4px; font-size: 0.875rem; color: #6b7280; display: none;">
+                    <ion-icon name="information-circle-outline"></ion-icon>
+                    <span id="stock-message">Select a location to see available stock</span>
+                  </div>
+                </div>
                 
                 <!-- Tool Name and Quantity Row -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">;
@@ -519,6 +571,61 @@
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         });
+        </script>
+        
+        <script>
+        // Location stock data
+        const locationStocks = {
+          <?php
+          $locations_result = $inventoryManager->getAllLocations();
+          $stock_data = [];
+          while($location = mysqli_fetch_array($locations_result)) {
+            $location_stock = $inventoryManager->getAvailableStock($tool_id, $location['id']);
+            $stock_data[] = $location['id'] . ': {stock: ' . $location_stock . ', name: "' . addslashes($location['location_name']) . '"}';
+          }
+          echo implode(",\n          ", $stock_data);
+          ?>
+        };
+        
+        function updateLocationStock() {
+          const locationSelect = document.getElementById('location_id');
+          const stockInfo = document.getElementById('location-stock-info');
+          const stockMessage = document.getElementById('stock-message');
+          const quantityInput = document.getElementById('u_itemsnumber');
+          const submitButton = document.querySelector('button[name="order_tool"]');
+          
+          const locationId = locationSelect.value;
+          
+          if (locationId && locationStocks[locationId]) {
+            const location = locationStocks[locationId];
+            stockInfo.style.display = 'block';
+            stockMessage.innerHTML = `${location.stock} units available at ${location.name}`;
+            
+            // Update quantity max
+            quantityInput.max = location.stock;
+            
+            // Enable/disable submit button
+            if (location.stock > 0) {
+              quantityInput.disabled = false;
+              submitButton.disabled = false;
+              submitButton.innerHTML = '<ion-icon name="checkmark-circle-outline"></ion-icon> Complete Purchase';
+              stockInfo.style.background = '#dcfce7';
+              stockInfo.style.color = '#15803d';
+            } else {
+              quantityInput.disabled = true;
+              submitButton.disabled = true;
+              submitButton.innerHTML = '<ion-icon name="ban-outline"></ion-icon> Out of Stock';
+              stockInfo.style.background = '#fef2f2';
+              stockInfo.style.color = '#dc2626';
+            }
+          } else {
+            stockInfo.style.display = 'none';
+            quantityInput.disabled = true;
+            submitButton.disabled = true;
+          }
+          
+          calculateTotal();
+        }
         </script>
         <?php } ?>
       </div>

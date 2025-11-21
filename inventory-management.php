@@ -1,6 +1,6 @@
 <?php
 require "connection.php";
-require "InventoryManager.php";
+require "EnhancedInventoryManager.php";
 
 if(!empty($_SESSION["id"])){
     $id = $_SESSION["id"];
@@ -10,7 +10,7 @@ if(!empty($_SESSION["id"])){
     header('location:loginadmin.php');
 }
 
-$inventoryManager = new InventoryManager($con);
+$inventoryManager = new EnhancedInventoryManager($con);
 
 // Handle inventory method change
 if(isset($_POST['update_method'])){
@@ -25,10 +25,11 @@ if(isset($_POST['add_batch'])){
     $tool_id = (int)$_POST['tool_id'];
     $quantity = (int)$_POST['quantity'];
     $purchase_price = (float)$_POST['purchase_price'];
+    $location_id = isset($_POST['location_id']) ? (int)$_POST['location_id'] : 1; // Default to Kigali Central
     $supplier = $_POST['supplier'];
     $expiry_date = !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
     
-    $result = $inventoryManager->addStockBatch($tool_id, $quantity, $purchase_price, $supplier, $expiry_date);
+    $result = $inventoryManager->addStockBatch($tool_id, $quantity, $purchase_price, $location_id, $supplier, $expiry_date);
     $batch_message = $result['message'];
 }
 ?>
@@ -182,6 +183,20 @@ if(isset($_POST['add_batch'])){
                             
                             <div style="margin-bottom: 1rem;">
                                 <label>Tool: <strong id="modal_tool_name"></strong></label>
+                            </div>
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <label>Location *</label>
+                                <select name="location_id" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                    <?php 
+                                    $locations = $inventoryManager->getAllLocations();
+                                    while($location = mysqli_fetch_array($locations)): ?>
+                                        <option value="<?php echo $location['id']; ?>">
+                                            <?php echo htmlspecialchars($location['location_name']); ?> 
+                                            (<?php echo $location['location_type']; ?>)
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
                             </div>
                             
                             <div style="margin-bottom: 1rem;">

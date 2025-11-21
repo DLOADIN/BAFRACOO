@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 16, 2025 at 07:50 PM
+-- Generation Time: Nov 21, 2025 at 08:44 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -57,6 +57,15 @@ CREATE TABLE `inventory_method` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Dumping data for table `inventory_method`
+--
+
+INSERT INTO `inventory_method` (`id`, `tool_id`, `method`, `created_at`, `updated_at`) VALUES
+(1, 5, 'FIFO', '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
+(2, 6, 'FIFO', '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
+(3, 7, 'FIFO', '2025-11-16 19:10:55', '2025-11-16 19:10:55');
+
 -- --------------------------------------------------------
 
 --
@@ -105,6 +114,15 @@ CREATE TABLE `stock_batches` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Dumping data for table `stock_batches`
+--
+
+INSERT INTO `stock_batches` (`id`, `tool_id`, `batch_number`, `quantity_received`, `quantity_remaining`, `purchase_price`, `batch_date`, `supplier`, `expiry_date`, `created_at`, `updated_at`) VALUES
+(1, 5, 'BATCH-0005-001', 11000, 11000, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
+(2, 6, 'BATCH-0006-001', 2, 2, 8000.00, '2024-03-25 00:00:00', 'Default Supplier', NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
+(3, 7, 'BATCH-0007-001', 121212, 121212, 969.60, '2025-10-25 00:00:00', 'Default Supplier', NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55');
+
 -- --------------------------------------------------------
 
 --
@@ -123,6 +141,15 @@ CREATE TABLE `stock_movements` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `created_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `stock_movements`
+--
+
+INSERT INTO `stock_movements` (`id`, `batch_id`, `order_id`, `movement_type`, `quantity`, `unit_cost`, `reference`, `notes`, `created_at`, `created_by`) VALUES
+(1, 1, NULL, 'IN', 11000, 8000.00, 'INITIAL-BATCH-0005-001', 'Initial stock entry', '2025-11-16 19:10:56', NULL),
+(2, 2, NULL, 'IN', 2, 8000.00, 'INITIAL-BATCH-0006-001', 'Initial stock entry', '2025-11-16 19:10:56', NULL),
+(3, 3, NULL, 'IN', 121212, 969.60, 'INITIAL-BATCH-0007-001', 'Initial stock entry', '2025-11-16 19:10:56', NULL);
 
 -- --------------------------------------------------------
 
@@ -267,7 +294,7 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `inventory_method`
 --
 ALTER TABLE `inventory_method`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `order`
@@ -279,13 +306,13 @@ ALTER TABLE `order`
 -- AUTO_INCREMENT for table `stock_batches`
 --
 ALTER TABLE `stock_batches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `stock_movements`
 --
 ALTER TABLE `stock_movements`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `tool`

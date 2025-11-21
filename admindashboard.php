@@ -76,6 +76,42 @@
                 <span class="nav-text">Inventory</span>
               </a>
             </li>
+            <li class="nav-item">
+              <a href="inventory-management.php" class="nav-link" data-tooltip="Enhanced Inventory">
+                <ion-icon name="library-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Enhanced Inventory</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="nav-section">
+          <h3 class="nav-section-title">Enhanced Features</h3>
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="damaged-products.php" class="nav-link" data-tooltip="Damage Control">
+                <ion-icon name="warning-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Damage Control</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="returns-management.php" class="nav-link" data-tooltip="Returns Management">
+                <ion-icon name="return-up-back-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Returns</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="stock-alerts.php" class="nav-link" data-tooltip="Stock Alerts">
+                <ion-icon name="notifications-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Stock Alerts</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="system-test.php" class="nav-link" data-tooltip="System Testing">
+                <ion-icon name="flask-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">System Test</span>
+              </a>
+            </li>
           </ul>
         </div>
         
