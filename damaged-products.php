@@ -39,11 +39,24 @@ if(isset($_POST['report_damage'])) {
             if(mysqli_stmt_execute($stmt)) {
                 $damage_id = mysqli_insert_id($con);
                 
+                // Store old quantity for display
+                $old_quantity = $tool_data['u_itemsnumber'];
+                
                 // Remove items from stock
                 $new_quantity = $tool_data['u_itemsnumber'] - $quantity_damaged;
                 mysqli_query($con, "UPDATE tool SET u_itemsnumber = $new_quantity WHERE id = $tool_id");
                 
-                $message = "Damage reported successfully. $quantity_damaged items removed from stock.";
+                // Store stock change info for prominent display
+                $stock_changed = true;
+                $stock_change_info = [
+                    'tool_name' => $tool_data['u_toolname'],
+                    'old_stock' => $old_quantity,
+                    'new_stock' => $new_quantity,
+                    'removed' => $quantity_damaged,
+                    'loss_value' => $loss_value
+                ];
+                
+                $message = "✅ STOCK UPDATED! {$tool_data['u_toolname']}: {$old_quantity} → {$new_quantity} units ({$quantity_damaged} removed)";
                 $message_type = "success";
                 
                 // Auto-transfer to returned stock if checkbox was checked
@@ -55,7 +68,7 @@ if(isset($_POST['report_damage'])) {
                     if(mysqli_stmt_execute($transfer_stmt)) {
                         // Delete from damaged_goods since it's now in returned_stock
                         mysqli_query($con, "DELETE FROM damaged_goods WHERE id = $damage_id");
-                        $message .= " Also transferred to Returned Stock for processing.";
+                        $message .= " Also transferred to Returned Stock.";
                     }
                 }
             } else {
@@ -129,17 +142,19 @@ if(isset($_POST['edit_damage'])) {
     $current_damage = mysqli_query($con, "SELECT * FROM damaged_goods WHERE id = $damage_id");
     if($current_damage && mysqli_num_rows($current_damage) > 0) {
         $current_data = mysqli_fetch_assoc($current_damage);
-        $old_quantity = $current_data['quantity_removed'];
+        $old_damage_quantity = $current_data['quantity_removed'];
         $tool_id = $current_data['tool_id'];
+        $tool_name = $current_data['tool_name'];
         
         // Get tool price to recalculate loss
-        $tool_query = mysqli_query($con, "SELECT u_price, u_itemsnumber FROM tool WHERE id = $tool_id");
+        $tool_query = mysqli_query($con, "SELECT u_price, u_itemsnumber, u_toolname FROM tool WHERE id = $tool_id");
         $tool_data = mysqli_fetch_assoc($tool_query);
         $new_loss_value = $edit_quantity * $tool_data['u_price'];
         
-        // Adjust stock based on quantity change
-        $quantity_diff = $old_quantity - $edit_quantity;
-        $new_stock = $tool_data['u_itemsnumber'] + $quantity_diff;
+        // Calculate stock adjustment
+        $quantity_diff = $old_damage_quantity - $edit_quantity;
+        $old_stock = $tool_data['u_itemsnumber'];
+        $new_stock = $old_stock + $quantity_diff;
         
         if($new_stock >= 0) {
             // Update damage record
@@ -148,7 +163,26 @@ if(isset($_POST['edit_damage'])) {
             // Update tool stock
             mysqli_query($con, "UPDATE tool SET u_itemsnumber = $new_stock WHERE id = $tool_id");
             
-            $message = "Damage record updated successfully";
+            // Store stock change info for display
+            if($quantity_diff != 0) {
+                $stock_changed = true;
+                $stock_change_info = [
+                    'tool_name' => $tool_data['u_toolname'],
+                    'old_stock' => $old_stock,
+                    'new_stock' => $new_stock,
+                    'removed' => $quantity_diff < 0 ? abs($quantity_diff) : 0,
+                    'restored' => $quantity_diff > 0 ? $quantity_diff : 0,
+                    'loss_value' => $new_loss_value
+                ];
+                
+                if($quantity_diff > 0) {
+                    $message = "✅ STOCK RESTORED! {$tool_data['u_toolname']}: {$old_stock} → {$new_stock} units (+{$quantity_diff} restored)";
+                } else {
+                    $message = "✅ STOCK UPDATED! {$tool_data['u_toolname']}: {$old_stock} → {$new_stock} units (" . abs($quantity_diff) . " more removed)";
+                }
+            } else {
+                $message = "Damage record updated (no stock change)";
+            }
             $message_type = "success";
         } else {
             $message = "Error: Cannot increase damage quantity beyond available stock";
@@ -334,9 +368,56 @@ if(isset($_POST['transfer_to_returned'])) {
 
             <div class="content-area">
                 <?php if(isset($message)): ?>
-                <div class="alert" style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: <?php echo $message_type == 'success' ? '#d1fae5' : '#fee2e2'; ?>; color: <?php echo $message_type == 'success' ? '#065f46' : '#991b1b'; ?>;">
-                    <ion-icon name="<?php echo $message_type == 'success' ? 'checkmark-circle' : 'alert-circle'; ?>-outline" style="margin-right: 8px;"></ion-icon>
-                    <?php echo $message; ?>
+                <div class="alert" style="padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; background: <?php echo $message_type == 'success' ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)'; ?>; color: <?php echo $message_type == 'success' ? '#065f46' : '#991b1b'; ?>; border: 2px solid <?php echo $message_type == 'success' ? '#10b981' : '#ef4444'; ?>; box-shadow: 0 4px 12px <?php echo $message_type == 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'; ?>;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <ion-icon name="<?php echo $message_type == 'success' ? 'checkmark-circle' : 'alert-circle'; ?>" style="font-size: 2rem;"></ion-icon>
+                        <div>
+                            <strong style="font-size: 1.1rem; display: block;"><?php echo $message_type == 'success' ? 'Stock Updated Successfully!' : 'Error'; ?></strong>
+                            <span style="font-size: 0.95rem;"><?php echo $message; ?></span>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <?php if(isset($stock_changed) && $stock_changed && isset($stock_change_info)): ?>
+                <div style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 2px solid #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);">
+                    <h4 style="margin: 0 0 1rem 0; color: #1d4ed8; display: flex; align-items: center; gap: 8px;">
+                        <ion-icon name="sync-outline"></ion-icon>
+                        Inventory Change Summary
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                        <div style="background: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin-bottom: 4px;">Product</div>
+                            <div style="font-weight: 700; color: #1f2937;"><?php echo htmlspecialchars($stock_change_info['tool_name']); ?></div>
+                        </div>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin-bottom: 4px;">Previous Stock</div>
+                            <div style="font-weight: 700; color: #6b7280; font-size: 1.25rem;"><?php echo number_format($stock_change_info['old_stock']); ?></div>
+                        </div>
+                        <?php if(isset($stock_change_info['restored']) && $stock_change_info['restored'] > 0): ?>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #059669; text-transform: uppercase; margin-bottom: 4px;">Restored</div>
+                            <div style="font-weight: 700; color: #059669; font-size: 1.25rem;">+<?php echo number_format($stock_change_info['restored']); ?></div>
+                        </div>
+                        <?php else: ?>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #dc2626; text-transform: uppercase; margin-bottom: 4px;">Removed</div>
+                            <div style="font-weight: 700; color: #dc2626; font-size: 1.25rem;">-<?php echo number_format($stock_change_info['removed']); ?></div>
+                        </div>
+                        <?php endif; ?>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin-bottom: 4px;">New Stock</div>
+                            <div style="font-weight: 700; color: #2563eb; font-size: 1.25rem;"><?php echo number_format($stock_change_info['new_stock']); ?></div>
+                        </div>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin-bottom: 4px;">Loss Value</div>
+                            <div style="font-weight: 700; color: #dc2626; font-size: 1.1rem;">RWF <?php echo number_format($stock_change_info['loss_value']); ?></div>
+                        </div>
+                    </div>
+                    <p style="margin: 1rem 0 0 0; color: #4b5563; font-size: 0.875rem; display: flex; align-items: center; gap: 6px;">
+                        <ion-icon name="checkmark-circle" style="color: #059669;"></ion-icon>
+                        <strong>This change is now visible to all users and admins across the system.</strong>
+                    </p>
                 </div>
                 <?php endif; ?>
 
