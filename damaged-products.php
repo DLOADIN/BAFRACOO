@@ -380,32 +380,153 @@ if(isset($_POST['transfer_to_returned'])) {
                     </div>
                 </div>
 
-                <!-- All Inventory Items Table - For Adding Damages -->
+                <!-- ADD DAMAGE FORM - Inline Form -->
+                <div class="dashboard-card" style="margin-bottom: 2rem; border: 2px solid #dc2626;">
+                    <div class="card-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #fef2f2, #fee2e2);">
+                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #991b1b; display: flex; align-items: center; gap: 10px;">
+                            <ion-icon name="alert-circle"></ion-icon>
+                            ➕ Report New Damage
+                        </h3>
+                        <p style="margin: 0.25rem 0 0 0; color: #7f1d1d; font-size: 0.875rem;">Select a product, enter quantity damaged, and provide reason. This will update your inventory.</p>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <form method="POST" id="inlineDamageForm">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                                
+                                <!-- Product Selection -->
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Select Product <span style="color: #dc2626;">*</span>
+                                    </label>
+                                    <select name="tool_id" id="inline_tool_select" required 
+                                            style="width: 100%; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 1rem; background: white;"
+                                            onchange="updateInlineStockInfo()">
+                                        <option value="">-- Choose a product --</option>
+                                        <?php
+                                        $inline_tools = mysqli_query($con, "SELECT * FROM tool WHERE u_itemsnumber > 0 ORDER BY u_toolname");
+                                        while($t = mysqli_fetch_array($inline_tools)):
+                                        ?>
+                                        <option value="<?php echo $t['id']; ?>" 
+                                                data-stock="<?php echo $t['u_itemsnumber']; ?>" 
+                                                data-price="<?php echo $t['u_price']; ?>"
+                                                data-name="<?php echo htmlspecialchars($t['u_toolname']); ?>">
+                                            <?php echo htmlspecialchars($t['u_toolname']); ?> (Stock: <?php echo number_format($t['u_itemsnumber']); ?>)
+                                        </option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                </div>
+                                
+                                <!-- Quantity Input -->
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Quantity Damaged <span style="color: #dc2626;">*</span>
+                                    </label>
+                                    <input type="number" name="quantity_damaged" id="inline_quantity" min="1" required 
+                                           style="width: 100%; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 1rem;"
+                                           placeholder="Enter quantity" oninput="updateInlineLossPreview()">
+                                    <small id="inline_stock_hint" style="color: #6b7280; display: block; margin-top: 4px;">
+                                        Select a product first
+                                    </small>
+                                </div>
+                                
+                                <!-- Damage Reason -->
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Damage Reason <span style="color: #dc2626;">*</span>
+                                    </label>
+                                    <select name="damage_reason" id="inline_reason" required 
+                                            style="width: 100%; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 1rem; background: white;">
+                                        <option value="">-- Select reason --</option>
+                                        <option value="Expired">Expired / Past Expiry Date</option>
+                                        <option value="Physical Damage">Physical Damage / Broken</option>
+                                        <option value="Water Damage">Water Damage</option>
+                                        <option value="Manufacturing Defect">Manufacturing Defect</option>
+                                        <option value="Storage Issues">Storage Issues / Spoilage</option>
+                                        <option value="Pest Damage">Pest Damage</option>
+                                        <option value="Transport Damage">Transport Damage</option>
+                                        <option value="Theft/Loss">Theft / Loss</option>
+                                        <option value="Quality Issues">Quality Issues / Defective</option>
+                                        <option value="Fire Damage">Fire Damage</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Additional Notes -->
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                                        Additional Notes
+                                    </label>
+                                    <input type="text" name="damage_description" id="inline_notes"
+                                           style="width: 100%; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 1rem;"
+                                           placeholder="Describe the damage (optional)">
+                                </div>
+                            </div>
+                            
+                            <!-- Loss Preview & Submit Row -->
+                            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; align-items: center; justify-content: space-between; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                                
+                                <!-- Loss Preview -->
+                                <div id="inline_loss_preview" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; flex: 1; min-width: 250px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                        <div>
+                                            <span style="font-size: 0.75rem; color: #991b1b; display: block;">Product</span>
+                                            <strong id="inline_preview_product" style="color: #7f1d1d;">-</strong>
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 0.75rem; color: #991b1b; display: block;">Stock Change</span>
+                                            <strong id="inline_preview_stock" style="color: #7f1d1d;">-</strong>
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 0.75rem; color: #991b1b; display: block;">Estimated Loss</span>
+                                            <strong id="inline_preview_loss" style="color: #dc2626; font-size: 1.25rem;">RWF 0</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Auto Transfer Option -->
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" name="auto_transfer" value="1" id="inline_auto_transfer" style="width: 18px; height: 18px;">
+                                    <label for="inline_auto_transfer" style="font-size: 0.875rem; color: #374151; cursor: pointer;">
+                                        Also transfer to <strong>Returned Stock</strong>
+                                    </label>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <button type="submit" name="report_damage" 
+                                        style="padding: 14px 28px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: 8px; transition: background 0.2s;"
+                                        onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+                                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                                    Report Damage & Update Inventory
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- All Inventory Items Table (Reference) -->
                 <div class="dashboard-card" style="margin-bottom: 2rem;">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #eff6ff, #dbeafe);">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #f0fdf4, #dcfce7);">
                         <div>
-                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #1e40af;">
-                                <ion-icon name="cube-outline" style="margin-right: 8px;"></ion-icon>
-                                📦 All Inventory Items
+                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #166534;">
+                                📦 Inventory Reference
                             </h3>
-                            <p style="margin: 0.25rem 0 0 0; color: #3b82f6; font-size: 0.875rem;">Select a product and click "Add Damage" to report damaged items</p>
+                            <p style="margin: 0.25rem 0 0 0; color: #15803d; font-size: 0.875rem;">View current stock levels - Use the form above to report damages</p>
                         </div>
                         <div style="display: flex; gap: 1rem; align-items: center;">
                             <input type="text" id="inventorySearch" onkeyup="filterInventoryTable()" placeholder="Search products..." style="padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; width: 200px;">
                         </div>
                     </div>
-                    <div class="table-container" style="padding: 0; max-height: 500px; overflow-y: auto;">
+                    <div class="table-container" style="padding: 0; max-height: 400px; overflow-y: auto;">
                         <table class="modern-table" style="width: 100%;" id="inventoryTable">
                             <thead style="position: sticky; top: 0; background: white; z-index: 10;">
                                 <tr>
                                     <th>#</th>
                                     <th>Tool Name</th>
                                     <th>Type</th>
-                                    <th>Quantity</th>
+                                    <th>Current Stock</th>
                                     <th>Unit Price</th>
                                     <th>Total Value</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -422,21 +543,18 @@ if(isset($_POST['transfer_to_returned'])) {
                                     <td>
                                         <div style="display: flex; align-items: center; gap: 10px;">
                                             <?php if(!empty($item['u_image'])): ?>
-                                            <img src="<?php echo htmlspecialchars($item['u_image']); ?>" alt="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                                            <img src="<?php echo htmlspecialchars($item['u_image']); ?>" alt="" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;">
                                             <?php else: ?>
-                                            <div style="width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div style="width: 36px; height: 36px; border-radius: 6px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.875rem;">
                                                 <?php echo strtoupper(substr($item['u_toolname'], 0, 1)); ?>
                                             </div>
                                             <?php endif; ?>
-                                            <div>
-                                                <strong><?php echo htmlspecialchars($item['u_toolname']); ?></strong>
-                                                <div style="font-size: 0.7rem; color: #6b7280;">ID: <?php echo $item['id']; ?></div>
-                                            </div>
+                                            <strong><?php echo htmlspecialchars($item['u_toolname']); ?></strong>
                                         </div>
                                     </td>
                                     <td><?php echo htmlspecialchars($item['u_type'] ?? 'N/A'); ?></td>
                                     <td>
-                                        <span style="color: <?php echo $item['u_itemsnumber'] > 10 ? '#059669' : ($item['u_itemsnumber'] > 0 ? '#d97706' : '#dc2626'); ?>; font-weight: 600;">
+                                        <span style="color: <?php echo $item['u_itemsnumber'] > 10 ? '#059669' : ($item['u_itemsnumber'] > 0 ? '#d97706' : '#dc2626'); ?>; font-weight: 700; font-size: 1.1rem;">
                                             <?php echo number_format($item['u_itemsnumber']); ?>
                                         </span>
                                     </td>
@@ -447,23 +565,13 @@ if(isset($_POST['transfer_to_returned'])) {
                                             <?php echo $status; ?>
                                         </span>
                                     </td>
-                                    <td>
-                                        <?php if($item['u_itemsnumber'] > 0): ?>
-                                        <button type="button" onclick="openQuickDamageModal(<?php echo $item['id']; ?>, '<?php echo addslashes($item['u_toolname']); ?>', <?php echo $item['u_itemsnumber']; ?>, <?php echo $item['u_price']; ?>)" 
-                                                class="action-btn btn-add-damage">
-                                            <ion-icon name="add-circle-outline"></ion-icon> Add Damage
-                                        </button>
-                                        <?php else: ?>
-                                        <span style="color: #9ca3af; font-size: 0.75rem;">No stock</span>
-                                        <?php endif; ?>
-                                    </td>
                                 </tr>
                                 <?php 
                                     endwhile;
                                 else:
                                 ?>
                                 <tr>
-                                    <td colspan="8" style="text-align: center; padding: 2rem; color: #6b7280;">
+                                    <td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;">
                                         <ion-icon name="cube-outline" style="font-size: 3rem; color: #9ca3af;"></ion-icon>
                                         <p style="margin: 1rem 0 0 0;">No inventory items found.</p>
                                     </td>
@@ -481,7 +589,7 @@ if(isset($_POST['transfer_to_returned'])) {
                         <div>
                             <h4 style="margin: 0; color: #92400e;">How Damage Control Works</h4>
                             <p style="margin: 0.5rem 0 0 0; color: #78350f; font-size: 0.875rem;">
-                                1️⃣ Click <strong>"Add Damage"</strong> on any product above to report damage. 
+                                1️⃣ Use the <strong>Report New Damage</strong> form above to record damaged items. 
                                 2️⃣ The damaged items are recorded below and automatically removed from stock.
                                 3️⃣ <strong>Transfer</strong> to <a href="returned-stock.php" style="color: #dc2626; font-weight: 600;">Returned Stock</a> for write-off processing.
                             </p>
@@ -1160,7 +1268,96 @@ if(isset($_POST['transfer_to_returned'])) {
     </div>
 
     <script>
-        // Quick Damage Modal Functions
+        // ========== INLINE DAMAGE FORM FUNCTIONS ==========
+        var inlinePrice = 0;
+        var inlineStock = 0;
+        
+        function updateInlineStockInfo() {
+            const select = document.getElementById('inline_tool_select');
+            const selectedOption = select.options[select.selectedIndex];
+            const stockHint = document.getElementById('inline_stock_hint');
+            const quantityInput = document.getElementById('inline_quantity');
+            
+            if (select.value) {
+                inlineStock = parseInt(selectedOption.getAttribute('data-stock'));
+                inlinePrice = parseInt(selectedOption.getAttribute('data-price'));
+                const productName = selectedOption.getAttribute('data-name');
+                
+                stockHint.innerHTML = 'Available stock: <strong style="color: #059669;">' + inlineStock.toLocaleString() + '</strong> | Unit price: <strong>RWF ' + inlinePrice.toLocaleString() + '</strong>';
+                stockHint.style.color = '#374151';
+                quantityInput.max = inlineStock;
+                
+                // Update preview
+                document.getElementById('inline_preview_product').textContent = productName;
+            } else {
+                inlineStock = 0;
+                inlinePrice = 0;
+                stockHint.innerHTML = 'Select a product first';
+                stockHint.style.color = '#6b7280';
+                quantityInput.max = '';
+            }
+            updateInlineLossPreview();
+        }
+        
+        function updateInlineLossPreview() {
+            const quantity = parseInt(document.getElementById('inline_quantity').value) || 0;
+            const lossPreview = document.getElementById('inline_loss_preview');
+            
+            if (quantity > 0 && inlineStock > 0) {
+                const loss = quantity * inlinePrice;
+                const newStock = inlineStock - quantity;
+                
+                document.getElementById('inline_preview_stock').textContent = inlineStock.toLocaleString() + ' → ' + newStock.toLocaleString();
+                document.getElementById('inline_preview_stock').style.color = newStock >= 0 ? '#059669' : '#dc2626';
+                document.getElementById('inline_preview_loss').textContent = 'RWF ' + loss.toLocaleString();
+                lossPreview.style.display = 'block';
+            } else {
+                lossPreview.style.display = 'none';
+            }
+        }
+        
+        // Form validation for inline form
+        document.getElementById('inlineDamageForm').addEventListener('submit', function(e) {
+            const toolId = document.getElementById('inline_tool_select').value;
+            const quantity = parseInt(document.getElementById('inline_quantity').value) || 0;
+            const reason = document.getElementById('inline_reason').value;
+            
+            if (!toolId) {
+                e.preventDefault();
+                alert('Please select a product');
+                return false;
+            }
+            
+            if (quantity <= 0) {
+                e.preventDefault();
+                alert('Please enter a valid quantity greater than 0');
+                return false;
+            }
+            
+            if (quantity > inlineStock) {
+                e.preventDefault();
+                alert('Error: Quantity (' + quantity + ') exceeds available stock (' + inlineStock + ')');
+                return false;
+            }
+            
+            if (!reason) {
+                e.preventDefault();
+                alert('Please select a damage reason');
+                return false;
+            }
+            
+            const productName = document.getElementById('inline_preview_product').textContent;
+            const loss = quantity * inlinePrice;
+            
+            if (!confirm('Report ' + quantity + ' item(s) of "' + productName + '" as damaged?\n\n• Stock will change: ' + inlineStock + ' → ' + (inlineStock - quantity) + '\n• Estimated loss: RWF ' + loss.toLocaleString() + '\n• Reason: ' + reason + '\n\nThis will update your inventory immediately.')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+
+        // ========== QUICK DAMAGE MODAL FUNCTIONS ==========
         var quickPrice = 0;
         var quickStock = 0;
         
