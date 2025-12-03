@@ -65,6 +65,39 @@
       font-weight: 700;
       color: var(--primary-color);
     }
+    .order-details {
+      background: var(--gray-50);
+      padding: 1rem 1.5rem;
+      border-radius: var(--radius-lg);
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+    .order-details-title {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+    }
+    .order-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .order-detail-row:last-child {
+      border-bottom: none;
+    }
+    .order-detail-label {
+      color: var(--gray-600);
+      font-size: 0.9rem;
+    }
+    .order-detail-value {
+      color: var(--gray-900);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
     .payment-btn {
       width: 100%;
       padding: 1.25rem 2rem;
@@ -97,21 +130,65 @@
     .cancel-link:hover {
       color: var(--gray-900);
     }
+    .error-message {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.5rem;
+    }
   </style>
 </head>
 <body>
 <?php
   require "connection.php";
   if(!empty($_SESSION["id"])){
-  $id = $_SESSION["id"];
-  $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+    $id = $_SESSION["id"];
+    $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
+    $row = mysqli_fetch_array($check);
   }
   else{
-  header('location:loginuser.php');
+    header('location:loginuser.php');
+    exit();
   } 
-$customer_phone = 2507;
-$transaction_id = rand(1, 999999) . 'code' . date('ymdhis') . rand(10000, 999999);
+
+  // Get order ID from URL
+  $O_id = isset($_GET['o_id']) ? (int)$_GET['o_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
+  
+  if($O_id == 0) {
+    echo '<div class="payment-container"><div class="payment-card"><div class="error-message">Invalid order. Please try again.</div><a href="orders.php" class="cancel-link">Return to Orders</a></div></div>';
+    exit();
+  }
+  
+  // Fetch order details
+  $sql = mysqli_query($con, "SELECT * FROM `order` WHERE id='$O_id' AND user_id='$id'");
+  $row_order = mysqli_fetch_array($sql);
+  
+  if(!$row_order) {
+    echo '<div class="payment-container"><div class="payment-card"><div class="error-message">Order not found or you do not have permission to pay for this order.</div><a href="orders.php" class="cancel-link">Return to Orders</a></div></div>';
+    exit();
+  }
+  
+  // Check if already paid
+  if($row_order['status'] == 'Paid' || $row_order['status'] == 'Completed') {
+    echo '<div class="payment-container"><div class="payment-card"><div class="error-message">This order has already been paid.</div><a href="orders.php" class="cancel-link">Return to Orders</a></div></div>';
+    exit();
+  }
+  
+  $total = $row_order['u_totalprice'];
+  $tool_name = $row_order['u_toolname'];
+  $quantity = $row_order['u_itemsnumber'];
+  $unit_price = $row_order['u_price'];
+  
+  // Generate unique transaction reference with order_id encoded
+  $transaction_id = 'BAFRACOO-' . $O_id . '-' . date('YmdHis') . '-' . rand(1000, 9999);
+  
+  // Build the redirect URL dynamically
+  $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+  $host = $_SERVER['HTTP_HOST'];
+  $base_path = dirname($_SERVER['PHP_SELF']);
+  $redirect_url = $protocol . '://' . $host . $base_path . '/redirect.php';
 ?>
 
   <div class="payment-container">
@@ -125,30 +202,45 @@ $transaction_id = rand(1, 999999) . 'code' . date('ymdhis') . rand(10000, 999999
       <h1 class="payment-title">Complete Your Payment</h1>
       <p class="payment-subtitle">You're one step away from completing your order</p>
       
+      <!-- Order Details -->
+      <div class="order-details">
+        <div class="order-details-title">Order Summary</div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">Order ID</span>
+          <span class="order-detail-value">#<?php echo $O_id; ?></span>
+        </div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">Item</span>
+          <span class="order-detail-value"><?php echo htmlspecialchars($tool_name); ?></span>
+        </div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">Quantity</span>
+          <span class="order-detail-value"><?php echo number_format($quantity); ?> units</span>
+        </div>
+        <div class="order-detail-row">
+          <span class="order-detail-label">Unit Price</span>
+          <span class="order-detail-value">RWF <?php echo number_format($unit_price); ?></span>
+        </div>
+      </div>
+      
       <div class="amount-display">
         <div class="amount-label">Total Amount</div>
-        <div class="amount-value">
-          RWF <?php 
-            $O_id=$_GET['o_id'];
-            $sql = mysqli_query($con, "SELECT u_totalprice AS total FROM `order` WHERE id='$O_id'");
-            $row_order = mysqli_fetch_array($sql);
-            $total = $row_order['total'];
-            echo number_format($total);
-          ?>
-        </div>
+        <div class="amount-value">RWF <?php echo number_format($total); ?></div>
       </div>
       
       <form class="FinalForm" method="POST" action="https://checkout.flutterwave.com/v3/hosted/pay">
         <input type="hidden" name="public_key" value="FLWPUBK-fd9a72fe52fbf0bd373323b44d7e2097-X" />
         <input type="hidden" name="customizations[title]" value="BAFRACOO" />
-        <input type="hidden" name="customizations[description]" value="Construction Tools Payment" />
+        <input type="hidden" name="customizations[description]" value="Order #<?php echo $O_id; ?> - <?php echo htmlspecialchars($tool_name); ?>" />
         <input type="hidden" name="customizations[logo]" value="" />
-        <input type="hidden" name="customer[email]" value="<?php echo $row['u_email']; ?>" />
-        <input type="hidden" name="customer[name]" value="<?php echo $row['u_name']; ?>" />
+        <input type="hidden" name="customer[email]" value="<?php echo htmlspecialchars($row['u_email']); ?>" />
+        <input type="hidden" name="customer[name]" value="<?php echo htmlspecialchars($row['u_name']); ?>" />
         <input type="hidden" name="tx_ref" value="<?php echo $transaction_id; ?>" />
         <input type="hidden" name="amount" value="<?php echo $total; ?>" />
         <input type="hidden" name="currency" value="RWF" />
-        <input type="hidden" name="redirect_url" value="/project-hydra/users/redirect.php" />
+        <input type="hidden" name="redirect_url" value="<?php echo htmlspecialchars($redirect_url); ?>" />
+        <input type="hidden" name="meta[order_id]" value="<?php echo $O_id; ?>" />
+        <input type="hidden" name="meta[user_id]" value="<?php echo $id; ?>" />
         
         <button type="submit" class="payment-btn" id="start-payment-button">
           <ion-icon name="lock-closed-outline"></ion-icon>

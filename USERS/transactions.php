@@ -157,17 +157,24 @@
               <tr>
                 <th>#</th>
                 <th>Order Code</th>
+                <th>Item</th>
+                <th>Quantity</th>
                 <th>Amount Paid</th>
+                <th>Status</th>
                 <th>Date</th>
               </tr>
             </thead>
             <tbody>
           <?php
           $number=0;
-          $sql=mysqli_query($con,"SELECT `transaction`.*, `order`.`id`,`order`.`u_totalprice`, `order`.`u_date` FROM `transaction`INNER JOIN `order` ON `transaction`.order_id = `order`.id WHERE `order`.user_id = '$id' ORDER BY `transaction`.id DESC;");
-          $row = mysqli_num_rows($sql);
-          if($row > 0){
-            while($row=mysqli_fetch_array($sql))
+          $sql=mysqli_query($con,"SELECT `transaction`.*, `order`.`id` AS order_id, `order`.`u_totalprice`, `order`.`u_date` 
+                                  FROM `transaction` 
+                                  INNER JOIN `order` ON `transaction`.order_id = `order`.id 
+                                  WHERE `transaction`.u_id = '$id' 
+                                  ORDER BY `transaction`.id DESC");
+          $row_count = mysqli_num_rows($sql);
+          if($row_count > 0){
+            while($trans_row=mysqli_fetch_array($sql))
             { 
             $number++;
           ?>
@@ -175,27 +182,49 @@
             <td><strong>#<?php echo str_pad($number, 3, '0', STR_PAD_LEFT)?></strong></td>
             <td>
               <span style="display: inline-block; padding: 6px 14px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.5px;">
-                ORDER-<?php echo str_pad($row['order_id'], 4, '0', STR_PAD_LEFT)?>
+                ORDER-<?php echo str_pad($trans_row['order_id'], 4, '0', STR_PAD_LEFT)?>
+              </span>
+            </td>
+            <td><strong><?php echo htmlspecialchars($trans_row['u_toolname'] ?? 'N/A')?></strong></td>
+            <td>
+              <span style="display: inline-block; padding: 4px 10px; background: var(--primary-color); color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                <?php echo number_format($trans_row['u_item'] ?? 0)?> items
               </span>
             </td>
             <td>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <ion-icon name="cash-outline" style="color: #10b981; font-size: 1.25rem;"></ion-icon>
-                <strong style="color: #10b981; font-size: 1rem;">RWF <?php echo number_format($row['u_totalprice'])?></strong>
+                <strong style="color: #10b981; font-size: 1rem;">RWF <?php echo number_format($trans_row['u_amount'] ?? $trans_row['u_totalprice'])?></strong>
               </div>
+            </td>
+            <td>
+              <?php
+              $status = $trans_row['u_status'] ?? 'Completed';
+              $status_colors = [
+                'Completed' => '#10b981',
+                'Pending' => '#f59e0b',
+                'Failed' => '#ef4444',
+                'Refunded' => '#8b5cf6'
+              ];
+              $color = $status_colors[$status] ?? '#6b7280';
+              ?>
+              <span style="display: inline-block; padding: 4px 10px; background: <?php echo $color; ?>; color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                <?php echo $status; ?>
+              </span>
             </td>
             <td>
               <div style="display: flex; align-items: center; gap: 8px; color: var(--gray-600);">
                 <ion-icon name="calendar-outline" style="font-size: 1rem;"></ion-icon>
-                <?php echo date('M d, Y', strtotime($row['u_date']))?>
+                <?php echo date('M d, Y', strtotime($trans_row['u_date']))?>
               </div>
             </td>
+          </tr>
             <?php
             }
           } else {
             ?>
             <tr>
-              <td colspan="4" style="text-align: center; padding: var(--spacing-xl);">
+              <td colspan="7" style="text-align: center; padding: var(--spacing-xl);">
                 <div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); padding: var(--spacing-xl);">
                   <ion-icon name="receipt-outline" style="font-size: 4rem; color: var(--gray-400);"></ion-icon>
                   <h3 style="color: var(--gray-700); margin: 0;">No Transactions Yet</h3>

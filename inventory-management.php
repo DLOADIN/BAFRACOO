@@ -100,7 +100,9 @@ $current_page = 'enhanced-inventory';
                                 <?php
                                 $tools_sql = mysqli_query($con, "SELECT * FROM tool");
                                 while($tool = mysqli_fetch_array($tools_sql)):
-                                    $available_stock = $inventoryManager->getAvailableStock($tool['id']);
+                                    // Try to get stock from batches first, fall back to tool table
+                                    $batch_stock = $inventoryManager->getAvailableStock($tool['id']);
+                                    $available_stock = $batch_stock > 0 ? $batch_stock : $tool['u_itemsnumber'];
                                     $current_method = $inventoryManager->getInventoryMethod($tool['id']);
                                 ?>
                                 <tr>

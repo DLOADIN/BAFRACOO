@@ -35,20 +35,16 @@
     if($available_stock < $quantity) {
       $error_message = "Insufficient stock! Only " . number_format($available_stock) . " items available.";
     } else {
-      // Insert order
-      $order_query = "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
-                      VALUES ('$user_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', 'Pending')";
+      // Insert order with 'Pending Payment' status - DO NOT deduct stock yet
+      // Stock will only be deducted after successful payment through Flutterwave
+      $order_query = "INSERT INTO `order` (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
+                      VALUES ('$user_id', '$tool_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', 'Pending Payment')";
       
       if(mysqli_query($con, $order_query)) {
         $order_id = mysqli_insert_id($con);
         
-        // Deduct from tool stock (u_itemsnumber)
-        $new_stock = $available_stock - $quantity;
-        mysqli_query($con, "UPDATE tool SET u_itemsnumber = '$new_stock' WHERE id = '$tool_id'");
-        
-        $success_message = "Order placed successfully! Order ID: #" . $order_id;
-        // Redirect to prevent resubmission
-        header("Location: orders.php?success=1");
+        // Redirect to payment page - stock will be deducted after successful payment
+        header("Location: pay.php?o_id=" . $order_id);
         exit();
       } else {
         $error_message = "Error placing order. Please try again.";

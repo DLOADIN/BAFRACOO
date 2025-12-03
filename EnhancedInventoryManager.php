@@ -74,6 +74,7 @@ class EnhancedInventoryManager {
     
     /**
      * Get available stock for a tool across all locations
+     * Falls back to tool table u_itemsnumber if no batches exist
      */
     public function getAvailableStock($tool_id, $location_id = null) {
         if ($location_id) {
@@ -94,7 +95,20 @@ class EnhancedInventoryManager {
         $result = mysqli_stmt_get_result($stmt);
         $row = mysqli_fetch_assoc($result);
         
-        return $row['total_stock'] ?? 0;
+        $batch_stock = $row['total_stock'] ?? 0;
+        
+        // If no batch stock found, fall back to tool table
+        if ($batch_stock == 0) {
+            $tool_query = "SELECT u_itemsnumber FROM tool WHERE id = ?";
+            $tool_stmt = mysqli_prepare($this->connection, $tool_query);
+            mysqli_stmt_bind_param($tool_stmt, "i", $tool_id);
+            mysqli_stmt_execute($tool_stmt);
+            $tool_result = mysqli_stmt_get_result($tool_stmt);
+            $tool_row = mysqli_fetch_assoc($tool_result);
+            return $tool_row['u_itemsnumber'] ?? 0;
+        }
+        
+        return $batch_stock;
     }
     
     // ============== LOCATION MANAGEMENT ==============

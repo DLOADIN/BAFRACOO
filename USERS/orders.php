@@ -228,12 +228,17 @@
                 </td>
                 <td>
                   <?php
-                  $status = $order_row['status'] ?? 'PENDING';
+                  $status = $order_row['status'] ?? 'Pending';
                   $status_colors = [
-                    'PENDING' => '#f59e0b',
+                    'Pending' => '#f59e0b',
+                    'Pending Payment' => '#f97316',
+                    'Paid' => '#10b981',
+                    'Payment Cancelled' => '#ef4444',
+                    'Payment Failed' => '#dc2626',
                     'CONFIRMED' => '#3b82f6', 
                     'SHIPPED' => '#8b5cf6',
                     'DELIVERED' => '#10b981',
+                    'Completed' => '#059669',
                     'CANCELLED' => '#ef4444'
                   ];
                   $color = $status_colors[$status] ?? '#6b7280';
@@ -252,56 +257,36 @@
                 </td>
                 <td>
                   <div style="display: flex; gap: 4px; flex-direction: column;">
-                    <?php if($can_return): ?>
+                    <?php 
+                    // Show Pay button only for unpaid orders
+                    $payment_statuses = ['Pending Payment', 'Payment Cancelled', 'Payment Failed'];
+                    if(in_array($status, $payment_statuses)): 
+                    ?>
+                    <a href="pay.php?o_id=<?php echo $order_row['id']?>" 
+                       style="padding: 6px 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                      <ion-icon name="card-outline"></ion-icon> Pay Now
+                    </a>
+                    <?php elseif($status == 'Paid' || $status == 'Completed'): ?>
+                    <span style="padding: 6px 12px; background: #dcfce7; color: #15803d; border-radius: 4px; font-size: 0.75rem; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                      <ion-icon name="checkmark-circle-outline"></ion-icon> Paid
+                    </span>
+                    <?php endif; ?>
+                    
+                    <?php if($can_return && ($status == 'Paid' || $status == 'Completed')): ?>
                     <button onclick="requestReturn(<?php echo $order_row['id']; ?>, '<?php echo addslashes($order_row['u_toolname']); ?>')" 
                             style="padding: 4px 8px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem; white-space: nowrap;">
                       <ion-icon name="return-up-back-outline"></ion-icon> Return
                     </button>
-                    <?php else: ?>
-                    <span style="color: #6b7280; font-size: 0.75rem;">
-                      <?php echo $days_since_order > 30 ? 'Return period expired' : 'Not returnable'; ?>
-                    </span>
                     <?php endif; ?>
-                    
-                    <a href="pay.php?id=<?php echo $order_row['id']?>" 
-                       style="padding: 4px 8px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem; text-align: center; white-space: nowrap;">
-                      <ion-icon name="card-outline"></ion-icon> Pay
-                    </a>
                   </div>
                 </td>
               </tr>
-                </span>
-              </td>
-              <td>
-                <span style="display: inline-block; padding: 4px 12px; background: var(--gray-100); color: var(--gray-700); border-radius: 12px; font-size: 0.875rem; font-weight: 500;">
-                  <?php echo htmlspecialchars($row['u_type'])?>
-                </span>
-              </td>
-              <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <?php echo htmlspecialchars($row['u_tooldescription'])?>
-              </td>
-              <td>
-                <span style="color: var(--gray-600); font-size: 0.875rem;">RWF <?php echo number_format($row['u_price'])?></span>
-              </td>
-              <td>
-                <strong style="color: var(--primary-color); font-size: 1rem;">RWF <?php echo number_format($row['u_totalprice'])?></strong>
-              </td>
-              <td style="color: var(--gray-600);"><?php echo date('M d, Y', strtotime($row['u_date']))?></td>
-              <td>  
-                <a href="pay.php?o_id=<?php echo $row['id']?>" 
-                  style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);"
-                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.35)';"
-                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.25)';">
-                  <ion-icon name="card-outline"></ion-icon>
-                  Pay Now
-                </a>
-              </td>
               <?php
                 }
               } else {
                 ?>
                 <tr>
-                  <td colspan="10" style="text-align: center; padding: var(--spacing-xl);">
+                  <td colspan="9" style="text-align: center; padding: var(--spacing-xl);">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); padding: var(--spacing-xl);">
                       <ion-icon name="bag-outline" style="font-size: 4rem; color: var(--gray-400);"></ion-icon>
                       <h3 style="color: var(--gray-700); margin: 0;">No Orders Yet</h3>
