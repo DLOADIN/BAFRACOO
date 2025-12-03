@@ -197,47 +197,57 @@
           </div>
 
           <!-- Edit Profile Form -->
-          <div class="dashboard-card form-card">
+          <div class="dashboard-card">
             <div class="card-header">
-              <h3>
-                <ion-icon name="create-outline"></ion-icon>
+              <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">
+                <ion-icon name="create-outline" style="margin-right: var(--spacing-sm);"></ion-icon>
                 Edit Profile Information
               </h3>
             </div>
             
-            <form method="post" class="form-modern">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="u_name">Full Name</label>
-                  <input type="text" id="u_name" name="u_name" value="<?php echo htmlspecialchars($row['u_name'] ?? ''); ?>" required>
+            <form method="post" style="padding: var(--spacing-lg);">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+                <div>
+                  <label style="display: block; font-weight: 500; color: var(--gray-700); margin-bottom: var(--spacing-sm);">Full Name</label>
+                  <input type="text" name="u_name" value="<?php echo htmlspecialchars($row['u_name'] ?? ''); ?>" required 
+                         style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.875rem; transition: all var(--transition-fast); background: var(--white);">
                 </div>
                 
-                <div class="form-group">
-                  <label for="u_email">Email Address</label>
-                  <input type="email" id="u_email" name="u_email" value="<?php echo htmlspecialchars($row['u_email'] ?? ''); ?>" required>
+                <div>
+                  <label style="display: block; font-weight: 500; color: var(--gray-700); margin-bottom: var(--spacing-sm);">Email Address</label>
+                  <input type="email" name="u_email" value="<?php echo htmlspecialchars($row['u_email'] ?? ''); ?>" required 
+                         style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.875rem; transition: all var(--transition-fast); background: var(--white);">
                 </div>
               </div>
               
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="u_phonenumber">Phone Number</label>
-                  <input type="text" id="u_phonenumber" name="u_phonenumber" value="<?php echo htmlspecialchars($row['u_phonenumber'] ?? ''); ?>" required maxlength="15">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
+                <div>
+                  <label style="display: block; font-weight: 500; color: var(--gray-700); margin-bottom: var(--spacing-sm);">Phone Number</label>
+                  <input type="text" name="u_phonenumber" value="<?php echo htmlspecialchars($row['u_phonenumber'] ?? ''); ?>" required maxlength="15"
+                         style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.875rem; transition: all var(--transition-fast); background: var(--white);">
                 </div>
                 
-                <div class="form-group">
-                  <label for="u_address">Address</label>
-                  <input type="text" id="u_address" name="u_address" value="<?php echo htmlspecialchars($row['u_address'] ?? ''); ?>" required>
+                <div>
+                  <label style="display: block; font-weight: 500; color: var(--gray-700); margin-bottom: var(--spacing-sm);">Address</label>
+                  <input type="text" name="u_address" value="<?php echo htmlspecialchars($row['u_address'] ?? ''); ?>" required 
+                         style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.875rem; transition: all var(--transition-fast); background: var(--white);">
                 </div>
               </div>
               
-              <div class="form-group">
-                <label for="u_password">Password</label>
-                <input type="password" id="u_password" name="u_password" placeholder="Leave blank to keep current password">
-                <small class="form-text">Leave blank if you don't want to change your password</small>
+              <div style="margin-bottom: var(--spacing-xl);">
+                <label style="display: block; font-weight: 500; color: var(--gray-700); margin-bottom: var(--spacing-sm);">Password</label>
+                <input type="password" name="u_password" placeholder="Leave blank to keep current password"
+                       style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.875rem; transition: all var(--transition-fast); background: var(--white);">
+                <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: var(--spacing-xs); display: block;">
+                  Leave unchanged if you don't want to update your password
+                </small>
               </div>
               
-              <div class="form-actions">
-                <button type="submit" name="submit" class="btn btn-primary btn-lg">
+              <div style="text-align: right;">
+                <button type="submit" name="submit" 
+                        style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border: none; padding: var(--spacing-md) var(--spacing-xl); border-radius: var(--radius-md); font-weight: 500; cursor: pointer; transition: all var(--transition-base); display: inline-flex; align-items: center; gap: var(--spacing-sm);"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='var(--shadow-lg)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
                   <ion-icon name="save-outline"></ion-icon>
                   <span>Save Changes</span>
                 </button>
@@ -331,6 +341,12 @@
     .alert-error {
       background: var(--error-color);
       color: white;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary-color) !important;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
     }
 
     @media (max-width: 768px) {

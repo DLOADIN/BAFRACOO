@@ -293,7 +293,7 @@
                       <p style="color: var(--gray-500); margin: 0;">You haven't placed any orders yet. Start shopping now!</p>
                       <a href="stock.php" style="margin-top: var(--spacing-sm); padding: 10px 20px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
                         <ion-icon name="cart-outline"></ion-icon>
-                        Inter Purchases
+                        Made Purchases
                       </a>
                     </div>
                   </td>
