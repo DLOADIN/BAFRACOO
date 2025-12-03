@@ -65,7 +65,7 @@
             <li class="nav-item">
               <a href="stock.php" class="nav-link">
                 <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Browse Tools</span>
+                <span class="nav-text">Inter Purchases</span>
               </a>
             </li>
             <li class="nav-item">

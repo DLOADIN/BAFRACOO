@@ -7,7 +7,14 @@
   }
   else{
   header('location:loginadmin.php');
+  exit();
   } 
+  
+  // Create uploads directory if it doesn't exist
+  $upload_dir = 'uploads/tools/';
+  if (!file_exists($upload_dir)) {
+      mkdir($upload_dir, 0777, true);
+  }
   
   // Check if editing existing tool
   $is_edit = false;
@@ -32,10 +39,34 @@
     $tooldescription = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
     $price = mysqli_real_escape_string($con, $_POST['u_price']);
     
+    // Handle image upload
+    $image_url = null;
+    if(isset($_FILES['tool_image']) && $_FILES['tool_image']['error'] == 0){
+      $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      $max_size = 5 * 1024 * 1024; // 5MB
+      
+      if(in_array($_FILES['tool_image']['type'], $allowed_types) && $_FILES['tool_image']['size'] <= $max_size){
+        $file_extension = pathinfo($_FILES['tool_image']['name'], PATHINFO_EXTENSION);
+        $new_filename = 'tool_' . time() . '_' . uniqid() . '.' . $file_extension;
+        $target_path = $upload_dir . $new_filename;
+        
+        if(move_uploaded_file($_FILES['tool_image']['tmp_name'], $target_path)){
+          $image_url = $target_path;
+        }
+      }
+    }
+    
     if($is_edit && isset($_POST['tool_id'])){
       // Update existing tool
       $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
-      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_price='$price' WHERE id='$tool_id'");
+      
+      // Keep existing image if no new one uploaded
+      if($image_url === null && isset($_POST['existing_image']) && !empty($_POST['existing_image'])){
+        $image_url = mysqli_real_escape_string($con, $_POST['existing_image']);
+      }
+      
+      $image_sql = $image_url ? ", image_url='$image_url'" : "";
+      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_price='$price'$image_sql WHERE id='$tool_id'");
       
       if($sql){
         header('Location: stock.php');
@@ -46,7 +77,8 @@
     } else {
       // Insert new tool
       $date = date('Y-m-d');
-      $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price')");
+      $image_url_escaped = $image_url ? "'$image_url'" : "NULL";
+      $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, image_url) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', $image_url_escaped)");
       
       if($sql){
         header('Location: stock.php');
@@ -56,6 +88,8 @@
       }
     }
   }
+  
+  $current_page = 'addtool';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -67,110 +101,56 @@
   <link rel="stylesheet" href="./CSS/modern-forms.css">
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>BAFRACOO - Add Tool</title>
-  <!-- <!-- <script src="./JS/file.js"></script> --> -->
+  <title>BAFRACOO - <?php echo $is_edit ? 'Edit Tool' : 'Add Tool'; ?></title>
+  <style>
+    .image-upload-container {
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-xl);
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: var(--gray-50);
+    }
+    .image-upload-container:hover {
+      border-color: var(--primary-color);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    .image-upload-container.has-image {
+      border-style: solid;
+      border-color: var(--success-color);
+    }
+    .image-preview {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: var(--radius-md);
+      margin-top: var(--spacing-md);
+      display: none;
+    }
+    .image-preview.show {
+      display: block;
+      margin: var(--spacing-md) auto 0;
+    }
+    .upload-icon {
+      font-size: 3rem;
+      color: var(--gray-400);
+      margin-bottom: var(--spacing-md);
+    }
+    .upload-text {
+      color: var(--gray-600);
+      font-size: 0.875rem;
+    }
+    .upload-hint {
+      color: var(--gray-500);
+      font-size: 0.75rem;
+      margin-top: var(--spacing-sm);
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-container">
     <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <img src="./images/Captured.JPG" alt="BAFRACOO Logo">
-        <span class="logo-text">BAFRACOO</span>
-      </div>
-      
-      <nav class="sidebar-nav">
-        <div class="nav-section">
-          <h3 class="nav-section-title">Main Menu</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="admindashboard.php" class="nav-link">
-                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Dashboard</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="addtool.php" class="nav-link">
-                <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Add Order</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="addorder.php" class="nav-link active">
-                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Add Tool</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="orders.php" class="nav-link">
-                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Orders</span>
-                <?php 
-                $pending_orders = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
-                $pending_count = ($pending_orders && $pending_orders !== false) ? mysqli_num_rows($pending_orders) : 0;
-                if($pending_count > 0): ?>
-                  <span class="nav-badge"><?php echo $pending_count; ?></span>
-                <?php endif; ?>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="stock.php" class="nav-link active">
-                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Inventory</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Management</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="transactions.php" class="nav-link">
-                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Transactions</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="report.php" class="nav-link">
-                <ion-icon name="document-text-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Reports</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="adminprofile.php" class="nav-link">
-                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Profile</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Website</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="website.php" class="nav-link">
-                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Visit Website</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </nav>
-      
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="user-avatar">
-            <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
-          </div>
-          <div class="user-info">
-            <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></div>
-            <div class="user-role">Administrator</div>
-          </div>
-        </div>
-      </div>
-    </aside>
+    <?php include 'includes/admin_sidebar.php'; ?>
 
     <!-- Sidebar Overlay for Mobile -->
     <div class="sidebar-overlay"></div>
@@ -218,10 +198,29 @@
           </div>
 
           <div style="padding: var(--spacing-xl);">
-            <form method="POST" action="" id="addToolForm">
+            <form method="POST" action="" id="addToolForm" enctype="multipart/form-data">
               <?php if($is_edit): ?>
                 <input type="hidden" name="tool_id" value="<?php echo $tool_data['id']; ?>">
+                <input type="hidden" name="existing_image" value="<?php echo htmlspecialchars($tool_data['image_url'] ?? ''); ?>">
               <?php endif; ?>
+
+              <!-- Image Upload Section -->
+              <div class="form-group" style="margin-bottom: var(--spacing-xl);">
+                <label class="form-label">
+                  <ion-icon name="image-outline" style="margin-right: 4px;"></ion-icon>
+                  Tool Image
+                </label>
+                <div class="image-upload-container <?php echo ($is_edit && !empty($tool_data['image_url'])) ? 'has-image' : ''; ?>" onclick="document.getElementById('tool_image').click();">
+                  <ion-icon name="cloud-upload-outline" class="upload-icon"></ion-icon>
+                  <div class="upload-text">Click to upload an image</div>
+                  <div class="upload-hint">Supported formats: JPG, PNG, GIF, WebP (Max 5MB)</div>
+                  <img id="imagePreview" class="image-preview <?php echo ($is_edit && !empty($tool_data['image_url'])) ? 'show' : ''; ?>" 
+                       src="<?php echo ($is_edit && !empty($tool_data['image_url'])) ? htmlspecialchars($tool_data['image_url']) : ''; ?>" 
+                       alt="Preview">
+                </div>
+                <input type="file" id="tool_image" name="tool_image" accept="image/*" style="display: none;" onchange="previewImage(this);">
+              </div>
+
               <!-- Tool Name and Type Row -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
                 <div class="form-group">
@@ -376,6 +375,23 @@
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   
   <script>
+    function previewImage(input) {
+      const preview = document.getElementById('imagePreview');
+      const container = input.closest('.form-group').querySelector('.image-upload-container');
+      
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+          preview.src = e.target.result;
+          preview.classList.add('show');
+          container.classList.add('has-image');
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
       if (typeof window.Dashboard !== 'undefined') {

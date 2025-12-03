@@ -20,39 +20,36 @@
     $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
     $tool_name = mysqli_real_escape_string($con, $_POST['u_toolname']);
     $quantity = (int)$_POST['u_itemsnumber'];
-    $location_id = (int)$_POST['location_id']; // New location selection
+    $location_id = isset($_POST['location_id']) ? (int)$_POST['location_id'] : 1; // Default location
     $type = mysqli_real_escape_string($con, $_POST['u_type']);
     $description = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
     $price = (float)$_POST['u_price'];
     $total_price = $price * $quantity;
     $order_date = date('Y-m-d');
     
-    // Check available stock using enhanced inventory manager with location
-    $available_stock = $inventoryManager->getAvailableStock($tool_id, $location_id);
+    // Check available stock from tool table (u_itemsnumber)
+    $stock_check = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
+    $stock_row = mysqli_fetch_array($stock_check);
+    $available_stock = (int)$stock_row['u_itemsnumber'];
     
     if($available_stock < $quantity) {
-      $error_message = "Insufficient stock! Only $available_stock items available at selected location.";
+      $error_message = "Insufficient stock! Only " . number_format($available_stock) . " items available.";
     } else {
-      // Insert order first with location information
-      $order_query = "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, location_id, status) 
-                      VALUES ('$user_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', '$location_id', 'PENDING')";
+      // Insert order
+      $order_query = "INSERT INTO `order` (user_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
+                      VALUES ('$user_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', 'Pending')";
       
       if(mysqli_query($con, $order_query)) {
         $order_id = mysqli_insert_id($con);
         
-        // Process inventory using enhanced FIFO/LIFO with location
-        $result = $inventoryManager->processOrder($tool_id, $quantity, $location_id, $order_id, $user_id);
+        // Deduct from tool stock (u_itemsnumber)
+        $new_stock = $available_stock - $quantity;
+        mysqli_query($con, "UPDATE tool SET u_itemsnumber = '$new_stock' WHERE id = '$tool_id'");
         
-        if($result['success']) {
-          $success_message = "Order placed successfully! Method used: " . $result['method_used'] . ". Remaining stock: " . $result['remaining_stock'] . " at " . $result['location_name'];
-          // Redirect to prevent resubmission
-          header("Location: orders.php?success=1");
-          exit();
-        } else {
-          $error_message = $result['message'];
-          // Delete the order since inventory couldn't be processed
-          mysqli_query($con, "DELETE FROM `order` WHERE id = '$order_id'");
-        }
+        $success_message = "Order placed successfully! Order ID: #" . $order_id;
+        // Redirect to prevent resubmission
+        header("Location: orders.php?success=1");
+        exit();
       } else {
         $error_message = "Error placing order. Please try again.";
       }
@@ -70,7 +67,7 @@
   <link rel="stylesheet" href="../CSS/modern-forms.css">
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>BAFRACOO - Browse Tools</title>
+  <title>BAFRACOO - Inter Purchases</title>
     <!-- <script src="../JS/file.js"></script> -->
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -97,7 +94,7 @@
             <li class="nav-item">
               <a href="stock.php" class="nav-link active">
                 <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Browse Tools</span>
+                <span class="nav-text">Inter Purchases</span>
               </a>
             </li>
             <li class="nav-item">
@@ -166,7 +163,7 @@
           <button class="sidebar-toggle">
             <ion-icon name="chevron-back-outline"></ion-icon>
           </button>
-          <h1 class="page-title">Browse Tools</h1>
+          <h1 class="page-title">Inter Purchases</h1>
         </div>
         <div class="header-right">
           <a href="logout.php" class="logout-btn">
@@ -204,24 +201,16 @@
             if($row_count){
               while($tool_row=mysqli_fetch_array($sql))
               { 
-                // Get total available stock across all locations
-                $total_stock = 0;
-                $locations = $inventoryManager->getAllLocations();
-                $location_stocks = [];
+                // Use u_itemsnumber from tool table as the primary stock quantity
+                $total_stock = (int)$tool_row['u_itemsnumber'];
                 
-                while($location = mysqli_fetch_array($locations)) {
-                  $location_stock = $inventoryManager->getAvailableStock($tool_row['id'], $location['id']);
-                  $location_stocks[$location['id']] = [
-                    'name' => $location['location_name'],
-                    'stock' => $location_stock
-                  ];
-                  $total_stock += $location_stock;
+                // Get inventory method (default to FIFO if not set)
+                $inventory_method = 'FIFO';
+                $method_query = mysqli_query($con, "SELECT method FROM inventory_method WHERE tool_id = " . $tool_row['id']);
+                if($method_query && mysqli_num_rows($method_query) > 0) {
+                    $method_row = mysqli_fetch_array($method_query);
+                    $inventory_method = $method_row['method'];
                 }
-                
-                // Reset location result for reuse
-                mysqli_data_seek($locations, 0);
-                
-                $inventory_method = $inventoryManager->getCurrentInventoryMethod();
             ?>
             <tr>
               <td><?php echo $tool_row['id']?></td>
@@ -237,11 +226,11 @@
               <td>
                 <div style="display: flex; align-items: center; gap: 6px; flex-direction: column;">
                   <span style="display: inline-block; padding: 4px 10px; background: <?php echo $total_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
-                    <?php echo $total_stock; ?> units total
+                    <?php echo number_format($total_stock); ?> units
                   </span>
-                  <?php if($total_stock > 0): ?>
-                  <small style="color: #6b7280; font-size: 0.75rem;">
-                    Available at <?php echo count(array_filter($location_stocks, function($loc) { return $loc['stock'] > 0; })); ?> locations
+                  <?php if($total_stock > 0 && $total_stock <= 10): ?>
+                  <small style="color: #f59e0b; font-size: 0.75rem; font-weight: 600;">
+                    Low Stock
                   </small>
                   <?php endif; ?>
                 </div>
@@ -301,7 +290,7 @@
           <!-- Breadcrumb -->
           <div style="margin-bottom: var(--spacing-xl); display: flex; align-items: center; gap: var(--spacing-sm); color: var(--gray-600); font-size: 0.875rem;">
             <a href="stock.php" style="color: var(--primary-color); text-decoration: none;">
-              <ion-icon name="cube-outline"></ion-icon> Browse Tools
+              <ion-icon name="cube-outline"></ion-icon> Inter Purchases
             </a>
             <span>/</span>
             <span style="color: var(--gray-900); font-weight: 500;">Place Order</span>
@@ -341,8 +330,16 @@
               
               <!-- Stock Information -->
               <?php 
-              $current_stock = $inventoryManager->getAvailableStock($tool_id);
-              $current_method = $inventoryManager->getInventoryMethod($tool_id);
+              // Use u_itemsnumber from tool table as the primary stock
+              $current_stock = (int)$tool_row['u_itemsnumber'];
+              
+              // Get inventory method
+              $current_method = 'FIFO';
+              $method_query = mysqli_query($con, "SELECT method FROM inventory_method WHERE tool_id = " . $tool_id);
+              if($method_query && mysqli_num_rows($method_query) > 0) {
+                  $method_row = mysqli_fetch_array($method_query);
+                  $current_method = $method_row['method'];
+              }
               ?>
               <div style="padding: var(--spacing-md); margin-bottom: var(--spacing-lg); background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
                 <h4 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-900);">Stock Information</h4>
@@ -350,7 +347,7 @@
                   <div>
                     <strong>Available Stock:</strong> 
                     <span style="color: <?php echo $current_stock > 0 ? '#16a34a' : '#dc2626'; ?>;">
-                      <?php echo $current_stock; ?> units
+                      <?php echo number_format($current_stock); ?> units
                     </span>
                   </div>
                   <div>
@@ -366,40 +363,10 @@
                 <input type="hidden" name="user_id" value="<?php echo $user_row['id']; ?>">
                 <input type="hidden" name="tool_id" value="<?php echo $tool_id; ?>">
                 <input type="hidden" name="u_price" value="<?php echo $tool_row['u_price']; ?>" id="unit_price">
-                
-                <!-- Location Selection -->
-                <div class="form-group" style="margin-bottom: var(--spacing-lg);">
-                  <label for="location_id" class="form-label">
-                    <ion-icon name="location-outline" style="margin-right: 4px; color: #dc2626;"></ion-icon>
-                    Select Pickup Location *
-                  </label>
-                  <select 
-                    id="location_id" 
-                    name="location_id" 
-                    required
-                    onchange="updateLocationStock()"
-                    style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;">
-                    <option value="">Choose a location</option>
-                    <?php
-                    $locations_result = $inventoryManager->getAllLocations();
-                    while($location = mysqli_fetch_array($locations_result)):
-                      $location_stock = $inventoryManager->getAvailableStock($tool_id, $location['id']);
-                    ?>
-                    <option value="<?php echo $location['id']; ?>" <?php echo $location_stock == 0 ? 'disabled' : ''; ?>>
-                      <?php echo htmlspecialchars($location['location_name']); ?> 
-                      (<?php echo $location_stock; ?> available)
-                      <?php echo $location_stock == 0 ? ' - Out of Stock' : ''; ?>
-                    </option>
-                    <?php endwhile; ?>
-                  </select>
-                  <div id="location-stock-info" style="margin-top: 0.5rem; padding: 0.5rem; background: #f3f4f6; border-radius: 4px; font-size: 0.875rem; color: #6b7280; display: none;">
-                    <ion-icon name="information-circle-outline"></ion-icon>
-                    <span id="stock-message">Select a location to see available stock</span>
-                  </div>
-                </div>
+                <input type="hidden" name="location_id" value="1">
                 
                 <!-- Tool Name and Quantity Row -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">;
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-bottom: var(--spacing-lg);">
                   <!-- Tool Name -->
                   <div class="form-group">
                     <label for="u_toolname" class="form-label">

@@ -165,6 +165,7 @@ function testStockAlerts($inventoryManager) {
         ];
     }
 }
+$current_page = 'system-test';
 ?>
 
 <!DOCTYPE html>
@@ -272,32 +273,7 @@ function testStockAlerts($inventoryManager) {
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <img src="images/Captured.JPG" alt="BAFRACOO Logo">
-                <span class="logo-text">BAFRACOO</span>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <h3 class="nav-section-title">Main Menu</h3>
-                    <ul class="nav-menu">
-                        <li class="nav-item">
-                            <a href="admindashboard.php" class="nav-link">
-                                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="system-integration-test.php" class="nav-link active">
-                                <ion-icon name="checkmark-done-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">System Test</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-        </aside>
+        <?php include 'includes/admin_sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">

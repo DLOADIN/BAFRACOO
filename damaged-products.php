@@ -8,27 +8,61 @@ if(!empty($_SESSION["id"])){
     $row = mysqli_fetch_array($check);
 } else {
     header('location:loginadmin.php');
+    exit();
 }
 
 $inventoryManager = new EnhancedInventoryManager($con);
+$current_page = 'damaged-products';
 
-// Handle damage reporting
+// Handle damage reporting - removes items from stock
 if(isset($_POST['report_damage'])) {
-    $batch_id = (int)$_POST['batch_id'];
+    $tool_id = (int)$_POST['tool_id'];
     $quantity_damaged = (int)$_POST['quantity_damaged'];
-    $damage_reason = $_POST['damage_reason'];
-    $location_id = (int)$_POST['location_id'];
-    $damage_description = $_POST['damage_description'];
+    $damage_reason = mysqli_real_escape_string($con, $_POST['damage_reason']);
+    $damage_description = mysqli_real_escape_string($con, $_POST['damage_description']);
     
-    $result = $inventoryManager->reportDamage($batch_id, $quantity_damaged, $damage_reason, $location_id, $id, $damage_description);
-    $message = $result['message'];
-    $message_type = $result['success'] ? 'success' : 'error';
+    // Get tool details
+    $tool_query = mysqli_query($con, "SELECT * FROM tool WHERE id = $tool_id");
+    if($tool_query && mysqli_num_rows($tool_query) > 0) {
+        $tool_data = mysqli_fetch_assoc($tool_query);
+        
+        // Check if enough stock
+        if($tool_data['u_itemsnumber'] >= $quantity_damaged) {
+            // Calculate loss value
+            $loss_value = $quantity_damaged * $tool_data['u_price'];
+            
+            // Insert into damaged_goods table
+            $stmt = mysqli_prepare($con, "INSERT INTO damaged_goods (tool_id, tool_name, quantity_removed, damage_reason, reported_by, notes, original_value) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, "isisssd", $tool_id, $tool_data['u_toolname'], $quantity_damaged, $damage_reason, $id, $damage_description, $loss_value);
+            
+            if(mysqli_stmt_execute($stmt)) {
+                // Remove items from stock
+                $new_quantity = $tool_data['u_itemsnumber'] - $quantity_damaged;
+                mysqli_query($con, "UPDATE tool SET u_itemsnumber = $new_quantity WHERE id = $tool_id");
+                
+                $message = "Damage reported successfully. $quantity_damaged items removed from stock.";
+                $message_type = "success";
+            } else {
+                $message = "Error recording damage report";
+                $message_type = "error";
+            }
+        } else {
+            $message = "Error: Not enough stock. Available: " . $tool_data['u_itemsnumber'];
+            $message_type = "error";
+        }
+    } else {
+        $message = "Error: Tool not found";
+        $message_type = "error";
+    }
 }
 
-// Get filter parameters
-$filter_location = $_GET['location'] ?? '';
-$filter_date_from = $_GET['date_from'] ?? '';
-$filter_date_to = $_GET['date_to'] ?? '';
+// Handle deleting damage record
+if(isset($_POST['delete_damage'])) {
+    $damage_id = (int)$_POST['damage_id'];
+    mysqli_query($con, "DELETE FROM damaged_goods WHERE id = $damage_id");
+    $message = "Damage record deleted";
+    $message_type = "success";
+}
 ?>
 
 <!DOCTYPE html>
@@ -39,38 +73,24 @@ $filter_date_to = $_GET['date_to'] ?? '';
     <link rel="stylesheet" href="CSS/modern-dashboard.css">
     <link rel="stylesheet" href="CSS/modern-tables.css">
     <link rel="stylesheet" href="CSS/modern-forms.css">
-    <title>BAFRACOO - Damaged Products Management</title>
+    <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
+    <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
+    <title>BAFRACOO - Damage Control</title>
     <style>
         .damage-card {
             background: linear-gradient(135deg, #dc2626, #ef4444);
             color: white;
             padding: 1.5rem;
             border-radius: 12px;
-            margin-bottom: 2rem;
         }
         .damage-reason {
             padding: 4px 8px;
             border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            background: #fef3c7;
+            color: #92400e;
         }
-        .reason-BROKEN_SHIPPING { background: #ef4444; color: white; }
-        .reason-MANUFACTURING_DEFECT { background: #f97316; color: white; }
-        .reason-CUSTOMER_RETURN_DAMAGED { background: #eab308; color: white; }
-        .reason-WAREHOUSE_ACCIDENT { background: #8b5cf6; color: white; }
-        .reason-EXPIRED { background: #6b7280; color: white; }
-        .reason-WATER_DAMAGE { background: #06b6d4; color: white; }
-        .reason-THEFT_VANDALISM { background: #dc2626; color: white; }
-        .reason-QUALITY_CONTROL_FAIL { background: #ec4899; color: white; }
-        
-        .loss-amount {
-            color: #dc2626;
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-        
         .modal {
             display: none;
             position: fixed;
@@ -81,17 +101,17 @@ $filter_date_to = $_GET['date_to'] ?? '';
             height: 100%;
             background-color: rgba(0,0,0,0.5);
         }
-        
         .modal-content {
             background-color: white;
             margin: 5% auto;
             padding: 2rem;
             border-radius: 12px;
-            width: 80%;
+            width: 90%;
             max-width: 600px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            overflow-y: auto;
         }
-        
         .close {
             color: #aaa;
             float: right;
@@ -99,153 +119,73 @@ $filter_date_to = $_GET['date_to'] ?? '';
             font-weight: bold;
             cursor: pointer;
         }
-        
-        .close:hover {
-            color: #000;
+        .close:hover { color: #000; }
+        .loss-amount {
+            color: #dc2626;
+            font-weight: 700;
+        }
+        .stock-info {
+            background: #f3f4f6;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-danger { background: #fee2e2; color: #dc2626; }
+        .btn-danger:hover { background: #fecaca; }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .summary-card {
+            padding: 1.5rem;
+            border-radius: 12px;
+            color: white;
+        }
+        .summary-card h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 700;
         }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <img src="images/Captured.JPG" alt="BAFRACOO Logo">
-                <span class="logo-text">BAFRACOO</span>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <h3 class="nav-section-title">Main Menu</h3>
-                    <ul class="nav-menu">
-                        <li class="nav-item">
-                            <a href="admindashboard.php" class="nav-link">
-                                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="addtool.php" class="nav-link">
-                                <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Add Order</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="addorder.php" class="nav-link">
-                                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Add Tool</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="orders.php" class="nav-link">
-                                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Orders</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="stock.php" class="nav-link">
-                                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Inventory</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="inventory-management.php" class="nav-link">
-                                <ion-icon name="library-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Enhanced Inventory</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                
-                <div class="nav-section">
-                    <h3 class="nav-section-title">Enhanced Features</h3>
-                    <ul class="nav-menu">
-                        <li class="nav-item">
-                            <a href="damaged-products.php" class="nav-link active">
-                                <ion-icon name="warning-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Damage Control</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="returns-management.php" class="nav-link">
-                                <ion-icon name="return-up-back-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Returns</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="stock-alerts.php" class="nav-link">
-                                <ion-icon name="notifications-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Stock Alerts</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="system-test.php" class="nav-link">
-                                <ion-icon name="flask-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">System Test</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                
-                <div class="nav-section">
-                    <h3 class="nav-section-title">Management</h3>
-                    <ul class="nav-menu">
-                        <li class="nav-item">
-                            <a href="transactions.php" class="nav-link">
-                                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Transactions</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="report.php" class="nav-link">
-                                <ion-icon name="document-text-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Reports</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="adminprofile.php" class="nav-link">
-                                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Profile</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                
-                <div class="nav-section">
-                    <h3 class="nav-section-title">Website</h3>
-                    <ul class="nav-menu">
-                        <li class="nav-item">
-                            <a href="website.php" class="nav-link">
-                                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
-                                <span class="nav-text">Visit Website</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <div class="sidebar-user">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
-                    </div>
-                    <div class="user-info">
-                        <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></div>
-                        <div class="user-role">Administrator</div>
-                    </div>
-                </div>
-            </div>
-        </aside>
+        <?php include 'includes/admin_sidebar.php'; ?>
+
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay"></div>
 
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
                 <div class="header-left">
-                    <h1 class="page-title">🚨 Damaged Products Management</h1>
+                    <button class="mobile-menu-btn">
+                        <ion-icon name="menu-outline"></ion-icon>
+                    </button>
+                    <h1 class="page-title">⚠️ Damage Control</h1>
                 </div>
                 <div class="header-right">
-                    <button onclick="openDamageModal()" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 1rem;">
-                        <ion-icon name="warning-outline"></ion-icon> Report Damage
+                    <button onclick="openDamageModal()" class="btn btn-primary" style="margin-right: 1rem; padding: 8px 16px; border-radius: 8px; background: #dc2626; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        <ion-icon name="alert-circle-outline"></ion-icon> Report Damage
                     </button>
                     <a href="logout.php" class="logout-btn">
                         <ion-icon name="log-out-outline"></ion-icon>
@@ -253,129 +193,131 @@ $filter_date_to = $_GET['date_to'] ?? '';
                     </a>
                 </div>
             </header>
-            
-            <div class="content-wrapper">
+
+            <div class="content-area">
                 <?php if(isset($message)): ?>
-                <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; <?php echo $message_type === 'success' ? 'background: #dcfce7; border: 1px solid #16a34a; color: #15803d;' : 'background: #fef2f2; border: 1px solid #ef4444; color: #dc2626;'; ?>">
+                <div class="alert" style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: <?php echo $message_type == 'success' ? '#d1fae5' : '#fee2e2'; ?>; color: <?php echo $message_type == 'success' ? '#065f46' : '#991b1b'; ?>;">
+                    <ion-icon name="<?php echo $message_type == 'success' ? 'checkmark-circle' : 'alert-circle'; ?>-outline" style="margin-right: 8px;"></ion-icon>
                     <?php echo $message; ?>
                 </div>
                 <?php endif; ?>
 
-                <!-- Summary Card -->
-                <div class="damage-card">
-                    <h2 style="margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem;">
-                        <ion-icon name="alert-triangle-outline" style="font-size: 2rem;"></ion-icon>
-                        Damage Overview
-                    </h2>
-                    
-                    <?php
-                    $summary_query = "SELECT 
-                                        COUNT(*) as total_incidents,
-                                        SUM(quantity_damaged) as total_damaged_items,
-                                        SUM(estimated_loss) as total_loss,
-                                        COUNT(DISTINCT location_id) as affected_locations
-                                      FROM damaged_products 
-                                      WHERE damage_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-                    $summary = mysqli_fetch_assoc(mysqli_query($con, $summary_query));
-                    ?>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div>
-                            <h3 style="margin: 0; font-size: 2rem;"><?php echo $summary['total_incidents'] ?? 0; ?></h3>
-                            <p style="margin: 0; opacity: 0.9;">Incidents (Last 30 Days)</p>
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card" style="background: linear-gradient(135deg, #dc2626, #ef4444);">
+                        <h4>Total Damaged Items</h4>
+                        <div class="value">
+                            <?php
+                            $total_damaged = mysqli_query($con, "SELECT COALESCE(SUM(quantity_removed), 0) as total FROM damaged_goods");
+                            echo mysqli_fetch_assoc($total_damaged)['total'];
+                            ?>
                         </div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 2rem;"><?php echo number_format($summary['total_damaged_items'] ?? 0); ?></h3>
-                            <p style="margin: 0; opacity: 0.9;">Items Damaged</p>
+                    </div>
+                    <div class="summary-card" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
+                        <h4>Total Loss Value</h4>
+                        <div class="value">
+                            <?php
+                            $total_loss = mysqli_query($con, "SELECT COALESCE(SUM(original_value), 0) as total FROM damaged_goods");
+                            echo 'RWF ' . number_format(mysqli_fetch_assoc($total_loss)['total'], 0);
+                            ?>
                         </div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 2rem;">RWF <?php echo number_format($summary['total_loss'] ?? 0, 0); ?></h3>
-                            <p style="margin: 0; opacity: 0.9;">Estimated Loss</p>
+                    </div>
+                    <div class="summary-card" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                        <h4>Damage Reports</h4>
+                        <div class="value">
+                            <?php
+                            $reports_count = mysqli_query($con, "SELECT COUNT(*) as count FROM damaged_goods");
+                            echo mysqli_fetch_assoc($reports_count)['count'];
+                            ?>
                         </div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 2rem;"><?php echo $summary['affected_locations'] ?? 0; ?></h3>
-                            <p style="margin: 0; opacity: 0.9;">Locations Affected</p>
+                    </div>
+                    <div class="summary-card" style="background: linear-gradient(135deg, #10b981, #34d399);">
+                        <h4>This Month</h4>
+                        <div class="value">
+                            <?php
+                            $this_month = mysqli_query($con, "SELECT COALESCE(SUM(quantity_removed), 0) as total FROM damaged_goods WHERE MONTH(damage_date) = MONTH(CURRENT_DATE()) AND YEAR(damage_date) = YEAR(CURRENT_DATE())");
+                            echo mysqli_fetch_assoc($this_month)['total'];
+                            ?>
                         </div>
                     </div>
                 </div>
 
-                <!-- Filters -->
-                <div class="dashboard-card" style="margin-bottom: 2rem;">
-                    <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+                <!-- Info Banner -->
+                <div class="dashboard-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #f59e0b; margin-bottom: 2rem;">
+                    <div style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <ion-icon name="information-circle" style="font-size: 2rem; color: #92400e;"></ion-icon>
                         <div>
-                            <label>Location:</label>
-                            <select name="location" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                                <option value="">All Locations</option>
-                                <?php
-                                $locations = $inventoryManager->getAllLocations();
-                                while($location = mysqli_fetch_array($locations)):
-                                ?>
-                                <option value="<?php echo $location['id']; ?>" <?php echo $filter_location == $location['id'] ? 'selected' : ''; ?>>
-                                    <?php echo $location['location_name']; ?>
-                                </option>
-                                <?php endwhile; ?>
-                            </select>
+                            <h4 style="margin: 0; color: #92400e;">How Damage Control Works</h4>
+                            <p style="margin: 0.5rem 0 0 0; color: #78350f; font-size: 0.875rem;">
+                                When you report damage, items are immediately removed from stock and recorded here. 
+                                These items can then be processed in <a href="returned-stock.php" style="color: #dc2626; font-weight: 600;">Returned Stock</a> to be written off permanently.
+                            </p>
                         </div>
-                        <div>
-                            <label>From Date:</label>
-                            <input type="date" name="date_from" value="<?php echo $filter_date_from; ?>" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label>To Date:</label>
-                            <input type="date" name="date_to" value="<?php echo $filter_date_to; ?>" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <button type="submit" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                <ion-icon name="search-outline"></ion-icon> Filter
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
 
-                <!-- Damaged Products List -->
+                <!-- Damaged Goods Table -->
                 <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>Damaged Products Report</h3>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e5e7eb;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">📋 Damage Records</h3>
+                            <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">All reported damaged goods and stock removals</p>
+                        </div>
+                        <a href="returned-stock.php" style="display: flex; align-items: center; gap: 6px; color: #3b82f6; text-decoration: none; font-weight: 500;">
+                            <ion-icon name="arrow-forward-outline"></ion-icon> Process in Returned Stock
+                        </a>
                     </div>
-                    
-                    <div class="table-container">
-                        <table class="modern-table">
+                    <div class="table-container" style="padding: 0;">
+                        <table class="modern-table" style="width: 100%;">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>Date</th>
                                     <th>Product</th>
-                                    <th>Batch</th>
-                                    <th>Quantity</th>
+                                    <th>Qty Removed</th>
                                     <th>Reason</th>
-                                    <th>Location</th>
-                                    <th>Reported By</th>
-                                    <th>Estimated Loss</th>
-                                    <th>Description</th>
+                                    <th>Loss Value</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
-                                $damaged_products = $inventoryManager->getDamagedProducts($filter_location, $filter_date_from, $filter_date_to);
-                                if(mysqli_num_rows($damaged_products) > 0):
-                                    while($damage = mysqli_fetch_array($damaged_products)):
+                                $damage_query = mysqli_query($con, "SELECT dg.*, a.u_name as reporter_name FROM damaged_goods dg LEFT JOIN admin a ON dg.reported_by = a.id ORDER BY dg.damage_date DESC");
+                                if($damage_query && mysqli_num_rows($damage_query) > 0):
+                                    while($damage = mysqli_fetch_assoc($damage_query)):
                                 ?>
                                 <tr>
-                                    <td><?php echo date('M d, Y', strtotime($damage['damage_date'])); ?></td>
-                                    <td><strong><?php echo htmlspecialchars($damage['u_toolname']); ?></strong></td>
-                                    <td><?php echo htmlspecialchars($damage['batch_number']); ?></td>
+                                    <td><span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;">#<?php echo $damage['id']; ?></span></td>
                                     <td>
-                                        <span style="color: #dc2626; font-weight: 600;"><?php echo $damage['quantity_damaged']; ?></span>
+                                        <div style="font-weight: 500;"><?php echo date('M d, Y', strtotime($damage['damage_date'])); ?></div>
+                                        <div style="font-size: 0.75rem; color: #6b7280;"><?php echo date('h:i A', strtotime($damage['damage_date'])); ?></div>
                                     </td>
                                     <td>
-                                        <span class="damage-reason reason-<?php echo $damage['damage_reason']; ?>">
-                                            <?php echo str_replace('_', ' ', $damage['damage_reason']); ?>
+                                        <strong><?php echo htmlspecialchars($damage['tool_name']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <span style="background: #fee2e2; color: #dc2626; padding: 4px 12px; border-radius: 20px; font-weight: 600;">
+                                            -<?php echo $damage['quantity_removed']; ?>
                                         </span>
                                     </td>
-                                    <td><?php echo htmlspecialchars($damage['location_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($damage['reported_by_name']); ?></td>
-                                    <td class="loss-amount">RWF <?php echo number_format($damage['estimated_loss'], 0); ?></td>
-                                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
-                                        <?php echo htmlspecialchars($damage['damage_description'] ?? 'No description'); ?>
+                                    <td>
+                                        <span class="damage-reason"><?php echo htmlspecialchars($damage['damage_reason']); ?></span>
+                                    </td>
+                                    <td class="loss-amount">RWF <?php echo number_format($damage['original_value'] ?? 0, 0); ?></td>
+                                    <td style="max-width: 200px;">
+                                        <span style="font-size: 0.875rem; color: #4b5563;">
+                                            <?php echo htmlspecialchars(substr($damage['notes'] ?? '-', 0, 50)); ?>
+                                            <?php if(strlen($damage['notes'] ?? '') > 50) echo '...'; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this record? This action cannot be undone.');">
+                                            <input type="hidden" name="damage_id" value="<?php echo $damage['id']; ?>">
+                                            <button type="submit" name="delete_damage" class="action-btn btn-danger">
+                                                <ion-icon name="trash-outline"></ion-icon> Delete
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                                 <?php 
@@ -383,9 +325,10 @@ $filter_date_to = $_GET['date_to'] ?? '';
                                 else:
                                 ?>
                                 <tr>
-                                    <td colspan="9" style="text-align: center; padding: 2rem; color: #6b7280;">
-                                        <ion-icon name="checkmark-circle-outline" style="font-size: 3rem; color: #10b981;"></ion-icon>
-                                        <p style="margin: 1rem 0 0 0;">No damaged products found for the selected criteria.</p>
+                                    <td colspan="8" style="text-align: center; padding: 3rem; color: #6b7280;">
+                                        <ion-icon name="checkmark-circle-outline" style="font-size: 4rem; color: #10b981; display: block; margin-bottom: 1rem;"></ion-icon>
+                                        <h4 style="margin: 0 0 0.5rem 0;">No Damage Reports</h4>
+                                        <p style="margin: 0;">Great news! No damaged goods have been reported yet.</p>
                                     </td>
                                 </tr>
                                 <?php endif; ?>
@@ -401,77 +344,88 @@ $filter_date_to = $_GET['date_to'] ?? '';
     <div id="damageModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeDamageModal()">&times;</span>
-            <h2>🚨 Report Damaged Products</h2>
+            <h2 style="margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 10px;">
+                <ion-icon name="alert-circle" style="color: #dc2626;"></ion-icon>
+                Report Damaged Stock
+            </h2>
             
-            <form method="POST">
-                <div style="display: grid; gap: 1rem;">
+            <form method="POST" id="damageForm">
+                <div style="display: grid; gap: 1.25rem;">
                     <div>
-                        <label>Stock Batch:</label>
-                        <select name="batch_id" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="">Select Batch</option>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Select Product: <span style="color: #dc2626;">*</span>
+                        </label>
+                        <select name="tool_id" id="tool_select" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem;" onchange="updateStockInfo()">
+                            <option value="">-- Select a product --</option>
                             <?php
-                            $batches_query = "SELECT sb.*, t.u_toolname, l.location_name 
-                                            FROM stock_batches sb 
-                                            JOIN tool t ON sb.tool_id = t.id 
-                                            JOIN locations l ON sb.location_id = l.id 
-                                            WHERE sb.quantity_remaining > 0 
-                                            ORDER BY t.u_toolname, sb.batch_date";
-                            $batches = mysqli_query($con, $batches_query);
-                            while($batch = mysqli_fetch_array($batches)):
+                            $tools_query = mysqli_query($con, "SELECT * FROM tool WHERE u_itemsnumber > 0 ORDER BY u_toolname");
+                            while($tool = mysqli_fetch_array($tools_query)):
                             ?>
-                            <option value="<?php echo $batch['id']; ?>">
-                                <?php echo $batch['u_toolname']; ?> - <?php echo $batch['batch_number']; ?> 
-                                (<?php echo $batch['quantity_remaining']; ?> available at <?php echo $batch['location_name']; ?>)
+                            <option value="<?php echo $tool['id']; ?>" data-stock="<?php echo $tool['u_itemsnumber']; ?>" data-price="<?php echo $tool['u_price']; ?>">
+                                <?php echo htmlspecialchars($tool['u_toolname']); ?> (Stock: <?php echo $tool['u_itemsnumber']; ?>)
                             </option>
                             <?php endwhile; ?>
                         </select>
+                        <div id="stock_info" class="stock-info" style="display: none;">
+                            Available stock: <strong id="available_stock">0</strong> | 
+                            Unit price: <strong>RWF <span id="unit_price">0</span></strong>
+                        </div>
                     </div>
                     
                     <div>
-                        <label>Quantity Damaged:</label>
-                        <input type="number" name="quantity_damaged" min="1" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Quantity Damaged: <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="number" name="quantity_damaged" id="quantity_damaged" min="1" required 
+                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem;"
+                               placeholder="Enter quantity to remove" onchange="calculateLoss()">
+                        <div id="loss_preview" style="margin-top: 0.5rem; color: #dc2626; font-weight: 600; display: none;">
+                            Estimated Loss: RWF <span id="loss_amount">0</span>
+                        </div>
                     </div>
                     
                     <div>
-                        <label>Damage Reason:</label>
-                        <select name="damage_reason" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="BROKEN_SHIPPING">Broken During Shipping</option>
-                            <option value="MANUFACTURING_DEFECT">Manufacturing Defect</option>
-                            <option value="CUSTOMER_RETURN_DAMAGED">Customer Return - Damaged</option>
-                            <option value="WAREHOUSE_ACCIDENT">Warehouse Accident</option>
-                            <option value="EXPIRED">Expired/Outdated</option>
-                            <option value="WATER_DAMAGE">Water Damage</option>
-                            <option value="THEFT_VANDALISM">Theft/Vandalism</option>
-                            <option value="QUALITY_CONTROL_FAIL">Quality Control Failure</option>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Damage Reason: <span style="color: #dc2626;">*</span>
+                        </label>
+                        <select name="damage_reason" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem;">
+                            <option value="">-- Select reason --</option>
+                            <option value="Expired">Expired</option>
+                            <option value="Physical Damage">Physical Damage</option>
+                            <option value="Water Damage">Water Damage</option>
+                            <option value="Manufacturing Defect">Manufacturing Defect</option>
+                            <option value="Storage Issues">Storage Issues</option>
+                            <option value="Pest Damage">Pest Damage</option>
+                            <option value="Transport Damage">Transport Damage</option>
+                            <option value="Theft/Loss">Theft/Loss</option>
+                            <option value="Quality Issues">Quality Issues</option>
+                            <option value="Other">Other</option>
                         </select>
                     </div>
                     
                     <div>
-                        <label>Location:</label>
-                        <select name="location_id" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <?php
-                            $locations = $inventoryManager->getAllLocations();
-                            while($location = mysqli_fetch_array($locations)):
-                            ?>
-                            <option value="<?php echo $location['id']; ?>">
-                                <?php echo $location['location_name']; ?> - <?php echo $location['city']; ?>
-                            </option>
-                            <?php endwhile; ?>
-                        </select>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">
+                            Additional Details:
+                        </label>
+                        <textarea name="damage_description" rows="3" 
+                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; resize: vertical;"
+                                  placeholder="Provide more details about the damage..."></textarea>
                     </div>
                     
-                    <div>
-                        <label>Description (Optional):</label>
-                        <textarea name="damage_description" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;" placeholder="Describe the damage details..."></textarea>
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-top: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #991b1b;">
+                            <ion-icon name="warning" style="font-size: 1.25rem;"></ion-icon>
+                            <strong>Warning</strong>
+                        </div>
+                        <p style="margin: 0.5rem 0 0 0; color: #7f1d1d; font-size: 0.875rem;">
+                            This action will immediately remove the specified quantity from your inventory. This cannot be undone automatically.
+                        </p>
                     </div>
-                </div>
-                
-                <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" onclick="closeDamageModal()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button type="submit" name="report_damage" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <ion-icon name="warning-outline"></ion-icon> Report Damage
+                    
+                    <button type="submit" name="report_damage" 
+                            style="padding: 12px 24px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <ion-icon name="alert-circle-outline"></ion-icon>
+                        Report Damage & Remove from Stock
                     </button>
                 </div>
             </form>
@@ -490,13 +444,60 @@ $filter_date_to = $_GET['date_to'] ?? '';
             document.getElementById('damageModal').style.display = 'none';
         }
         
-        // Close modal when clicking outside
+        function updateStockInfo() {
+            const select = document.getElementById('tool_select');
+            const stockInfo = document.getElementById('stock_info');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (select.value) {
+                const stock = selectedOption.getAttribute('data-stock');
+                const price = selectedOption.getAttribute('data-price');
+                document.getElementById('available_stock').textContent = stock;
+                document.getElementById('unit_price').textContent = parseInt(price).toLocaleString();
+                document.getElementById('quantity_damaged').max = stock;
+                stockInfo.style.display = 'block';
+            } else {
+                stockInfo.style.display = 'none';
+            }
+            calculateLoss();
+        }
+        
+        function calculateLoss() {
+            const select = document.getElementById('tool_select');
+            const quantity = document.getElementById('quantity_damaged').value;
+            const lossPreview = document.getElementById('loss_preview');
+            
+            if (select.value && quantity) {
+                const selectedOption = select.options[select.selectedIndex];
+                const price = parseInt(selectedOption.getAttribute('data-price'));
+                const loss = price * parseInt(quantity);
+                document.getElementById('loss_amount').textContent = loss.toLocaleString();
+                lossPreview.style.display = 'block';
+            } else {
+                lossPreview.style.display = 'none';
+            }
+        }
+        
         window.onclick = function(event) {
             const modal = document.getElementById('damageModal');
             if (event.target == modal) {
                 modal.style.display = 'none';
             }
         }
+        
+        // Form validation
+        document.getElementById('damageForm').addEventListener('submit', function(e) {
+            const select = document.getElementById('tool_select');
+            const quantity = parseInt(document.getElementById('quantity_damaged').value);
+            const selectedOption = select.options[select.selectedIndex];
+            const availableStock = parseInt(selectedOption.getAttribute('data-stock'));
+            
+            if (quantity > availableStock) {
+                e.preventDefault();
+                alert('Error: Quantity exceeds available stock (' + availableStock + ')');
+                return false;
+            }
+        });
     </script>
 </body>
 </html>

@@ -7,7 +7,8 @@
   }
   else{
   header('location:loginadmin.php');
-  } 
+  }
+  $current_page = 'dashboard';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -24,146 +25,7 @@
 <body>
   <div class="dashboard-container">
     <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <img src="./images/Captured.JPG" alt="BAFRACOO Logo">
-        <span class="logo-text">BAFRACOO</span>
-      </div>
-      
-      <nav class="sidebar-nav">
-        <div class="nav-section">
-          <h3 class="nav-section-title">Main Menu</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="admindashboard.php" class="nav-link active" data-tooltip="Dashboard">
-                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Dashboard</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="addtool.php" class="nav-link" data-tooltip="Add Order">
-                <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Add Order</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="addorder.php" class="nav-link" data-tooltip="Add Tool">
-                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Add Tool</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="orders.php" class="nav-link" data-tooltip="Orders">
-                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Orders</span>
-                <?php 
-                $pending_orders = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
-                if($pending_orders === false) {
-                  // Query failed - log error
-                  error_log("Dashboard query failed: " . mysqli_error($con));
-                  $pending_count = 0;
-                } else {
-                  $pending_count = mysqli_num_rows($pending_orders);
-                }
-                if($pending_count > 0): ?>
-                  <span class="nav-badge"><?php echo $pending_count; ?></span>
-                <?php endif; ?>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="stock.php" class="nav-link" data-tooltip="Inventory">
-                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Inventory</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="inventory-management.php" class="nav-link" data-tooltip="Enhanced Inventory">
-                <ion-icon name="library-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Enhanced Inventory</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Enhanced Features</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="damaged-products.php" class="nav-link" data-tooltip="Damage Control">
-                <ion-icon name="warning-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Damage Control</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="returns-management.php" class="nav-link" data-tooltip="Returns Management">
-                <ion-icon name="return-up-back-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Returns</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="stock-alerts.php" class="nav-link" data-tooltip="Stock Alerts">
-                <ion-icon name="notifications-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Stock Alerts</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="system-test.php" class="nav-link" data-tooltip="System Testing">
-                <ion-icon name="flask-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">System Test</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Management</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="transactions.php" class="nav-link" data-tooltip="Transactions">
-                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Transactions</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="report.php" class="nav-link" data-tooltip="Reports">
-                <ion-icon name="document-text-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Reports</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="adminprofile.php" class="nav-link" data-tooltip="Profile">
-                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Profile</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Website</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="website.php" class="nav-link" data-tooltip="Visit Website">
-                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Visit Website</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </nav>
-      
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="user-avatar">
-            <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
-          </div>
-          <div class="user-info">
-            <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></div>
-            <div class="user-role">Administrator</div>
-          </div>
-        </div>
-      </div>
-    </aside>
+    <?php include 'includes/admin_sidebar.php'; ?>
 
     <!-- Sidebar Overlay for Mobile -->
     <div class="sidebar-overlay"></div>

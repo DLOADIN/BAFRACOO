@@ -7,7 +7,10 @@
   }
   else{
   header('location:loginadmin.php');
+  exit();
   } 
+  
+  $current_page = 'stock';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -29,104 +32,7 @@
   
   <div class="dashboard-container">
     <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <img src="./images/Captured.JPG" alt="BAFRACOO Logo">
-        <span class="logo-text">BAFRACOO</span>
-      </div>
-      
-      <nav class="sidebar-nav">
-        <div class="nav-section">
-          <h3 class="nav-section-title">Main Menu</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="admindashboard.php" class="nav-link">
-                <ion-icon name="home-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Dashboard</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="addtool.php" class="nav-link">
-                <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Add Order</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="addorder.php" class="nav-link">
-                <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Add Tool</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="orders.php" class="nav-link">
-                <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Orders</span>
-                <?php 
-                $pending_orders = mysqli_query($con,"SELECT * FROM `order` WHERE status='Pending'");
-                $pending_count = ($pending_orders && $pending_orders !== false) ? mysqli_num_rows($pending_orders) : 0;
-                if($pending_count > 0): ?>
-                  <span class="nav-badge"><?php echo $pending_count; ?></span>
-                <?php endif; ?>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="stock.php" class="nav-link active">
-                <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Inventory</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Management</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="transactions.php" class="nav-link">
-                <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Transactions</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="report.php" class="nav-link">
-                <ion-icon name="document-text-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Reports</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="adminprofile.php" class="nav-link">
-                <ion-icon name="person-circle-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Profile</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="nav-section">
-          <h3 class="nav-section-title">Website</h3>
-          <ul class="nav-menu">
-            <li class="nav-item">
-              <a href="website.php" class="nav-link">
-                <ion-icon name="globe-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Visit Website</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </nav>
-      
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="user-avatar">
-            <?php echo strtoupper(substr($row['u_name'] ?? 'A', 0, 2)); ?>
-          </div>
-          <div class="user-info">
-            <div class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></div>
-            <div class="user-role">Administrator</div>
-          </div>
-        </div>
-      </div>
-    </aside>
+    <?php include 'includes/admin_sidebar.php'; ?>
 
     <!-- Sidebar Overlay for Mobile -->
     <div class="sidebar-overlay"></div>
@@ -184,7 +90,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">LOW STOCK</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $low_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE t_itemsnumber < 10");
+                    $low_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE u_itemsnumber < 10");
                     echo $low_stock ? mysqli_fetch_assoc($low_stock)['count'] : '0';
                   ?>
                 </div>
@@ -205,7 +111,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">IN STOCK</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $in_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE t_itemsnumber >= 10");
+                    $in_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE u_itemsnumber >= 10");
                     echo $in_stock ? mysqli_fetch_assoc($in_stock)['count'] : '0';
                   ?>
                 </div>
@@ -226,7 +132,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL VALUE</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $total_value = mysqli_query($con, "SELECT SUM(t_price * t_itemsnumber) as total FROM `tool`");
+                    $total_value = mysqli_query($con, "SELECT SUM(u_price * u_itemsnumber) as total FROM `tool`");
                     $value = $total_value ? mysqli_fetch_assoc($total_value)['total'] ?? 0 : 0;
                     echo number_format($value) . ' RWF';
                   ?>
@@ -326,7 +232,7 @@
                   <td><?php echo htmlspecialchars($row['u_type']); ?></td>
                   <td>
                     <span style="font-weight: 600; color: <?php echo $row['u_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
-                      <?php echo $row['u_itemsnumber']; ?>
+                      <?php echo number_format($row['u_itemsnumber']); ?>
                     </span>
                   </td>
                   <td><?php echo number_format($row['u_price']); ?> RWF</td>

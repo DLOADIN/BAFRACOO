@@ -57,7 +57,7 @@
             <li class="nav-item">
               <a href="stock.php" class="nav-link">
                 <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
-                <span class="nav-text">Browse Tools</span>
+                <span class="nav-text">Inter Purchases</span>
               </a>
             </li>
             <li class="nav-item">
@@ -247,7 +247,7 @@
             <a href="stock.php" style="display: flex; align-items: center; padding: var(--spacing-lg); background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-radius: var(--radius-lg); text-decoration: none; transition: all var(--transition-base);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
               <ion-icon name="storefront-outline" style="font-size: 2rem; margin-right: var(--spacing-md);"></ion-icon>
               <div>
-                <div style="font-weight: 600; font-size: 1.1rem;">Browse Tools</div>
+                <div style="font-weight: 600; font-size: 1.1rem;">Inter Purchases</div>
                 <div style="font-size: 0.875rem; opacity: 0.9;">Explore available tools</div>
               </div>
             </a>
