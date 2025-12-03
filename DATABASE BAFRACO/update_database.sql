@@ -39,8 +39,12 @@ CREATE TABLE IF NOT EXISTS `returned_stock` (
   `processed_by` int(11) DEFAULT NULL,
   `restock_status` enum('PENDING','RESTOCKED','WRITTEN_OFF') DEFAULT 'PENDING',
   `notes` text DEFAULT NULL,
+  `original_value` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `tool_id` (`tool_id`),
   KEY `return_date` (`return_date`),
   KEY `restock_status` (`restock_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- Add original_value column if it doesn't exist
+ALTER TABLE `returned_stock` ADD COLUMN IF NOT EXISTS `original_value` decimal(10,2) DEFAULT NULL;

@@ -128,6 +128,8 @@ if(isset($_POST['write_off_return'])) {
         .condition-good { background: #d1fae5; color: #065f46; }
         .condition-damaged { background: #fef3c7; color: #92400e; }
         .condition-unusable { background: #fee2e2; color: #991b1b; }
+        .text-danger { color: #dc2626; }
+        .text-center { text-align: center; }
         .modal {
             display: none;
             position: fixed;
@@ -330,7 +332,7 @@ if(isset($_POST['write_off_return'])) {
                 <div class="dashboard-card">
                     <div class="card-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb;">
                         <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">📋 Returned Stock History</h3>
-                        <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">All recorded stock returns and their status</p>
+                        <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">All recorded stock returns and their status (including transferred damaged goods)</p>
                     </div>
                     <div class="table-container" style="padding: 0;">
                         <table class="modern-table" style="width: 100%;">
@@ -341,30 +343,48 @@ if(isset($_POST['write_off_return'])) {
                                     <th>Quantity</th>
                                     <th>Reason</th>
                                     <th>Condition</th>
+                                    <th>Loss Value</th>
                                     <th>Status</th>
+                                    <th>Notes</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
-                                $returns_query = mysqli_query($con, "SELECT * FROM returned_stock ORDER BY return_date DESC");
+                                $returns_query = mysqli_query($con, "SELECT rs.*, t.u_price FROM returned_stock rs LEFT JOIN tool t ON rs.tool_id = t.id ORDER BY rs.return_date DESC");
                                 if($returns_query && mysqli_num_rows($returns_query) > 0):
                                     while($return = mysqli_fetch_assoc($returns_query)):
+                                        // Calculate loss value
+                                        $loss_value = 0;
+                                        if(isset($return['original_value']) && $return['original_value'] > 0) {
+                                            $loss_value = $return['original_value'];
+                                        } elseif(isset($return['u_price'])) {
+                                            $loss_value = $return['quantity_returned'] * $return['u_price'];
+                                        }
                                 ?>
                                 <tr>
-                                    <td><?php echo date('M d, Y', strtotime($return['return_date'])); ?></td>
+                                    <td>
+                                        <?php echo date('M d, Y', strtotime($return['return_date'])); ?>
+                                        <br><small style="color: #6b7280;"><?php echo date('h:i A', strtotime($return['return_date'])); ?></small>
+                                    </td>
                                     <td><strong><?php echo htmlspecialchars($return['tool_name']); ?></strong></td>
-                                    <td><?php echo $return['quantity_returned']; ?></td>
+                                    <td class="text-center"><?php echo $return['quantity_returned']; ?></td>
                                     <td><?php echo htmlspecialchars($return['return_reason']); ?></td>
                                     <td>
                                         <span class="status-badge condition-<?php echo strtolower($return['condition_status']); ?>">
                                             <?php echo $return['condition_status']; ?>
                                         </span>
                                     </td>
+                                    <td class="<?php echo $loss_value > 0 ? 'text-danger' : ''; ?>" style="font-weight: 600;">
+                                        <?php echo $loss_value > 0 ? '₱' . number_format($loss_value, 2) : '-'; ?>
+                                    </td>
                                     <td>
                                         <span class="status-badge status-<?php echo strtolower(str_replace('_', '-', $return['restock_status'])); ?>">
                                             <?php echo str_replace('_', ' ', $return['restock_status']); ?>
                                         </span>
+                                    </td>
+                                    <td style="max-width: 150px; font-size: 0.75rem; color: #6b7280;">
+                                        <?php echo !empty($return['notes']) ? htmlspecialchars(substr($return['notes'], 0, 50)) . (strlen($return['notes']) > 50 ? '...' : '') : '-'; ?>
                                     </td>
                                     <td>
                                         <?php if($return['restock_status'] == 'PENDING' && $return['condition_status'] == 'GOOD'): ?>
@@ -392,9 +412,115 @@ if(isset($_POST['write_off_return'])) {
                                 else:
                                 ?>
                                 <tr>
-                                    <td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;">
+                                    <td colspan="9" style="text-align: center; padding: 2rem; color: #6b7280;">
                                         <ion-icon name="cube-outline" style="font-size: 3rem; color: #9ca3af;"></ion-icon>
                                         <p style="margin: 1rem 0 0 0;">No returned stock records found.</p>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Damaged Goods Records Only Table -->
+                <div class="dashboard-card" style="margin-top: 2rem;">
+                    <div class="card-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #fef2f2, #fee2e2);">
+                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #991b1b;">
+                            <ion-icon name="alert-circle-outline" style="margin-right: 8px;"></ion-icon>
+                            🔴 Damaged Goods Records Only
+                        </h3>
+                        <p style="margin: 0.25rem 0 0 0; color: #7f1d1d; font-size: 0.875rem;">
+                            Complete history of all damaged goods transferred from Damage Control (condition = DAMAGED or UNUSABLE)
+                        </p>
+                    </div>
+                    <div class="table-container" style="padding: 0;">
+                        <table class="modern-table" style="width: 100%;">
+                            <thead>
+                                <tr style="background: #fef2f2;">
+                                    <th>ID</th>
+                                    <th>Date Recorded</th>
+                                    <th>Product Name</th>
+                                    <th>Qty Damaged</th>
+                                    <th>Damage Reason</th>
+                                    <th>Loss Value</th>
+                                    <th>Status</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $damaged_only_query = mysqli_query($con, "
+                                    SELECT rs.*, t.u_price 
+                                    FROM returned_stock rs 
+                                    LEFT JOIN tool t ON rs.tool_id = t.id 
+                                    WHERE rs.condition_status IN ('DAMAGED', 'UNUSABLE') 
+                                    ORDER BY rs.return_date DESC
+                                ");
+                                
+                                $total_damaged_value = 0;
+                                $total_damaged_items = 0;
+                                
+                                if($damaged_only_query && mysqli_num_rows($damaged_only_query) > 0):
+                                    while($damaged = mysqli_fetch_assoc($damaged_only_query)):
+                                        $loss_val = isset($damaged['original_value']) && $damaged['original_value'] > 0 
+                                                    ? $damaged['original_value'] 
+                                                    : ($damaged['quantity_returned'] * ($damaged['u_price'] ?? 0));
+                                        $total_damaged_value += $loss_val;
+                                        $total_damaged_items += $damaged['quantity_returned'];
+                                ?>
+                                <tr>
+                                    <td>
+                                        <span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                                            #<?php echo $damaged['id']; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight: 500;"><?php echo date('M d, Y', strtotime($damaged['return_date'])); ?></div>
+                                        <div style="font-size: 0.7rem; color: #6b7280;"><?php echo date('h:i A', strtotime($damaged['return_date'])); ?></div>
+                                    </td>
+                                    <td><strong><?php echo htmlspecialchars($damaged['tool_name']); ?></strong></td>
+                                    <td>
+                                        <span style="background: #fee2e2; color: #dc2626; padding: 4px 12px; border-radius: 20px; font-weight: 700;">
+                                            <?php echo $damaged['quantity_returned']; ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($damaged['return_reason']); ?></td>
+                                    <td style="font-weight: 700; color: #dc2626;">
+                                        RWF <?php echo number_format($loss_val, 0); ?>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-<?php echo strtolower(str_replace('_', '-', $damaged['restock_status'])); ?>">
+                                            <?php echo str_replace('_', ' ', $damaged['restock_status']); ?>
+                                        </span>
+                                    </td>
+                                    <td style="max-width: 180px; font-size: 0.75rem; color: #6b7280;">
+                                        <?php echo !empty($damaged['notes']) ? htmlspecialchars(substr($damaged['notes'], 0, 60)) . (strlen($damaged['notes']) > 60 ? '...' : '') : '-'; ?>
+                                    </td>
+                                </tr>
+                                <?php 
+                                    endwhile;
+                                ?>
+                                <!-- Summary Row -->
+                                <tr style="background: #fef2f2; font-weight: 700;">
+                                    <td colspan="3" style="text-align: right; padding: 1rem;">
+                                        <strong>Total Damaged Items:</strong>
+                                    </td>
+                                    <td style="color: #dc2626;">
+                                        <span style="background: #fee2e2; color: #dc2626; padding: 6px 14px; border-radius: 20px;">
+                                            <?php echo $total_damaged_items; ?> items
+                                        </span>
+                                    </td>
+                                    <td style="text-align: right;"><strong>Total Loss:</strong></td>
+                                    <td colspan="3" style="color: #dc2626; font-size: 1.1rem;">
+                                        RWF <?php echo number_format($total_damaged_value, 0); ?>
+                                    </td>
+                                </tr>
+                                <?php else: ?>
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 2rem; color: #6b7280;">
+                                        <ion-icon name="checkmark-circle-outline" style="font-size: 3rem; color: #10b981;"></ion-icon>
+                                        <p style="margin: 1rem 0 0 0;">No damaged goods records yet. Items transferred from Damage Control will appear here.</p>
                                     </td>
                                 </tr>
                                 <?php endif; ?>
