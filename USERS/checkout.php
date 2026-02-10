@@ -16,9 +16,20 @@ $order_id = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
 $status = isset($_GET['status']) ? $_GET['status'] : '';
 
 $order_details = null;
+$tool_details = null;
 if($order_id > 0) {
-    $order_query = mysqli_query($con, "SELECT * FROM `order` WHERE id = '$order_id' AND user_id = '$id'");
+    $order_query = mysqli_query($con, "SELECT o.*, t.image, t.u_toolname as tool_name, t.u_category, t.u_description 
+                                        FROM `order` o 
+                                        LEFT JOIN tool t ON o.tool_id = t.id 
+                                        WHERE o.id = '$order_id' AND o.user_id = '$id'");
     $order_details = mysqli_fetch_array($order_query);
+    
+    // If tool_id wasn't set, try to find tool by name
+    if($order_details && empty($order_details['image'])) {
+        $tool_name = mysqli_real_escape_string($con, $order_details['u_toolname']);
+        $tool_query = mysqli_query($con, "SELECT * FROM tool WHERE u_toolname = '$tool_name'");
+        $tool_details = mysqli_fetch_array($tool_query);
+    }
 }
 
 // Check session for payment success
@@ -54,7 +65,7 @@ unset($_SESSION['payment_amount']);
       padding: 3rem;
       border-radius: var(--radius-xl);
       box-shadow: var(--shadow-xl);
-      max-width: 550px;
+      max-width: 600px;
       width: 100%;
       text-align: center;
     }
@@ -100,6 +111,72 @@ unset($_SESSION['payment_amount']);
       border-radius: var(--radius-lg);
       margin-bottom: 2rem;
       text-align: left;
+    }
+    .product-preview {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: var(--radius-lg);
+      margin-bottom: 1.5rem;
+      border: 2px solid #10b981;
+    }
+    .product-image {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      background: var(--gray-100);
+    }
+    .product-info {
+      flex: 1;
+      text-align: left;
+    }
+    .product-name {
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 0.25rem;
+    }
+    .product-category {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+      margin-bottom: 0.5rem;
+    }
+    .product-qty {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .delivery-notice {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border: 1px solid #f59e0b;
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .delivery-notice ion-icon {
+      font-size: 24px;
+      color: #f59e0b;
+    }
+    .delivery-notice-text {
+      text-align: left;
+    }
+    .delivery-notice-title {
+      font-weight: 600;
+      color: #92400e;
+      margin-bottom: 0.25rem;
+    }
+    .delivery-notice-desc {
+      font-size: 0.85rem;
+      color: #a16207;
     }
     .order-summary-title {
       font-size: 0.85rem;
@@ -207,7 +284,37 @@ unset($_SESSION['payment_amount']);
       <h1 class="success-title">Payment Successful!</h1>
       <p class="success-subtitle">Thank you for your purchase, <?php echo htmlspecialchars($row['u_name'] ?? 'Customer'); ?>!</p>
       
-      <?php if($order_details): ?>
+      <?php if($order_details): 
+        // Get product image
+        $product_image = $order_details['image'] ?? ($tool_details['image'] ?? '');
+        $product_category = $order_details['u_category'] ?? ($tool_details['u_category'] ?? 'Product');
+      ?>
+      
+      <!-- Product Preview -->
+      <div class="product-preview">
+        <?php if($product_image && file_exists('../uploads/tools/' . $product_image)): ?>
+        <img src="../uploads/tools/<?php echo htmlspecialchars($product_image); ?>" alt="<?php echo htmlspecialchars($order_details['u_toolname']); ?>" class="product-image">
+        <?php else: ?>
+        <div class="product-image" style="display: flex; align-items: center; justify-content: center;">
+          <ion-icon name="cube-outline" style="font-size: 32px; color: #9ca3af;"></ion-icon>
+        </div>
+        <?php endif; ?>
+        <div class="product-info">
+          <div class="product-name"><?php echo htmlspecialchars($order_details['u_toolname']); ?></div>
+          <div class="product-category"><?php echo htmlspecialchars($product_category); ?></div>
+          <span class="product-qty"><?php echo number_format($order_details['u_itemsnumber']); ?> units purchased</span>
+        </div>
+      </div>
+      
+      <!-- Delivery Notice -->
+      <div class="delivery-notice">
+        <ion-icon name="car-outline"></ion-icon>
+        <div class="delivery-notice-text">
+          <div class="delivery-notice-title">Delivery Information</div>
+          <div class="delivery-notice-desc">Your order will be delivered within 2-3 business days. We'll contact you at your registered phone number.</div>
+        </div>
+      </div>
+      
       <div class="order-summary">
         <div class="order-summary-title">Order Confirmation</div>
         <div class="order-summary-row">
