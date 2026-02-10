@@ -79,6 +79,18 @@
                 <span class="nav-text">Transactions</span>
               </a>
             </li>
+            <li class="nav-item">
+              <a href="refund-requests.php" class="nav-link">
+                <ion-icon name="card-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Refund Requests</span>
+                <?php 
+                $pending_refunds = mysqli_query($con,"SELECT COUNT(*) as cnt FROM `refund_requests` WHERE user_id='$id' AND status IN ('PENDING', 'UNDER_REVIEW')");
+                $refund_count = $pending_refunds ? mysqli_fetch_array($pending_refunds)['cnt'] : 0;
+                if($refund_count > 0): ?>
+                  <span class="nav-badge" style="background: #f59e0b;"><?php echo $refund_count; ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
           </ul>
         </div>
         

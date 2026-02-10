@@ -44,14 +44,14 @@
   <style>
     .stock-summary-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 20px;
       margin-bottom: 30px;
     }
     .summary-card {
       background: white;
       border-radius: 16px;
-      padding: 24px;
+      padding: 20px;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       border: 1px solid var(--gray-100);
       transition: all 0.3s ease;
@@ -61,14 +61,14 @@
       box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
     }
     .summary-card .icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.75rem;
-      margin-bottom: 16px;
+      font-size: 1.5rem;
+      margin-bottom: 12px;
     }
     .summary-card .icon.primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
     .summary-card .icon.success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
@@ -76,103 +76,20 @@
     .summary-card .icon.danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
     .summary-card .icon.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
     .summary-card .value {
-      font-size: 2rem;
+      font-size: 1.75rem;
       font-weight: 700;
       color: var(--gray-900);
       margin-bottom: 4px;
     }
     .summary-card .label {
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       color: var(--gray-500);
       font-weight: 500;
-    }
-    .product-card {
-      background: white;
-      border-radius: 12px;
-      border: 1px solid var(--gray-200);
-      overflow: hidden;
-      transition: all 0.3s ease;
-    }
-    .product-card:hover {
-      box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1);
-      border-color: var(--primary-color);
-    }
-    .product-card-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--gray-100);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .product-info {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .product-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 1.5rem;
-    }
-    .product-name {
-      font-weight: 600;
-      color: var(--gray-900);
-      font-size: 1.1rem;
-    }
-    .product-type {
-      color: var(--gray-500);
-      font-size: 0.875rem;
-    }
-    .product-card-body {
-      padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-    }
-    .stat-item {
-      text-align: center;
-      padding: 12px;
-      background: var(--gray-50);
-      border-radius: 10px;
-    }
-    .stat-item .stat-value {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--gray-900);
-    }
-    .stat-item .stat-label {
-      font-size: 0.75rem;
-      color: var(--gray-500);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-top: 4px;
-    }
-    .stat-item.success .stat-value { color: var(--success-color); }
-    .stat-item.warning .stat-value { color: var(--warning-color); }
-    .stat-item.danger .stat-value { color: var(--error-color); }
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-      gap: 20px;
-    }
-    @media (max-width: 768px) {
-      .products-grid {
-        grid-template-columns: 1fr;
-      }
-      .product-card-body {
-        grid-template-columns: repeat(2, 1fr);
-      }
     }
     .search-filter-bar {
       display: flex;
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
     }
     .search-input {
@@ -197,7 +114,93 @@
       min-width: 180px;
       cursor: pointer;
     }
-    .batch-count {
+    .stock-table-wrapper {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--gray-100);
+      overflow: hidden;
+    }
+    .stock-table-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    }
+    .stock-table-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stock-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .stock-table thead th {
+      background: var(--gray-50);
+      padding: 14px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--gray-600);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--gray-200);
+    }
+    .stock-table tbody tr {
+      transition: all 0.2s ease;
+    }
+    .stock-table tbody tr:hover {
+      background: var(--gray-50);
+    }
+    .stock-table tbody td {
+      padding: 16px;
+      border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-800);
+      font-size: 0.9rem;
+    }
+    .product-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .product-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.2rem;
+    }
+    .product-name {
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    .product-type {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+    }
+    .stock-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .stock-badge.in-stock { background: #d1fae5; color: #065f46; }
+    .stock-badge.low-stock { background: #fef3c7; color: #92400e; }
+    .stock-badge.out-of-stock { background: #fee2e2; color: #991b1b; }
+    .batch-badge {
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -208,6 +211,21 @@
       color: var(--gray-600);
       font-weight: 500;
     }
+    .price-range {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+    }
+    .value-cell {
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .stock-number {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .stock-number.success { color: #059669; }
+    .stock-number.warning { color: #d97706; }
+    .stock-number.danger { color: #dc2626; }
     .empty-state {
       text-align: center;
       padding: 60px 20px;
@@ -217,6 +235,24 @@
       font-size: 4rem;
       color: var(--gray-300);
       margin-bottom: 16px;
+    }
+    .table-footer {
+      padding: 16px 24px;
+      background: var(--gray-50);
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.875rem;
+      color: var(--gray-600);
+    }
+    @media (max-width: 768px) {
+      .stock-table-wrapper {
+        overflow-x: auto;
+      }
+      .stock-table {
+        min-width: 900px;
+      }
     }
   </style>
 </head>
@@ -276,15 +312,15 @@
               <ion-icon name="layers-outline"></ion-icon>
             </div>
             <div class="value"><?php echo number_format($total_items); ?></div>
-            <div class="label">Total Items in Stock</div>
+            <div class="label">Total Items</div>
           </div>
           
           <div class="summary-card">
             <div class="icon purple">
               <ion-icon name="cash-outline"></ion-icon>
             </div>
-            <div class="value"><?php echo number_format($total_value); ?> RWF</div>
-            <div class="label">Total Inventory Value</div>
+            <div class="value"><?php echo number_format($total_value); ?></div>
+            <div class="label">Total Value (RWF)</div>
           </div>
           
           <div class="summary-card">
@@ -292,7 +328,7 @@
               <ion-icon name="alert-circle-outline"></ion-icon>
             </div>
             <div class="value"><?php echo number_format($low_stock_count); ?></div>
-            <div class="label">Low Stock Products</div>
+            <div class="label">Low Stock</div>
           </div>
           
           <div class="summary-card">
@@ -306,112 +342,153 @@
 
         <!-- Search and Filter -->
         <div class="search-filter-bar">
-          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search products by name or type..." onkeyup="filterProducts()">
-          <select id="stockFilter" class="filter-select" onchange="filterProducts()">
+          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search products by name or type..." onkeyup="filterTable()">
+          <select id="stockFilter" class="filter-select" onchange="filterTable()">
             <option value="all">All Stock Levels</option>
             <option value="in-stock">In Stock (10+)</option>
             <option value="low-stock">Low Stock (1-9)</option>
             <option value="out-of-stock">Out of Stock (0)</option>
           </select>
-          <select id="sortBy" class="filter-select" onchange="filterProducts()">
-            <option value="name">Sort by Name</option>
-            <option value="stock-high">Stock: High to Low</option>
-            <option value="stock-low">Stock: Low to High</option>
-            <option value="value-high">Value: High to Low</option>
-          </select>
         </div>
 
-        <!-- Products Grid -->
-        <div class="products-grid" id="productsGrid">
-          <?php
-          // Get all products grouped by name with aggregated data
-          $products_query = mysqli_query($con, "
-            SELECT 
-              u_toolname,
-              SUM(u_itemsnumber) as total_stock,
-              COUNT(*) as batch_count,
-              MIN(u_price) as min_price,
-              MAX(u_price) as max_price,
-              AVG(u_price) as avg_price,
-              SUM(u_itemsnumber * u_price) as total_value,
-              MAX(u_type) as u_type,
-              MAX(u_tooldescription) as u_tooldescription,
-              MAX(u_date) as last_updated,
-              MAX(image_url) as image_url
-            FROM `tool`
-            GROUP BY u_toolname
-            ORDER BY u_toolname ASC
-          ");
+        <!-- Stock Table -->
+        <div class="stock-table-wrapper">
+          <div class="stock-table-header">
+            <div class="stock-table-title">
+              <ion-icon name="grid-outline"></ion-icon>
+              Consolidated Inventory Table
+            </div>
+            <div class="batch-badge">
+              <ion-icon name="information-circle-outline"></ion-icon>
+              Items with same name are grouped
+            </div>
+          </div>
           
-          if($products_query && mysqli_num_rows($products_query) > 0):
-            while($product = mysqli_fetch_assoc($products_query)):
-              $stock = (int)$product['total_stock'];
-              $stock_status = 'success';
-              $stock_label = 'In Stock';
-              $stock_filter = 'in-stock';
-              
-              if($stock == 0) {
-                $stock_status = 'danger';
-                $stock_label = 'Out of Stock';
-                $stock_filter = 'out-of-stock';
-              } elseif($stock < 10) {
-                $stock_status = 'warning';
-                $stock_label = 'Low Stock';
-                $stock_filter = 'low-stock';
-              }
-              
-              $avg_price = round($product['avg_price']);
-              $total_value = $product['total_value'];
-          ?>
-          <div class="product-card" data-name="<?php echo strtolower(htmlspecialchars($product['u_toolname'])); ?>" data-type="<?php echo strtolower(htmlspecialchars($product['u_type'] ?? '')); ?>" data-stock="<?php echo $stock; ?>" data-value="<?php echo $total_value; ?>" data-filter="<?php echo $stock_filter; ?>">
-            <div class="product-card-header">
-              <div class="product-info">
-                <div class="product-icon">
-                  <ion-icon name="construct-outline"></ion-icon>
-                </div>
-                <div>
-                  <div class="product-name"><?php echo htmlspecialchars($product['u_toolname']); ?></div>
-                  <div class="product-type"><?php echo htmlspecialchars($product['u_type'] ?? 'General'); ?></div>
-                </div>
-              </div>
-              <div class="batch-count">
-                <ion-icon name="copy-outline"></ion-icon>
-                <?php echo $product['batch_count']; ?> batch<?php echo $product['batch_count'] > 1 ? 'es' : ''; ?>
-              </div>
+          <div style="overflow-x: auto;">
+            <table class="stock-table" id="stockTable">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th>Product Name</th>
+                  <th>Type</th>
+                  <th>Total Quantity</th>
+                  <th>Batches</th>
+                  <th>Price (RWF)</th>
+                  <th>Total Value (RWF)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <?php
+                // Get all products grouped by name with aggregated data
+                $products_query = mysqli_query($con, "
+                  SELECT 
+                    u_toolname,
+                    SUM(u_itemsnumber) as total_stock,
+                    COUNT(*) as batch_count,
+                    MIN(u_price) as min_price,
+                    MAX(u_price) as max_price,
+                    ROUND(AVG(u_price)) as avg_price,
+                    SUM(u_itemsnumber * u_price) as total_value,
+                    MAX(u_type) as u_type,
+                    MAX(u_tooldescription) as u_tooldescription,
+                    MAX(u_date) as last_updated
+                  FROM `tool`
+                  GROUP BY u_toolname
+                  ORDER BY u_toolname ASC
+                ");
+                
+                $row_num = 0;
+                $displayed_count = 0;
+                
+                if($products_query && mysqli_num_rows($products_query) > 0):
+                  while($product = mysqli_fetch_assoc($products_query)):
+                    $row_num++;
+                    $displayed_count++;
+                    $stock = (int)$product['total_stock'];
+                    
+                    // Determine status
+                    $status_class = 'in-stock';
+                    $status_text = 'In Stock';
+                    $stock_color = 'success';
+                    $filter_class = 'in-stock';
+                    
+                    if($stock == 0) {
+                      $status_class = 'out-of-stock';
+                      $status_text = 'Out of Stock';
+                      $stock_color = 'danger';
+                      $filter_class = 'out-of-stock';
+                    } elseif($stock < 10) {
+                      $status_class = 'low-stock';
+                      $status_text = 'Low Stock';
+                      $stock_color = 'warning';
+                      $filter_class = 'low-stock';
+                    }
+                ?>
+                <tr data-name="<?php echo strtolower(htmlspecialchars($product['u_toolname'])); ?>" 
+                    data-type="<?php echo strtolower(htmlspecialchars($product['u_type'] ?? '')); ?>" 
+                    data-filter="<?php echo $filter_class; ?>">
+                  <td style="font-weight: 600; color: var(--gray-400);"><?php echo $row_num; ?></td>
+                  <td>
+                    <div class="product-cell">
+                      <div class="product-icon">
+                        <ion-icon name="construct-outline"></ion-icon>
+                      </div>
+                      <div>
+                        <div class="product-name"><?php echo htmlspecialchars($product['u_toolname']); ?></div>
+                        <div class="product-type"><?php echo htmlspecialchars($product['u_tooldescription'] ?? 'No description'); ?></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><?php echo htmlspecialchars($product['u_type'] ?? 'General'); ?></td>
+                  <td>
+                    <span class="stock-number <?php echo $stock_color; ?>"><?php echo number_format($stock); ?></span>
+                  </td>
+                  <td>
+                    <span class="batch-badge">
+                      <ion-icon name="copy-outline"></ion-icon>
+                      <?php echo $product['batch_count']; ?>
+                    </span>
+                  </td>
+                  <td class="price-range"><?php echo number_format($product['avg_price']); ?></td>
+                  <td class="value-cell"><?php echo number_format($product['total_value']); ?></td>
+                  <td>
+                    <span class="stock-badge <?php echo $status_class; ?>">
+                      <ion-icon name="<?php echo $stock == 0 ? 'close-circle' : ($stock < 10 ? 'alert-circle' : 'checkmark-circle'); ?>-outline"></ion-icon>
+                      <?php echo $status_text; ?>
+                    </span>
+                  </td>
+                </tr>
+                <?php endwhile; else: ?>
+                <tr id="emptyRow">
+                  <td colspan="8">
+                    <div class="empty-state">
+                      <ion-icon name="cube-outline"></ion-icon>
+                      <h3>No Products Found</h3>
+                      <p>Add products to your inventory to see them here.</p>
+                      <a href="addorder.php" class="btn btn-primary" style="margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--primary-color); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                        <ion-icon name="add-circle-outline"></ion-icon>
+                        Add First Product
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="table-footer">
+            <div>
+              Showing <strong id="visibleCount"><?php echo $displayed_count; ?></strong> of <strong><?php echo $row_num; ?></strong> products
             </div>
-            <div class="product-card-body">
-              <div class="stat-item <?php echo $stock_status; ?>">
-                <div class="stat-value"><?php echo number_format($stock); ?></div>
-                <div class="stat-label"><?php echo $stock_label; ?></div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value"><?php echo number_format($avg_price); ?></div>
-                <div class="stat-label">Avg Price (RWF)</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value"><?php echo number_format($total_value); ?></div>
-                <div class="stat-label">Total Value</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value"><?php echo $product['min_price'] == $product['max_price'] ? number_format($product['min_price']) : number_format($product['min_price']) . '-' . number_format($product['max_price']); ?></div>
-                <div class="stat-label">Price Range</div>
-              </div>
+            <div>
+              Last updated: <?php echo date('M d, Y h:i A'); ?>
             </div>
           </div>
-          <?php endwhile; else: ?>
-          <div class="empty-state" style="grid-column: 1 / -1;">
-            <ion-icon name="cube-outline"></ion-icon>
-            <h3>No Products Found</h3>
-            <p>Add products to your inventory to see them here.</p>
-            <a href="addorder.php" class="btn btn-primary" style="margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--primary-color); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
-              <ion-icon name="add-circle-outline"></ion-icon>
-              Add First Product
-            </a>
-          </div>
-          <?php endif; ?>
         </div>
         
-        <div id="noResults" class="empty-state" style="display: none;">
+        <div id="noResults" class="empty-state" style="display: none; background: white; border-radius: 16px; margin-top: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
           <ion-icon name="search-outline"></ion-icon>
           <h3>No Matching Products</h3>
           <p>Try adjusting your search or filter criteria.</p>
@@ -424,52 +501,43 @@
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   
   <script>
-    function filterProducts() {
+    function filterTable() {
       const searchValue = document.getElementById('searchInput').value.toLowerCase();
       const stockFilter = document.getElementById('stockFilter').value;
-      const sortBy = document.getElementById('sortBy').value;
       
-      const cards = document.querySelectorAll('.product-card');
-      const grid = document.getElementById('productsGrid');
+      const rows = document.querySelectorAll('#tableBody tr[data-name]');
       const noResults = document.getElementById('noResults');
+      const tableWrapper = document.querySelector('.stock-table-wrapper');
       
-      let visibleCards = [];
+      let visibleCount = 0;
       
-      cards.forEach(card => {
-        const name = card.dataset.name;
-        const type = card.dataset.type;
-        const filterClass = card.dataset.filter;
+      rows.forEach(row => {
+        const name = row.dataset.name;
+        const type = row.dataset.type;
+        const filterClass = row.dataset.filter;
         
         const matchesSearch = name.includes(searchValue) || type.includes(searchValue);
         const matchesFilter = stockFilter === 'all' || filterClass === stockFilter;
         
         if (matchesSearch && matchesFilter) {
-          card.style.display = '';
-          visibleCards.push(card);
+          row.style.display = '';
+          visibleCount++;
         } else {
-          card.style.display = 'none';
+          row.style.display = 'none';
         }
       });
       
-      // Sort visible cards
-      visibleCards.sort((a, b) => {
-        switch(sortBy) {
-          case 'stock-high':
-            return parseInt(b.dataset.stock) - parseInt(a.dataset.stock);
-          case 'stock-low':
-            return parseInt(a.dataset.stock) - parseInt(b.dataset.stock);
-          case 'value-high':
-            return parseInt(b.dataset.value) - parseInt(a.dataset.value);
-          default:
-            return a.dataset.name.localeCompare(b.dataset.name);
-        }
-      });
-      
-      // Re-append in sorted order
-      visibleCards.forEach(card => grid.appendChild(card));
+      // Update visible count
+      document.getElementById('visibleCount').textContent = visibleCount;
       
       // Show/hide no results message
-      noResults.style.display = visibleCards.length === 0 ? 'block' : 'none';
+      if (visibleCount === 0 && rows.length > 0) {
+        noResults.style.display = 'block';
+        tableWrapper.style.display = 'none';
+      } else {
+        noResults.style.display = 'none';
+        tableWrapper.style.display = 'block';
+      }
     }
     
     // Mobile menu toggle

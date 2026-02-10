@@ -77,5 +77,87 @@ function createStripeCheckoutSession($amount, $currency, $order_id, $customer_em
 function getStripeCheckoutSession($session_id) {
     return stripeRequest('checkout/sessions/' . $session_id, 'GET');
 }
+
+/**
+ * Process a refund through Stripe
+ * 
+ * @param string|null $payment_intent The payment intent ID (starts with pi_)
+ * @param string|null $charge_id The charge ID (starts with ch_)
+ * @param float $amount The amount to refund in the original currency
+ * @param string $reason Optional reason for the refund
+ * @return array Result with success status and refund details or error
+ */
+function createStripeRefund($payment_intent = null, $charge_id = null, $amount = null, $reason = 'requested_by_customer') {
+    // Determine what to refund
+    $data = [];
+    
+    if (!empty($charge_id)) {
+        $data['charge'] = $charge_id;
+    } elseif (!empty($payment_intent)) {
+        $data['payment_intent'] = $payment_intent;
+    } else {
+        return ['error' => 'Either payment_intent or charge_id is required'];
+    }
+    
+    // Add amount if specified (for partial refunds)
+    // Note: RWF doesn't have decimal places, so no conversion needed
+    if ($amount !== null) {
+        $data['amount'] = (int)$amount;
+    }
+    
+    // Add reason
+    $valid_reasons = ['duplicate', 'fraudulent', 'requested_by_customer'];
+    if (in_array($reason, $valid_reasons)) {
+        $data['reason'] = $reason;
+    }
+    
+    $result = stripeRequest('refunds', 'POST', $data);
+    
+    if (isset($result['id'])) {
+        return [
+            'success' => true,
+            'refund_id' => $result['id'],
+            'status' => $result['status'],
+            'amount' => $result['amount'],
+            'currency' => $result['currency']
+        ];
+    }
+    
+    return [
+        'success' => false,
+        'error' => $result['error'] ?? 'Failed to process refund'
+    ];
+}
+
+/**
+ * Get refund details from Stripe
+ * 
+ * @param string $refund_id The refund ID (starts with re_)
+ * @return array Refund details or error
+ */
+function getStripeRefund($refund_id) {
+    return stripeRequest('refunds/' . $refund_id, 'GET');
+}
+
+/**
+ * List refunds for a payment intent or charge
+ * 
+ * @param string|null $payment_intent The payment intent ID
+ * @param string|null $charge_id The charge ID
+ * @param int $limit Maximum number of refunds to return
+ * @return array List of refunds or error
+ */
+function listStripeRefunds($payment_intent = null, $charge_id = null, $limit = 10) {
+    $params = ['limit' => $limit];
+    
+    if (!empty($payment_intent)) {
+        $params['payment_intent'] = $payment_intent;
+    }
+    if (!empty($charge_id)) {
+        $params['charge'] = $charge_id;
+    }
+    
+    return stripeRequest('refunds?' . http_build_query($params), 'GET');
+}
 ?>
 

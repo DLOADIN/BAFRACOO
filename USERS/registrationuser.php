@@ -56,7 +56,7 @@
           <label for="">PASSWORD</label></div>
 
           <button name="submit" type="submit" class="btn-2">SIGN IN</button>
-          <h3 class="heading-3"> Do you have an account? <a href="loginuser.php">Sign In</a></h3>
+          <h3 class="heading-3"> Do you have an account? <a href="../login.php">Sign In</a></h3>
         </form>
       </div>
     </div>

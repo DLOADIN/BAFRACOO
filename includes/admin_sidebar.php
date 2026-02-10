@@ -10,6 +10,10 @@ $pending_count = $pending_orders_query ? mysqli_fetch_assoc($pending_orders_quer
 // Get low stock alerts count
 $low_stock_query = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE u_itemsnumber < 10");
 $low_stock_count = $low_stock_query ? mysqli_fetch_assoc($low_stock_query)['count'] : 0;
+
+// Get pending refund requests count
+$pending_refunds_query = mysqli_query($con, "SELECT COUNT(*) as count FROM `refund_requests` WHERE status IN ('PENDING', 'APPROVED')");
+$pending_refunds_count = $pending_refunds_query ? mysqli_fetch_assoc($pending_refunds_query)['count'] : 0;
 ?>
 <aside class="sidebar">
     <div class="sidebar-logo">
@@ -97,6 +101,15 @@ $low_stock_count = $low_stock_query ? mysqli_fetch_assoc($low_stock_query)['coun
                     <a href="transactions.php" class="nav-link <?php echo ($current_page == 'transactions') ? 'active' : ''; ?>" data-tooltip="Transactions">
                         <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
                         <span class="nav-text">Transactions</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="refund-management.php" class="nav-link <?php echo ($current_page == 'refunds') ? 'active' : ''; ?>" data-tooltip="Refund Management">
+                        <ion-icon name="card-outline" class="nav-icon"></ion-icon>
+                        <span class="nav-text">Refund Management</span>
+                        <?php if($pending_refunds_count > 0): ?>
+                            <span class="nav-badge" style="background: var(--warning-color);"><?php echo $pending_refunds_count; ?></span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <li class="nav-item">

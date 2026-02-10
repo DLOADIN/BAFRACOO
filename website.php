@@ -1049,10 +1049,7 @@
           <a href="#partners" class="nav-link">PARTNERS</a>
         </li>
         <li class="nav-item">
-          <a href="loginadmin.php" class="nav-link">ADMIN</a>
-        </li>
-        <li class="nav-item">
-          <a href="USERS/loginuser.php" class="nav-link">LOGIN</a>
+          <a href="login.php" class="nav-link">SIGN IN</a>
         </li>
       </ul>
     </div>
@@ -1067,9 +1064,9 @@
         <p class="hero-subtitle">Professional Fire Safety Equipment</p>
         <p class="hero-description">CO₂: 3 - 50kg | Powder: 0.5 - 50kg<br>Protecting lives and property with quality fire safety solutions</p>
         <div class="cta-buttons">
-          <a href="USERS/registrationuser.php" class="btn-primary">
+          <a href="register.php" class="btn-primary">
             <i class="fas fa-shopping-cart"></i>
-            SHOP NOW
+            GET STARTED
           </a>
           <a href="#mission" class="btn-secondary">
             <i class="fas fa-info-circle"></i>
