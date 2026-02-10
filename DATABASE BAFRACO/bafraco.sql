@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 03, 2025 at 07:27 PM
+-- Generation Time: Dec 16, 2025 at 02:39 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -20,6 +20,123 @@ SET time_zone = "+00:00";
 --
 -- Database: `bafraco`
 --
+
+DELIMITER $$
+--
+-- Procedures
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_deduct_stock_fifo_lifo` (IN `p_tool_id` INT, IN `p_quantity` INT, IN `p_order_id` INT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255))   BEGIN
+    DECLARE v_method VARCHAR(10);
+    DECLARE v_batch_id INT;
+    DECLARE v_batch_quantity INT;
+    DECLARE v_remaining_to_deduct INT;
+    DECLARE v_deduct_quantity INT;
+    DECLARE v_purchase_price DECIMAL(10,2);
+    DECLARE done INT DEFAULT FALSE;
+    
+    -- Cursor for FIFO (oldest first)
+    DECLARE fifo_cursor CURSOR FOR 
+        SELECT id, quantity_remaining, purchase_price 
+        FROM stock_batches 
+        WHERE tool_id = p_tool_id AND quantity_remaining > 0
+        ORDER BY batch_date ASC;
+    
+    -- Cursor for LIFO (newest first)
+    DECLARE lifo_cursor CURSOR FOR 
+        SELECT id, quantity_remaining, purchase_price 
+        FROM stock_batches 
+        WHERE tool_id = p_tool_id AND quantity_remaining > 0
+        ORDER BY batch_date DESC;
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    
+    -- Initialize
+    SET p_success = FALSE;
+    SET p_message = '';
+    SET v_remaining_to_deduct = p_quantity;
+    
+    -- Get the inventory method for this tool
+    SELECT COALESCE(method, 'FIFO') INTO v_method 
+    FROM inventory_method 
+    WHERE tool_id = p_tool_id;
+    
+    IF v_method IS NULL THEN
+        SET v_method = 'FIFO';
+    END IF;
+    
+    -- Check if enough stock available
+    IF (SELECT COALESCE(SUM(quantity_remaining), 0) FROM stock_batches WHERE tool_id = p_tool_id) < p_quantity THEN
+        SET p_message = 'Insufficient stock available';
+        -- Return early
+    ELSE
+        -- Start transaction
+        START TRANSACTION;
+        
+        IF v_method = 'FIFO' THEN
+            OPEN fifo_cursor;
+            
+            read_loop: LOOP
+                FETCH fifo_cursor INTO v_batch_id, v_batch_quantity, v_purchase_price;
+                
+                IF done OR v_remaining_to_deduct <= 0 THEN
+                    LEAVE read_loop;
+                END IF;
+                
+                SET v_deduct_quantity = LEAST(v_remaining_to_deduct, v_batch_quantity);
+                
+                -- Update batch
+                UPDATE stock_batches 
+                SET quantity_remaining = quantity_remaining - v_deduct_quantity 
+                WHERE id = v_batch_id;
+                
+                -- Record movement
+                INSERT INTO stock_movements (batch_id, order_id, movement_type, quantity, unit_cost, reference)
+                VALUES (v_batch_id, p_order_id, 'OUT', v_deduct_quantity, v_purchase_price, CONCAT('ORDER-', LPAD(p_order_id, 6, '0')));
+                
+                SET v_remaining_to_deduct = v_remaining_to_deduct - v_deduct_quantity;
+            END LOOP;
+            
+            CLOSE fifo_cursor;
+        ELSE
+            -- LIFO
+            OPEN lifo_cursor;
+            
+            read_loop2: LOOP
+                FETCH lifo_cursor INTO v_batch_id, v_batch_quantity, v_purchase_price;
+                
+                IF done OR v_remaining_to_deduct <= 0 THEN
+                    LEAVE read_loop2;
+                END IF;
+                
+                SET v_deduct_quantity = LEAST(v_remaining_to_deduct, v_batch_quantity);
+                
+                -- Update batch
+                UPDATE stock_batches 
+                SET quantity_remaining = quantity_remaining - v_deduct_quantity 
+                WHERE id = v_batch_id;
+                
+                -- Record movement
+                INSERT INTO stock_movements (batch_id, order_id, movement_type, quantity, unit_cost, reference)
+                VALUES (v_batch_id, p_order_id, 'OUT', v_deduct_quantity, v_purchase_price, CONCAT('ORDER-', LPAD(p_order_id, 6, '0')));
+                
+                SET v_remaining_to_deduct = v_remaining_to_deduct - v_deduct_quantity;
+            END LOOP;
+            
+            CLOSE lifo_cursor;
+        END IF;
+        
+        IF v_remaining_to_deduct = 0 THEN
+            COMMIT;
+            SET p_success = TRUE;
+            SET p_message = CONCAT('Stock deducted successfully using ', v_method, ' method');
+        ELSE
+            ROLLBACK;
+            SET p_message = 'Failed to deduct all required stock';
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -108,10 +225,12 @@ CREATE TABLE `inventory_method` (
 --
 
 INSERT INTO `inventory_method` (`id`, `tool_id`, `method`, `created_at`, `updated_at`) VALUES
-(1, 5, 'FIFO', '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
-(2, 6, 'FIFO', '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
-(3, 7, 'LIFO', '2025-11-16 19:10:55', '2025-11-21 22:31:16'),
-(5, 8, 'FIFO', '2025-11-21 22:40:12', '2025-11-21 22:40:12');
+(1, 5, 'FIFO', '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(2, 6, 'FIFO', '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(3, 7, 'FIFO', '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(4, 8, 'FIFO', '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(5, 9, 'FIFO', '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(6, 10, 'FIFO', '2025-12-16 00:48:58', '2025-12-16 00:48:58');
 
 -- --------------------------------------------------------
 
@@ -171,11 +290,9 @@ CREATE TABLE `order` (
 --
 
 INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`) VALUES
-(5, 2, 7, 'Mangos', 11000, 'Very Good', 'I love these items', '2024-04-08', 10000, 0, 'Pending'),
 (9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending'),
 (11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending'),
-(12, 1, 7, 'Mangos', 300, 'Very Good', 'MY mangos', '2025-12-02', 10000, 3000000, 'Pending'),
-(13, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-03', 10000, 10000, 'Pending');
+(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment');
 
 -- --------------------------------------------------------
 
@@ -295,7 +412,10 @@ INSERT INTO `stock_batches` (`id`, `tool_id`, `batch_number`, `quantity_received
 (1, 5, 'BATCH-0005-001', 11000, 11000, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
 (2, 6, 'BATCH-0006-001', 2, 2, 8000.00, '2024-03-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
 (3, 7, 'BATCH-0007-001', 121212, 121212, 969.60, '2025-10-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
-(4, 5, 'BATCH-0005-002', 100, 100, 300000.00, '2025-12-03 19:56:59', '0', 6, '2026-01-01', '2025-12-03 17:56:59', '2025-12-03 17:56:59');
+(4, 5, 'BATCH-0005-002', 100, 100, 300000.00, '2025-12-03 19:56:59', '0', 6, '2026-01-01', '2025-12-03 17:56:59', '2025-12-03 17:56:59'),
+(5, 8, 'BATCH-INITIAL-0008', 100, 100, 1600.00, '2025-11-21 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(6, 9, 'BATCH-INITIAL-0009', 20, 20, 160000.00, '2025-12-02 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
+(7, 10, 'BATCH-INITIAL-0010', 30, 30, 32000.00, '2025-12-16 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58');
 
 -- --------------------------------------------------------
 
@@ -375,10 +495,12 @@ CREATE TABLE `tool` (
 
 INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `image_url`) VALUES
 (5, 'APPLES', 11000, 'Very Good', 'I love these items', '2024-04-07', 10000, NULL),
-(6, 'Silicone 500mg', 0, 'Not Good', 'From China', '2024-04-09', 10000, NULL),
+(6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, NULL),
 (7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, NULL),
 (8, 'Living Room Lamps', 100, 'Very Good', '100', '2025-11-21', 2000, NULL),
-(9, 'Berryfruits', 20, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL);
+(9, 'Berryfruits', 20, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL),
+(10, 'Cinnamon Flour', 30, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
+(11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 'uploads/tools/tool_1765848888_6940b73808f08.png');
 
 -- --------------------------------------------------------
 
@@ -420,6 +542,90 @@ CREATE TABLE `user` (
 INSERT INTO `user` (`id`, `u_name`, `u_email`, `u_phonenumber`, `u_address`, `u_password`) VALUES
 (1, 'Hendricks', 'm.david@alustudent.com', '0791291003', 'Musanze', '12345'),
 (2, 'Ganza', 'manzidavid111@gmail.com', '188171212', 'Kigalui', 'Chrispaul_120');
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_current_stock_by_method`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_current_stock_by_method` (
+`tool_id` int(11)
+,`u_toolname` varchar(80)
+,`tool_table_stock` int(11)
+,`batch_total_stock` decimal(32,0)
+,`inventory_method` varchar(4)
+,`total_batches` bigint(21)
+,`oldest_batch_date` datetime
+,`newest_batch_date` datetime
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_fifo_stock_order`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_fifo_stock_order` (
+`batch_id` int(11)
+,`tool_id` int(11)
+,`tool_name` varchar(80)
+,`batch_number` varchar(50)
+,`quantity_remaining` int(11)
+,`purchase_price` decimal(10,2)
+,`batch_date` datetime
+,`supplier` varchar(100)
+,`location_name` varchar(100)
+,`inventory_method` enum('FIFO','LIFO')
+,`fifo_order` bigint(21)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_lifo_stock_order`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_lifo_stock_order` (
+`batch_id` int(11)
+,`tool_id` int(11)
+,`tool_name` varchar(80)
+,`batch_number` varchar(50)
+,`quantity_remaining` int(11)
+,`purchase_price` decimal(10,2)
+,`batch_date` datetime
+,`supplier` varchar(100)
+,`location_name` varchar(100)
+,`inventory_method` enum('FIFO','LIFO')
+,`lifo_order` bigint(21)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_current_stock_by_method`
+--
+DROP TABLE IF EXISTS `vw_current_stock_by_method`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_current_stock_by_method`  AS SELECT `t`.`id` AS `tool_id`, `t`.`u_toolname` AS `u_toolname`, `t`.`u_itemsnumber` AS `tool_table_stock`, coalesce(sum(`sb`.`quantity_remaining`),0) AS `batch_total_stock`, coalesce(`im`.`method`,'FIFO') AS `inventory_method`, count(distinct `sb`.`id`) AS `total_batches`, min(`sb`.`batch_date`) AS `oldest_batch_date`, max(`sb`.`batch_date`) AS `newest_batch_date` FROM ((`tool` `t` left join `stock_batches` `sb` on(`t`.`id` = `sb`.`tool_id` and `sb`.`quantity_remaining` > 0)) left join `inventory_method` `im` on(`t`.`id` = `im`.`tool_id`)) GROUP BY `t`.`id`, `t`.`u_toolname`, `t`.`u_itemsnumber`, `im`.`method` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_fifo_stock_order`
+--
+DROP TABLE IF EXISTS `vw_fifo_stock_order`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_fifo_stock_order`  AS SELECT `sb`.`id` AS `batch_id`, `sb`.`tool_id` AS `tool_id`, `t`.`u_toolname` AS `tool_name`, `sb`.`batch_number` AS `batch_number`, `sb`.`quantity_remaining` AS `quantity_remaining`, `sb`.`purchase_price` AS `purchase_price`, `sb`.`batch_date` AS `batch_date`, `sb`.`supplier` AS `supplier`, `l`.`location_name` AS `location_name`, `im`.`method` AS `inventory_method`, row_number() over ( partition by `sb`.`tool_id` order by `sb`.`batch_date`) AS `fifo_order` FROM (((`stock_batches` `sb` join `tool` `t` on(`sb`.`tool_id` = `t`.`id`)) join `locations` `l` on(`sb`.`location_id` = `l`.`id`)) left join `inventory_method` `im` on(`sb`.`tool_id` = `im`.`tool_id`)) WHERE `sb`.`quantity_remaining` > 0 ORDER BY `sb`.`tool_id` ASC, `sb`.`batch_date` ASC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_lifo_stock_order`
+--
+DROP TABLE IF EXISTS `vw_lifo_stock_order`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_lifo_stock_order`  AS SELECT `sb`.`id` AS `batch_id`, `sb`.`tool_id` AS `tool_id`, `t`.`u_toolname` AS `tool_name`, `sb`.`batch_number` AS `batch_number`, `sb`.`quantity_remaining` AS `quantity_remaining`, `sb`.`purchase_price` AS `purchase_price`, `sb`.`batch_date` AS `batch_date`, `sb`.`supplier` AS `supplier`, `l`.`location_name` AS `location_name`, `im`.`method` AS `inventory_method`, row_number() over ( partition by `sb`.`tool_id` order by `sb`.`batch_date` desc) AS `lifo_order` FROM (((`stock_batches` `sb` join `tool` `t` on(`sb`.`tool_id` = `t`.`id`)) join `locations` `l` on(`sb`.`location_id` = `l`.`id`)) left join `inventory_method` `im` on(`sb`.`tool_id` = `im`.`tool_id`)) WHERE `sb`.`quantity_remaining` > 0 ORDER BY `sb`.`tool_id` ASC, `sb`.`batch_date` DESC ;
 
 --
 -- Indexes for dumped tables
@@ -574,7 +780,7 @@ ALTER TABLE `damaged_products`
 -- AUTO_INCREMENT for table `inventory_method`
 --
 ALTER TABLE `inventory_method`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `locations`
@@ -586,7 +792,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `order`
 --
 ALTER TABLE `order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `returned_stock`
@@ -616,7 +822,7 @@ ALTER TABLE `stock_alerts`
 -- AUTO_INCREMENT for table `stock_batches`
 --
 ALTER TABLE `stock_batches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `stock_movements`
@@ -634,7 +840,7 @@ ALTER TABLE `stock_thresholds`
 -- AUTO_INCREMENT for table `tool`
 --
 ALTER TABLE `tool`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `user`

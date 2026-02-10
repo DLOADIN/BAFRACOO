@@ -181,14 +181,36 @@
   $quantity = $row_order['u_itemsnumber'];
   $unit_price = $row_order['u_price'];
   
-  // Generate unique transaction reference with order_id encoded
-  $transaction_id = 'BAFRACOO-' . $O_id . '-' . date('YmdHis') . '-' . rand(1000, 9999);
+  // Include Stripe helper
+  require_once 'stripe_helper.php';
   
-  // Build the redirect URL dynamically
+  // Build the redirect URLs dynamically
   $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
   $host = $_SERVER['HTTP_HOST'];
   $base_path = dirname($_SERVER['PHP_SELF']);
-  $redirect_url = $protocol . '://' . $host . $base_path . '/redirect.php';
+  $success_url = $protocol . '://' . $host . $base_path . '/redirect.php?session_id={CHECKOUT_SESSION_ID}&status=success';
+  $cancel_url = $protocol . '://' . $host . $base_path . '/redirect.php?status=cancelled&order_id=' . $O_id;
+  
+  // Create Stripe Checkout Session
+  $checkout_session = createStripeCheckoutSession(
+    $total,
+    'RWF', // Currency
+    $O_id,
+    $row['u_email'],
+    $row['u_name'],
+    $tool_name . ' (Qty: ' . $quantity . ')',
+    $success_url,
+    $cancel_url
+  );
+  
+  // Check for errors
+  if (isset($checkout_session['error'])) {
+    echo '<div class="payment-container"><div class="payment-card"><div class="error-message">Payment Error: ' . htmlspecialchars($checkout_session['error']) . '</div><a href="orders.php" class="cancel-link">Return to Orders</a></div></div>';
+    exit();
+  }
+  
+  $stripe_session_id = $checkout_session['id'];
+  $stripe_checkout_url = $checkout_session['url'];
 ?>
 
   <div class="payment-container">
@@ -228,25 +250,10 @@
         <div class="amount-value">RWF <?php echo number_format($total); ?></div>
       </div>
       
-      <form class="FinalForm" method="POST" action="https://checkout.flutterwave.com/v3/hosted/pay">
-        <input type="hidden" name="public_key" value="FLWPUBK-fd9a72fe52fbf0bd373323b44d7e2097-X" />
-        <input type="hidden" name="customizations[title]" value="BAFRACOO" />
-        <input type="hidden" name="customizations[description]" value="Order #<?php echo $O_id; ?> - <?php echo htmlspecialchars($tool_name); ?>" />
-        <input type="hidden" name="customizations[logo]" value="" />
-        <input type="hidden" name="customer[email]" value="<?php echo htmlspecialchars($row['u_email']); ?>" />
-        <input type="hidden" name="customer[name]" value="<?php echo htmlspecialchars($row['u_name']); ?>" />
-        <input type="hidden" name="tx_ref" value="<?php echo $transaction_id; ?>" />
-        <input type="hidden" name="amount" value="<?php echo $total; ?>" />
-        <input type="hidden" name="currency" value="RWF" />
-        <input type="hidden" name="redirect_url" value="<?php echo htmlspecialchars($redirect_url); ?>" />
-        <input type="hidden" name="meta[order_id]" value="<?php echo $O_id; ?>" />
-        <input type="hidden" name="meta[user_id]" value="<?php echo $id; ?>" />
-        
-        <button type="submit" class="payment-btn" id="start-payment-button">
-          <ion-icon name="lock-closed-outline"></ion-icon>
-          Proceed to Secure Payment
-        </button>
-      </form>
+      <button type="button" class="payment-btn" id="start-payment-button" onclick="window.location.href='<?php echo htmlspecialchars($stripe_checkout_url); ?>'">
+        <ion-icon name="lock-closed-outline"></ion-icon>
+        Proceed to Secure Payment
+      </button>
       
       <a href="orders.php" class="cancel-link">
         <ion-icon name="arrow-back-outline"></ion-icon>

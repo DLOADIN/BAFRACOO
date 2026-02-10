@@ -2,13 +2,26 @@
   require "connection.php";
   require "../EnhancedInventoryManager.php"; // Include the enhanced inventory manager
   
+  // Ensure session is started (connection.php should handle this, but double-check)
+  if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+  }
+  
   if(!empty($_SESSION["id"])){
-    $id = $_SESSION["id"];
+    $id = (int)$_SESSION["id"]; // Ensure it's an integer
     $check = mysqli_query($con,"SELECT * FROM `user` WHERE id=$id ");
-    $row = mysqli_fetch_array($check);
+    if($check && mysqli_num_rows($check) > 0) {
+      $row = mysqli_fetch_array($check);
+    } else {
+      // User ID in session doesn't exist in database - clear session and redirect
+      session_destroy();
+      header('location:loginuser.php');
+      exit();
+    }
   }
   else{
     header('location:loginuser.php');
+    exit();
   } 
   
   // Initialize Enhanced Inventory Manager
@@ -16,38 +29,64 @@
   
   // Handle form submission
   if(isset($_POST['order_tool'])){
-    $user_id = mysqli_real_escape_string($con, $_POST['user_id']);
-    $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
-    $tool_name = mysqli_real_escape_string($con, $_POST['u_toolname']);
-    $quantity = (int)$_POST['u_itemsnumber'];
-    $location_id = isset($_POST['location_id']) ? (int)$_POST['location_id'] : 1; // Default location
-    $type = mysqli_real_escape_string($con, $_POST['u_type']);
-    $description = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
-    $price = (float)$_POST['u_price'];
-    $total_price = $price * $quantity;
-    $order_date = date('Y-m-d');
-    
-    // Check available stock from tool table (u_itemsnumber)
-    $stock_check = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
-    $stock_row = mysqli_fetch_array($stock_check);
-    $available_stock = (int)$stock_row['u_itemsnumber'];
-    
-    if($available_stock < $quantity) {
-      $error_message = "Insufficient stock! Only " . number_format($available_stock) . " items available.";
+    // Use the session user ID (already verified at top of file)
+    // The $id is already verified to exist in database if we got past the session check
+    if(empty($id)) {
+      // This shouldn't happen if session is valid, but just in case
+      $error_message = "User session invalid. Please <a href='loginuser.php'>login again</a>.";
     } else {
-      // Insert order with 'Pending Payment' status - DO NOT deduct stock yet
-      // Stock will only be deducted after successful payment through Flutterwave
-      $order_query = "INSERT INTO `order` (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
-                      VALUES ('$user_id', '$tool_id', '$tool_name', '$quantity', '$type', '$description', '$order_date', '$price', '$total_price', 'Pending Payment')";
+      // Use the verified session user ID - it's already confirmed to exist in database
+      $user_id = (int)$id;
+      $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
+      $tool_name = mysqli_real_escape_string($con, $_POST['u_toolname']);
+      $quantity = (int)$_POST['u_itemsnumber'];
+      $location_id = isset($_POST['location_id']) ? (int)$_POST['location_id'] : 1; // Default location
+      $type = mysqli_real_escape_string($con, $_POST['u_type']);
+      $description = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
+      $price = (float)$_POST['u_price'];
+      $total_price = $price * $quantity;
+      $order_date = date('Y-m-d');
       
-      if(mysqli_query($con, $order_query)) {
-        $order_id = mysqli_insert_id($con);
-        
-        // Redirect to payment page - stock will be deducted after successful payment
-        header("Location: pay.php?o_id=" . $order_id);
-        exit();
+      // Check available stock from tool table (u_itemsnumber)
+      $stock_check = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
+      $stock_row = mysqli_fetch_array($stock_check);
+      $available_stock = (int)$stock_row['u_itemsnumber'];
+      
+      if($available_stock < $quantity) {
+        $error_message = "Insufficient stock! Only " . number_format($available_stock) . " items available.";
       } else {
-        $error_message = "Error placing order. Please try again.";
+        // Insert order with 'Pending Payment' status - DO NOT deduct stock yet
+        // Stock will only be deducted after successful payment through Stripe
+        
+        // Ensure prices are integers (database expects INT, not DECIMAL)
+        $price_int = (int)round($price);
+        $total_price_int = (int)round($total_price);
+        
+        // Escape all values for SQL injection prevention
+        $user_id_escaped = (int)$user_id; // Already an integer from session
+        $tool_id_escaped = mysqli_real_escape_string($con, $tool_id);
+        $tool_name_escaped = mysqli_real_escape_string($con, $tool_name);
+        $type_escaped = mysqli_real_escape_string($con, $type);
+        $description_escaped = mysqli_real_escape_string($con, $description);
+        $order_date_escaped = mysqli_real_escape_string($con, $order_date);
+        
+        $order_query = "INSERT INTO `order` (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
+                        VALUES ('$user_id_escaped', '$tool_id_escaped', '$tool_name_escaped', '$quantity', '$type_escaped', '$description_escaped', '$order_date_escaped', '$price_int', '$total_price_int', 'Pending Payment')";
+        
+        if(mysqli_query($con, $order_query)) {
+          $order_id = mysqli_insert_id($con);
+          
+          // Redirect to payment page - stock will be deducted after successful payment
+          header("Location: pay.php?o_id=" . $order_id);
+          exit();
+        } else {
+          // Get the actual MySQL error for debugging
+          $mysql_error = mysqli_error($con);
+          $error_message = "Error placing order: " . htmlspecialchars($mysql_error) . ". Please try again or contact support.";
+          
+        // Log error for debugging (remove in production or make it optional)
+        error_log("Order insertion failed: " . $mysql_error . " | Query: " . $order_query);
+        }
       }
     }
   }
@@ -67,6 +106,76 @@
     <!-- <script src="../JS/file.js"></script> -->
 
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    .method-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .method-badge.fifo {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+    }
+    .method-badge.lifo {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: white;
+    }
+    .batch-preview {
+      margin-top: 6px;
+      font-size: 0.7rem;
+      color: var(--gray-500);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .batch-preview ion-icon {
+      font-size: 0.85rem;
+    }
+    .stock-info-card {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .stock-info-card h4 {
+      margin: 0 0 12px 0;
+      color: var(--gray-900);
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stock-info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .stock-info-item {
+      text-align: center;
+      padding: 8px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--gray-100);
+    }
+    .stock-info-item .label {
+      font-size: 0.7rem;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stock-info-item .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-top: 4px;
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-container">
@@ -184,7 +293,7 @@
                 <th>Tool Name</th>
                 <th>Type</th>
                 <th>Description</th>
-                <th>Available Stock</th>
+                <th>Quantity</th>
                 <th>Inventory Method</th>
                 <th>Price</th>
                 <th>Action</th>
@@ -192,56 +301,142 @@
             </thead>
             <tbody>
             <?php
-            $sql=mysqli_query($con,"SELECT * FROM `tool`");
+            // Group products by name - users only see ONE entry per product type
+            // This prevents duplicate entries like "Berryfruits" showing twice
+            // FIFO/LIFO: When one batch/row is depleted (0 stock), show the next one
+            
+            $sql = mysqli_query($con, "
+                SELECT t.*, 
+                       COALESCE(im.method, 'FIFO') as inventory_method
+                FROM `tool` t
+                LEFT JOIN inventory_method im ON t.id = im.tool_id
+                GROUP BY t.u_toolname
+                ORDER BY t.u_toolname ASC
+            ");
             $row_count = mysqli_num_rows($sql);
             if($row_count){
               while($tool_row=mysqli_fetch_array($sql))
               { 
-                // Use u_itemsnumber from tool table as the primary stock quantity
-                $total_stock = (int)$tool_row['u_itemsnumber'];
+                $product_name = $tool_row['u_toolname'];
+                $inventory_method = $tool_row['inventory_method'] ?? 'FIFO';
                 
-                // Get inventory method (default to FIFO if not set)
-                $inventory_method = 'FIFO';
-                $method_query = mysqli_query($con, "SELECT method FROM inventory_method WHERE tool_id = " . $tool_row['id']);
-                if($method_query && mysqli_num_rows($method_query) > 0) {
-                    $method_row = mysqli_fetch_array($method_query);
-                    $inventory_method = $method_row['method'];
+                // Get ALL tool entries with this product name, ordered by date (FIFO=oldest first, LIFO=newest first)
+                $order_direction = ($inventory_method === 'FIFO') ? 'ASC' : 'DESC';
+                
+                // Find the FIRST tool entry with stock > 0 based on FIFO/LIFO
+                $available_tool_query = mysqli_query($con, "
+                    SELECT t.*, COALESCE(im.method, 'FIFO') as inv_method
+                    FROM tool t
+                    LEFT JOIN inventory_method im ON t.id = im.tool_id
+                    WHERE t.u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
+                    AND t.u_itemsnumber > 0
+                    ORDER BY t.u_date $order_direction
+                    LIMIT 1
+                ");
+                
+                $available_tool = mysqli_fetch_assoc($available_tool_query);
+                
+                // If no tool entry has stock, skip this product entirely
+                if(!$available_tool || $available_tool['u_itemsnumber'] <= 0) {
+                    continue; // Skip - no stock available for this product
                 }
+                
+                // Use the available tool's data
+                $display_stock = (int)$available_tool['u_itemsnumber'];
+                $display_tool_id = $available_tool['id'];
+                $batch_date = $available_tool['u_date'];
+                $display_price = $available_tool['u_price'];
+                $display_type = $available_tool['u_type'];
+                $display_description = $available_tool['u_tooldescription'];
+                $display_image = $available_tool['image_url'];
+                
+                // Check if there's also a batch entry for more accurate tracking
+                $batch_query = mysqli_query($con, "
+                    SELECT sb.* 
+                    FROM stock_batches sb
+                    WHERE sb.tool_id = " . $display_tool_id . " AND sb.quantity_remaining > 0
+                    ORDER BY sb.batch_date $order_direction
+                    LIMIT 1
+                ");
+                $batch_info = mysqli_fetch_assoc($batch_query);
+                
+                if($batch_info && $batch_info['quantity_remaining'] > 0) {
+                    $batch_number = $batch_info['batch_number'];
+                    $batch_date = $batch_info['batch_date'];
+                    $has_batch = true;
+                } else {
+                    $batch_number = 'Stock Entry';
+                    $has_batch = false;
+                }
+                
+                // Count how many tool entries have stock for this product
+                $entries_with_stock = mysqli_query($con, "
+                    SELECT COUNT(*) as cnt 
+                    FROM tool 
+                    WHERE u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
+                    AND u_itemsnumber > 0
+                ");
+                $entries_count = mysqli_fetch_assoc($entries_with_stock);
+                $total_batches = (int)$entries_count['cnt'];
             ?>
             <tr>
-              <td><?php echo $tool_row['id']?></td>
-              <td><strong><?php echo htmlspecialchars($tool_row['u_toolname'])?></strong></td>
+              <td><?php echo $display_tool_id; ?></td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <?php if(!empty($display_image) && file_exists('../' . $display_image)): ?>
+                  <img src="../<?php echo htmlspecialchars($display_image); ?>" alt="<?php echo htmlspecialchars($product_name); ?>" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-200);">
+                  <?php else: ?>
+                  <div style="width: 50px; height: 50px; border-radius: 8px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+                    <ion-icon name="construct-outline" style="font-size: 1.5rem;"></ion-icon>
+                  </div>
+                  <?php endif; ?>
+                  <strong><?php echo htmlspecialchars($product_name); ?></strong>
+                </div>
+              </td>
               <td>
                 <span style="display: inline-block; padding: 4px 12px; background: var(--gray-100); color: var(--gray-700); border-radius: 12px; font-size: 0.875rem; font-weight: 500;">
-                  <?php echo htmlspecialchars($tool_row['u_type'])?>
+                  <?php echo htmlspecialchars($display_type); ?>
                 </span>
               </td>
               <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <?php echo htmlspecialchars($tool_row['u_tooldescription'])?>
+                <?php echo htmlspecialchars($display_description); ?>
               </td>
               <td>
                 <div style="display: flex; align-items: center; gap: 6px; flex-direction: column;">
-                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $total_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
-                    <?php echo number_format($total_stock); ?> units
+                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $display_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
+                    <?php echo number_format($display_stock); ?> units
                   </span>
-                  <?php if($total_stock > 0 && $total_stock <= 10): ?>
+                  <?php if($display_stock > 0 && $display_stock <= 10): ?>
                   <small style="color: #f59e0b; font-size: 0.75rem; font-weight: 600;">
                     Low Stock
+                  </small>
+                  <?php endif; ?>
+                  <?php if($total_batches > 1): ?>
+                  <small style="color: #6b7280; font-size: 0.7rem;">
+                    (Current batch only)
                   </small>
                   <?php endif; ?>
                 </div>
               </td>
               <td>
-                <span style="display: inline-block; padding: 4px 10px; background: <?php echo $inventory_method === 'FIFO' ? '#3b82f6' : '#8b5cf6'; ?>; color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.5px;">
-                  <?php echo $inventory_method; ?>
-                </span>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span class="method-badge <?php echo strtolower($inventory_method); ?>">
+                    <ion-icon name="<?php echo $inventory_method === 'FIFO' ? 'arrow-forward-outline' : 'arrow-back-outline'; ?>"></ion-icon>
+                    <?php echo $inventory_method; ?>
+                  </span>
+                  <div class="batch-preview">
+                    <ion-icon name="layers-outline"></ion-icon>
+                    <?php echo $inventory_method === 'FIFO' ? 'Oldest' : 'Newest'; ?>: 
+                    <?php echo date('M d', strtotime($batch_date)); ?>
+                  </div>
+                </div>
               </td>
               <td>
-                <strong style="color: var(--primary-color);">RWF <?php echo number_format($tool_row['u_price'])?></strong>
+                <strong style="color: var(--primary-color);">RWF <?php echo number_format($display_price); ?></strong>
               </td>
               <td>  
-                <?php if($total_stock > 0): ?>
-                <a href="stock.php?id=<?php echo $tool_row['id']?>" 
+                <?php if($display_stock > 0): ?>
+                <a href="stock.php?id=<?php echo $display_tool_id; ?>" 
                   style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);"
                   onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.35)';"
                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(37, 99, 235, 0.25)';">
@@ -326,9 +521,6 @@
               
               <!-- Stock Information -->
               <?php 
-              // Use u_itemsnumber from tool table as the primary stock
-              $current_stock = (int)$tool_row['u_itemsnumber'];
-              
               // Get inventory method
               $current_method = 'FIFO';
               $method_query = mysqli_query($con, "SELECT method FROM inventory_method WHERE tool_id = " . $tool_id);
@@ -336,23 +528,108 @@
                   $method_row = mysqli_fetch_array($method_query);
                   $current_method = $method_row['method'];
               }
+              
+              // Get next batch to be sold based on FIFO/LIFO
+              $next_batch = $inventoryManager->getNextBatchToSell($tool_id);
+              
+              // User can only order from the CURRENT batch (FIFO/LIFO)
+              // This ensures old stock is sold first (FIFO) or new stock first (LIFO)
+              if($next_batch && $next_batch['quantity_remaining'] > 0) {
+                  $current_stock = (int)$next_batch['quantity_remaining'];
+                  $current_batch_number = $next_batch['batch_number'];
+                  $current_batch_date = $next_batch['batch_date'];
+                  $has_batch_system = true;
+              } else {
+                  // Fallback to tool table if no batches
+                  $current_stock = (int)$tool_row['u_itemsnumber'];
+                  $current_batch_number = 'Main Stock';
+                  $current_batch_date = $tool_row['u_date'];
+                  $has_batch_system = false;
+              }
+              
+              // Check total batches waiting
+              $total_batches_query = mysqli_query($con, "SELECT COUNT(*) as cnt, SUM(quantity_remaining) as total FROM stock_batches WHERE tool_id = " . $tool_id . " AND quantity_remaining > 0");
+              $total_batches_data = mysqli_fetch_assoc($total_batches_query);
+              $total_batches = (int)$total_batches_data['cnt'];
+              $total_all_stock = (int)$total_batches_data['total'];
+              
+              // Get all available batches for this tool
+              $batches_result = $inventoryManager->getStockBatchesByMethod($tool_id, $current_method);
               ?>
-              <div style="padding: var(--spacing-md); margin-bottom: var(--spacing-lg); background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
-                <h4 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-900);">Stock Information</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
-                  <div>
-                    <strong>Available Stock:</strong> 
-                    <span style="color: <?php echo $current_stock > 0 ? '#16a34a' : '#dc2626'; ?>;">
+              
+              <!-- Stock and FIFO/LIFO Information Card -->
+              <div class="stock-info-card">
+                <h4>
+                  <ion-icon name="information-circle-outline"></ion-icon>
+                  Current Batch Information
+                </h4>
+                <div class="stock-info-grid">
+                  <div class="stock-info-item">
+                    <div class="label">Available to Order</div>
+                    <div class="value" style="color: <?php echo $current_stock > 0 ? '#16a34a' : '#dc2626'; ?>;">
                       <?php echo number_format($current_stock); ?> units
-                    </span>
+                    </div>
                   </div>
-                  <div>
-                    <strong>Inventory Method:</strong> 
-                    <span style="padding: 2px 8px; background: <?php echo $current_method === 'FIFO' ? '#3b82f6' : '#8b5cf6'; ?>; color: white; border-radius: 4px; font-size: 0.75rem;">
-                      <?php echo $current_method; ?>
-                    </span>
+                  <div class="stock-info-item">
+                    <div class="label">Inventory Method</div>
+                    <div class="value">
+                      <span class="method-badge <?php echo strtolower($current_method); ?>" style="font-size: 0.85rem;">
+                        <?php echo $current_method; ?>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="stock-info-item">
+                    <div class="label">Current Batch</div>
+                    <div class="value" style="font-size: 0.85rem;">
+                      <?php echo htmlspecialchars($current_batch_number); ?>
+                    </div>
+                  </div>
+                  <div class="stock-info-item">
+                    <div class="label">Batch Date</div>
+                    <div class="value" style="font-size: 0.85rem;">
+                      <?php echo date('M d, Y', strtotime($current_batch_date)); ?>
+                    </div>
                   </div>
                 </div>
+                
+                <?php if($has_batch_system && $total_batches > 1): ?>
+                <!-- Note about more batches -->
+                <div style="margin-top: 16px; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border-left: 4px solid #f59e0b;">
+                  <div style="font-size: 0.8rem; color: #92400e;">
+                    <ion-icon name="information-circle-outline" style="margin-right: 4px;"></ion-icon>
+                    <strong>Note:</strong> You're ordering from the <?php echo $current_method === 'FIFO' ? 'oldest' : 'newest'; ?> batch. 
+                    There are <?php echo $total_batches - 1; ?> more batch(es) with <?php echo number_format($total_all_stock - $current_stock); ?> additional units that will become available once this batch is depleted.
+                  </div>
+                </div>
+                <?php endif; ?>
+                
+                <?php if($next_batch): ?>
+                <!-- Current Batch Details -->
+                <div style="margin-top: 16px; padding: 12px; background: <?php echo $current_method === 'FIFO' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)'; ?>; border-radius: 8px; border-left: 4px solid <?php echo $current_method === 'FIFO' ? '#3b82f6' : '#8b5cf6'; ?>;">
+                  <div style="font-size: 0.8rem; font-weight: 600; color: var(--gray-700); margin-bottom: 8px;">
+                    <ion-icon name="cube-outline" style="margin-right: 4px;"></ion-icon>
+                    <?php echo $current_method === 'FIFO' ? 'Current Stock (Oldest Batch First)' : 'Current Stock (Newest Batch First)'; ?>
+                  </div>
+                  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 0.75rem;">
+                    <div>
+                      <span style="color: var(--gray-500);">Batch:</span><br>
+                      <strong><?php echo htmlspecialchars($next_batch['batch_number']); ?></strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--gray-500);">Qty Available:</span><br>
+                      <strong><?php echo number_format($next_batch['quantity_remaining']); ?></strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--gray-500);">Batch Date:</span><br>
+                      <strong><?php echo date('M d, Y', strtotime($next_batch['batch_date'])); ?></strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--gray-500);">Location:</span><br>
+                      <strong><?php echo htmlspecialchars($next_batch['location_name'] ?? 'N/A'); ?></strong>
+                    </div>
+                  </div>
+                </div>
+                <?php endif; ?>
               </div>
 
               <form method="POST" action="" id="orderToolForm">

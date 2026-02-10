@@ -45,6 +45,84 @@ class EnhancedInventoryManager {
     }
     
     /**
+     * Get all tools with their inventory methods
+     */
+    public function getAllToolsWithMethods() {
+        $query = "SELECT t.*, COALESCE(im.method, 'FIFO') as inventory_method,
+                  (SELECT COUNT(*) FROM stock_batches WHERE tool_id = t.id AND quantity_remaining > 0) as active_batches,
+                  (SELECT SUM(quantity_remaining) FROM stock_batches WHERE tool_id = t.id AND quantity_remaining > 0) as batch_stock
+                  FROM tool t 
+                  LEFT JOIN inventory_method im ON t.id = im.tool_id
+                  ORDER BY t.u_toolname";
+        return mysqli_query($this->connection, $query);
+    }
+    
+    /**
+     * Get stock batches for a tool ordered by FIFO or LIFO
+     */
+    public function getStockBatchesByMethod($tool_id, $method = null) {
+        if ($method === null) {
+            $method = $this->getInventoryMethod($tool_id);
+        }
+        
+        $orderBy = ($method === 'FIFO') ? 'batch_date ASC' : 'batch_date DESC';
+        
+        $query = "SELECT sb.*, l.location_name 
+                  FROM stock_batches sb
+                  JOIN locations l ON sb.location_id = l.id
+                  WHERE sb.tool_id = ? AND sb.quantity_remaining > 0
+                  ORDER BY $orderBy";
+        $stmt = mysqli_prepare($this->connection, $query);
+        mysqli_stmt_bind_param($stmt, "i", $tool_id);
+        mysqli_stmt_execute($stmt);
+        return mysqli_stmt_get_result($stmt);
+    }
+    
+    /**
+     * Get the next batch to sell from based on FIFO/LIFO method
+     */
+    public function getNextBatchToSell($tool_id) {
+        $method = $this->getInventoryMethod($tool_id);
+        $orderBy = ($method === 'FIFO') ? 'batch_date ASC' : 'batch_date DESC';
+        
+        // Try with location join first
+        $query = "SELECT sb.*, COALESCE(l.location_name, 'Default') as location_name, 
+                  '$method' as method_used,
+                  CASE WHEN '$method' = 'FIFO' THEN 'Oldest batch (First In)' ELSE 'Newest batch (Last In)' END as batch_priority
+                  FROM stock_batches sb
+                  LEFT JOIN locations l ON sb.location_id = l.id
+                  WHERE sb.tool_id = ? AND sb.quantity_remaining > 0
+                  ORDER BY $orderBy
+                  LIMIT 1";
+        $stmt = mysqli_prepare($this->connection, $query);
+        
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "i", $tool_id);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            if ($result) {
+                return $result;
+            }
+        }
+        
+        // Fallback: query without location join
+        $query_simple = "SELECT *, 'Default' as location_name, 
+                        '$method' as method_used
+                        FROM stock_batches 
+                        WHERE tool_id = ? AND quantity_remaining > 0
+                        ORDER BY $orderBy
+                        LIMIT 1";
+        $stmt2 = mysqli_prepare($this->connection, $query_simple);
+        if ($stmt2) {
+            mysqli_stmt_bind_param($stmt2, "i", $tool_id);
+            mysqli_stmt_execute($stmt2);
+            return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt2));
+        }
+        
+        return null;
+    }
+
+    /**
      * Get current inventory method status (general system overview)
      */
     public function getCurrentInventoryMethod() {
@@ -70,6 +148,31 @@ class EnhancedInventoryManager {
         }
         
         return "FIFO (Default)";
+    }
+    
+    /**
+     * Get inventory method statistics
+     */
+    public function getInventoryMethodStats() {
+        $stats = [
+            'fifo_count' => 0,
+            'lifo_count' => 0,
+            'total_tools' => 0
+        ];
+        
+        $query = "SELECT 
+                    SUM(CASE WHEN COALESCE(im.method, 'FIFO') = 'FIFO' THEN 1 ELSE 0 END) as fifo_count,
+                    SUM(CASE WHEN COALESCE(im.method, 'FIFO') = 'LIFO' THEN 1 ELSE 0 END) as lifo_count,
+                    COUNT(*) as total_tools
+                  FROM tool t
+                  LEFT JOIN inventory_method im ON t.id = im.tool_id";
+        $result = mysqli_query($this->connection, $query);
+        
+        if ($result && $row = mysqli_fetch_assoc($result)) {
+            $stats = $row;
+        }
+        
+        return $stats;
     }
     
     /**

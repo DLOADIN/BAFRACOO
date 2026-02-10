@@ -6,3 +6,6 @@ USER_PRIVILEGES_SUMMARY.md
 PUBLIC_ACCESS_GUIDE.md
 QUICK_REFERENCE.md
 fix_inventory_method.sql
+
+# Stripe config with secrets - NEVER commit this!
+USERS/stripe_config.php

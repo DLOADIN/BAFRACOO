@@ -1,16 +1,18 @@
 <?php
 /**
- * Flutterwave Payment Redirect Handler
- * This page handles the callback from Flutterwave after payment
+ * Stripe Payment Redirect Handler
+ * This page handles the callback from Stripe after payment
  * 
  * On successful payment:
- * 1. Update order status to 'Paid'
- * 2. Deduct stock from inventory
- * 3. Record transaction
- * 4. Redirect to success page
+ * 1. Verify payment with Stripe
+ * 2. Update order status to 'Paid'
+ * 3. Deduct stock from inventory
+ * 4. Record transaction
+ * 5. Redirect to success page
  */
 
 require "connection.php";
+require_once "stripe_helper.php";
 
 // Start session if not already started
 if (session_status() == PHP_SESSION_NONE) {
@@ -25,17 +27,30 @@ if(empty($_SESSION["id"])){
 
 $user_id = $_SESSION["id"];
 
-// Get payment status and transaction reference from Flutterwave
+// Get payment status and session ID from Stripe
 $status = isset($_GET['status']) ? $_GET['status'] : '';
-$tx_ref = isset($_GET['tx_ref']) ? $_GET['tx_ref'] : '';
-$transaction_id = isset($_GET['transaction_id']) ? $_GET['transaction_id'] : '';
+$session_id = isset($_GET['session_id']) ? $_GET['session_id'] : '';
+$order_id = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
 
-// Extract order_id from transaction reference (format: BAFRACOO-{order_id}-{timestamp}-{random})
-$order_id = 0;
-if(!empty($tx_ref) && strpos($tx_ref, 'BAFRACOO-') === 0) {
-    $parts = explode('-', $tx_ref);
-    if(isset($parts[1])) {
-        $order_id = (int)$parts[1];
+// If we have a session_id, verify payment with Stripe
+$payment_verified = false;
+$stripe_transaction_id = '';
+
+if (!empty($session_id) && $status == 'success') {
+    // Retrieve the checkout session from Stripe
+    $checkout_session = getStripeCheckoutSession($session_id);
+    
+    if (!isset($checkout_session['error']) && isset($checkout_session['payment_status'])) {
+        // Get order_id from metadata
+        if (isset($checkout_session['metadata']['order_id'])) {
+            $order_id = (int)$checkout_session['metadata']['order_id'];
+        }
+        
+        // Check if payment was successful
+        if ($checkout_session['payment_status'] == 'paid' && $checkout_session['status'] == 'complete') {
+            $payment_verified = true;
+            $stripe_transaction_id = $checkout_session['payment_intent'] ?? $session_id;
+        }
     }
 }
 
@@ -78,7 +93,7 @@ function deductStock($con, $order_id) {
 }
 
 // Function to record transaction
-function recordTransaction($con, $order_id, $user_id, $tx_ref, $flw_transaction_id, $status) {
+function recordTransaction($con, $order_id, $user_id, $stripe_transaction_id, $status) {
     // Get order details
     $order_query = mysqli_query($con, "SELECT * FROM `order` WHERE id = '$order_id'");
     $order = mysqli_fetch_array($order_query);
@@ -107,8 +122,8 @@ function recordTransaction($con, $order_id, $user_id, $tx_ref, $flw_transaction_
 }
 
 // Handle payment status
-if ($status == 'successful' || $status == 'completed') {
-    // Payment was successful
+if ($status == 'success' && $payment_verified) {
+    // Payment was successful and verified with Stripe
     
     if($order_id > 0) {
         // Verify the order belongs to this user
@@ -126,7 +141,7 @@ if ($status == 'successful' || $status == 'completed') {
                 deductStock($con, $order_id);
                 
                 // Record transaction
-                recordTransaction($con, $order_id, $user_id, $tx_ref, $transaction_id, 'Completed');
+                recordTransaction($con, $order_id, $user_id, $stripe_transaction_id, 'Completed');
                 
                 // Store success message in session
                 $_SESSION['payment_success'] = true;
@@ -155,8 +170,8 @@ if ($status == 'successful' || $status == 'completed') {
     header('Location: failed-payment.php?status=cancelled&order_id=' . $order_id);
     exit();
     
-} elseif ($status == 'failed') {
-    // Payment failed
+} else {
+    // Payment failed or unknown status
     
     if($order_id > 0) {
         // Update order status to indicate failure
@@ -168,11 +183,6 @@ if ($status == 'successful' || $status == 'completed') {
     
     // Redirect to failed payment page
     header('Location: failed-payment.php?status=failed&order_id=' . $order_id);
-    exit();
-    
-} else {
-    // Unknown status - redirect to orders page
-    header('Location: orders.php');
     exit();
 }
 ?>
