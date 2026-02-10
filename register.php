@@ -9,6 +9,7 @@ if(isset($_POST['submit'])){
     $full_name = mysqli_real_escape_string($con, trim($_POST['full_name']));
     $email = mysqli_real_escape_string($con, trim($_POST['email']));
     $phone = mysqli_real_escape_string($con, trim($_POST['phone']));
+    $address = mysqli_real_escape_string($con, trim($_POST['address'] ?? 'Not provided'));
     $password = mysqli_real_escape_string($con, $_POST['password']);
     $confirm_password = mysqli_real_escape_string($con, $_POST['confirm_password']);
     $account_type = $_POST['account_type'];
@@ -24,32 +25,32 @@ if(isset($_POST['submit'])){
             // Check if email already exists in admin table
             $check_query = mysqli_query($con, "SELECT * FROM `admin` WHERE u_email = '$email'");
             
-            if(mysqli_num_rows($check_query) > 0) {
+            if($check_query && mysqli_num_rows($check_query) > 0) {
                 $error_message = "This email is already registered as an admin.";
             } else {
-                // Insert into admin table
-                $insert = mysqli_query($con, "INSERT INTO `admin` (u_fullname, u_email, u_telephone, u_password) VALUES ('$full_name', '$email', '$phone', '$password')");
+                // Insert into admin table - using correct column names
+                $insert = mysqli_query($con, "INSERT INTO `admin` (u_name, u_email, u_phonenumber, u_address, u_password) VALUES ('$full_name', '$email', '$phone', '$address', '$password')");
                 
                 if($insert) {
                     $success_message = "Admin account created successfully! You can now sign in.";
                 } else {
-                    $error_message = "Registration failed. Please try again.";
+                    $error_message = "Registration failed: " . mysqli_error($con);
                 }
             }
         } else {
             // Check if email already exists in user table
             $check_query = mysqli_query($con, "SELECT * FROM `user` WHERE u_email = '$email'");
             
-            if(mysqli_num_rows($check_query) > 0) {
+            if($check_query && mysqli_num_rows($check_query) > 0) {
                 $error_message = "This email is already registered.";
             } else {
-                // Insert into user table
-                $insert = mysqli_query($con, "INSERT INTO `user` (u_fullname, u_email, u_telephone, u_password) VALUES ('$full_name', '$email', '$phone', '$password')");
+                // Insert into user table - using correct column names
+                $insert = mysqli_query($con, "INSERT INTO `user` (u_name, u_email, u_phonenumber, u_address, u_password) VALUES ('$full_name', '$email', '$phone', '$address', '$password')");
                 
                 if($insert) {
                     $success_message = "Account created successfully! You can now sign in.";
                 } else {
-                    $error_message = "Registration failed. Please try again.";
+                    $error_message = "Registration failed: " . mysqli_error($con);
                 }
             }
         }
@@ -640,6 +641,14 @@ if(isset($_POST['submit'])){
                     <div class="input-wrapper">
                         <input type="tel" name="phone" class="form-input" placeholder="Enter your phone number" required>
                         <ion-icon name="call-outline" class="input-icon"></ion-icon>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <div class="input-wrapper">
+                        <input type="text" name="address" class="form-input" placeholder="Enter your address (city, district)" required>
+                        <ion-icon name="location-outline" class="input-icon"></ion-icon>
                     </div>
                 </div>
                 

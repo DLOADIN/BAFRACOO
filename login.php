@@ -510,7 +510,7 @@ if(isset($_POST['submit'])){
         <div class="brand-content">
             <img src="./images/Captured.JPG" alt="BAFRACOO" class="brand-logo">
             <h1 class="brand-title">BAFRACOO</h1>
-            <p class="brand-subtitle">Your trusted partner for fire safety equipment and construction tools in Rwanda</p>
+            <p class="brand-subtitle">Your trusted partner all equipments and construction tools in Rwanda</p>
             
             <div class="features-list">
                 <div class="feature-item">

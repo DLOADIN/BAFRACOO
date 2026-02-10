@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 10, 2026 at 05:14 PM
+-- Generation Time: Feb 10, 2026 at 06:57 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -282,18 +282,64 @@ CREATE TABLE `order` (
   `u_date` date DEFAULT NULL,
   `u_price` int(80) NOT NULL,
   `u_totalprice` int(100) NOT NULL,
-  `status` varchar(50) NOT NULL DEFAULT 'Pending'
+  `status` varchar(50) NOT NULL DEFAULT 'Pending',
+  `stripe_payment_intent` varchar(100) DEFAULT NULL,
+  `stripe_charge_id` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `order`
 --
 
-INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`) VALUES
-(9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending'),
-(11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending'),
-(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment'),
-(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid');
+INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`, `stripe_payment_intent`, `stripe_charge_id`) VALUES
+(9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending', NULL, NULL),
+(11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending', NULL, NULL),
+(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment', NULL, NULL),
+(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `refund_requests`
+--
+
+CREATE TABLE `refund_requests` (
+  `id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `tool_name` varchar(100) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `order_amount` decimal(12,2) NOT NULL,
+  `refund_amount` decimal(12,2) NOT NULL,
+  `refund_reason` enum('PAYMENT_FAILED','DUPLICATE_CHARGE','PRODUCT_NOT_RECEIVED','PRODUCT_DEFECTIVE','WRONG_PRODUCT','CHANGED_MIND','OTHER') NOT NULL,
+  `reason_details` text DEFAULT NULL,
+  `evidence_file` varchar(255) DEFAULT NULL,
+  `status` enum('PENDING','UNDER_REVIEW','APPROVED','REJECTED','PROCESSED','CANCELLED') DEFAULT 'PENDING',
+  `admin_notes` text DEFAULT NULL,
+  `processed_by` int(11) DEFAULT NULL,
+  `stripe_refund_id` varchar(100) DEFAULT NULL,
+  `stripe_payment_intent` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `processed_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `refund_transactions`
+--
+
+CREATE TABLE `refund_transactions` (
+  `id` int(11) NOT NULL,
+  `refund_request_id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `stripe_refund_id` varchar(100) DEFAULT NULL,
+  `status` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -548,8 +594,10 @@ CREATE TABLE `user` (
 --
 
 INSERT INTO `user` (`id`, `u_name`, `u_email`, `u_phonenumber`, `u_address`, `u_password`) VALUES
-(1, 'Hendricks', 'm.david@alustudent.com', '0791291003', 'Musanze', '12345'),
-(2, 'Ganza', 'manzidavid111@gmail.com', '188171212', 'Kigalui', 'Chrispaul_120');
+(1, 'Hendricks', 'david@gmail.com', '0791291003', 'Musanze', '12345'),
+(2, 'Ganza', 'manzidavid111@gmail.com', '188171212', 'Kigalui', 'Chrispaul_120'),
+(3, 'Test User', 'test123@test.com', '0781234567', 'Kigali', 'test123'),
+(4, 'TestUser', 'testuser999@test.com', '0781234567', 'Kigali', 'test123');
 
 -- --------------------------------------------------------
 
@@ -684,6 +732,24 @@ ALTER TABLE `order`
   ADD KEY `idx_order_tool_id` (`tool_id`);
 
 --
+-- Indexes for table `refund_requests`
+--
+ALTER TABLE `refund_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_order_id` (`order_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Indexes for table `refund_transactions`
+--
+ALTER TABLE `refund_transactions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_refund_request_id` (`refund_request_id`),
+  ADD KEY `idx_order_id` (`order_id`);
+
+--
 -- Indexes for table `returned_stock`
 --
 ALTER TABLE `returned_stock`
@@ -803,6 +869,18 @@ ALTER TABLE `order`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
+-- AUTO_INCREMENT for table `refund_requests`
+--
+ALTER TABLE `refund_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `refund_transactions`
+--
+ALTER TABLE `refund_transactions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `returned_stock`
 --
 ALTER TABLE `returned_stock`
@@ -854,7 +932,7 @@ ALTER TABLE `tool`
 -- AUTO_INCREMENT for table `user`
 --
 ALTER TABLE `user`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables
