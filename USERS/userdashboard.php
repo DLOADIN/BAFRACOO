@@ -31,6 +31,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="../CSS/modern-dashboard.css">
+  <link rel="stylesheet" href="../CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - User Dashboard</title>
@@ -123,390 +124,293 @@
     <div class="sidebar-overlay"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <header class="header">
-        <div class="header-left">
-          <button class="mobile-menu-btn">
-            <ion-icon name="menu-outline"></ion-icon>
-          </button>
-          <button class="sidebar-toggle">
-            <ion-icon name="chevron-back-outline"></ion-icon>
-          </button>
-          <h1 class="page-title">My Dashboard</h1>
+    <main class="main-content" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+      <!-- Page Banner -->
+      <div class="page-banner">
+        <h1><ion-icon name="home-outline"></ion-icon> Welcome, <?php echo htmlspecialchars($row['u_name'] ?? 'User'); ?>!</h1>
+        <p>Manage your orders and explore our product catalog</p>
+      </div>
+      
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon blue">
+            <ion-icon name="bag-handle-outline"></ion-icon>
+          </div>
+          <div class="stat-value">
+            <?php
+              $user_orders_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `order` WHERE user_id='$id'");
+              echo $user_orders_query ? number_format(mysqli_fetch_assoc($user_orders_query)['total']) : "0";
+            ?>
+          </div>
+          <div class="stat-label">Total Orders</div>
+          <div class="stat-change positive">
+            <ion-icon name="trending-up-outline"></ion-icon>
+            All time purchases
+          </div>
         </div>
-        <div class="header-right">
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
+
+        <div class="stat-card">
+          <div class="stat-icon orange">
+            <ion-icon name="time-outline"></ion-icon>
+          </div>
+          <div class="stat-value">
+            <?php
+              $pending_orders_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `order` WHERE user_id='$id' AND (status='Pending' OR status='Pending Payment')");
+              echo $pending_orders_query ? number_format(mysqli_fetch_assoc($pending_orders_query)['total']) : "0";
+            ?>
+          </div>
+          <div class="stat-label">Pending</div>
+          <div class="stat-change neutral">
+            <ion-icon name="hourglass-outline"></ion-icon>
+            Awaiting processing
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon green">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+          </div>
+          <div class="stat-value">
+            <?php
+              $completed_orders_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `order` WHERE user_id='$id' AND (status='Completed' OR status='Paid')");
+              echo $completed_orders_query ? number_format(mysqli_fetch_assoc($completed_orders_query)['total']) : "0";
+            ?>
+          </div>
+          <div class="stat-label">Completed</div>
+          <div class="stat-change positive">
+            <ion-icon name="checkmark-done-outline"></ion-icon>
+            Successfully delivered
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon purple">
+            <ion-icon name="wallet-outline"></ion-icon>
+          </div>
+          <div class="stat-value">
+            <?php
+              $spent_query = mysqli_query($con, "SELECT SUM(u_totalprice) as total FROM `order` WHERE user_id='$id' AND (status='Completed' OR status='Paid')");
+              $spent_result = mysqli_fetch_assoc($spent_query);
+              echo number_format($spent_result['total'] ?? 0);
+            ?>
+          </div>
+          <div class="stat-label">Total Spent (RWF)</div>
+          <div class="stat-change positive">
+            <ion-icon name="card-outline"></ion-icon>
+            Lifetime spending
+          </div>
+        </div>
+      </div>
+
+      <div class="page-content">
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <a href="stock.php" class="quick-action-card">
+            <div class="icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+              <ion-icon name="storefront-outline"></ion-icon>
+            </div>
+            <div class="text">
+              <div class="title">Shop Products</div>
+              <div class="subtitle">Browse available tools</div>
+            </div>
+          </a>
+          
+          <a href="orders.php" class="quick-action-card">
+            <div class="icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+              <ion-icon name="bag-check-outline"></ion-icon>
+            </div>
+            <div class="text">
+              <div class="title">My Orders</div>
+              <div class="subtitle">Track your purchases</div>
+            </div>
+          </a>
+          
+          <a href="transactions.php" class="quick-action-card">
+            <div class="icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+              <ion-icon name="receipt-outline"></ion-icon>
+            </div>
+            <div class="text">
+              <div class="title">Transactions</div>
+              <div class="subtitle">Payment history</div>
+            </div>
+          </a>
+          
+          <a href="userprofile.php" class="quick-action-card">
+            <div class="icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+              <ion-icon name="person-outline"></ion-icon>
+            </div>
+            <div class="text">
+              <div class="title">My Profile</div>
+              <div class="subtitle">Update your account</div>
+            </div>
           </a>
         </div>
-      </header>
-
-      <div class="content-area">
-        <div class="dashboard-grid">
-          <!-- My Orders Card -->
-          <div class="dashboard-card">
-            <div class="card-header">
-              <h3 class="card-title">My Orders</h3>
-              <div class="card-icon primary">
-                <i class="fas fa-shopping-bag"></i>
-              </div>
-            </div>
-            <div class="card-value">
-              <?php
-                $user_orders_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `order` WHERE user_id='$id'");
-                if($user_orders_query) {
-                  $user_orders_count = mysqli_fetch_assoc($user_orders_query)['total'];
-                  echo number_format($user_orders_count);
-                } else {
-                  echo "0";
-                }
-              ?>
-            </div>
-            <div class="card-change positive">
-              <ion-icon name="trending-up-outline"></ion-icon>
-              <span>Total orders placed</span>
-            </div>
-          </div>
-
-          <!-- Pending Orders Card -->
-          <div class="dashboard-card">
-            <div class="card-header">
-              <h3 class="card-title">Pending Orders</h3>
-              <div class="card-icon warning">
-                <i class="fas fa-clock"></i>
-              </div>
-            </div>
-            <div class="card-value">
-              <?php
-                $pending_orders_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `order` WHERE user_id='$id' AND status='Pending'");
-                if($pending_orders_query) {
-                  $pending_orders_count = mysqli_fetch_assoc($pending_orders_query)['total'];
-                  echo number_format($pending_orders_count);
-                } else {
-                  echo "0";
-                }
-              ?>
-            </div>
-            <div class="card-change">
-              <ion-icon name="time-outline"></ion-icon>
-              <span>Awaiting processing</span>
-            </div>
-          </div>
-
-          <!-- Completed Orders Card -->
-          <div class="dashboard-card">
-            <div class="card-header">
-              <h3 class="card-title">Completed Orders</h3>
-              <div class="card-icon success">
-                <i class="fas fa-check-circle"></i>
-              </div>
-            </div>
-            <div class="card-value">
-              <?php
-                $completed_orders_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `order` WHERE user_id='$id' AND status='Completed'");
-                $completed_orders_count = mysqli_fetch_assoc($completed_orders_query)['total'];
-                echo number_format($completed_orders_count);
-              ?>
-            </div>
-            <div class="card-change positive">
-              <ion-icon name="checkmark-circle-outline"></ion-icon>
-              <span>Successfully delivered</span>
-            </div>
-          </div>
-
-          <!-- Total Spent Card -->
-          <div class="dashboard-card">
-            <div class="card-header">
-              <h3 class="card-title">Total Spent</h3>
-              <div class="card-icon accent">
-                <i class="fas fa-dollar-sign"></i>
-              </div>
-            </div>
-            <div class="card-value">
-              <?php
-                $spent_query = mysqli_query($con, "SELECT SUM(u_price) as total FROM `order` WHERE user_id='$id' AND status='Completed'");
-                $spent_result = mysqli_fetch_assoc($spent_query);
-                $total_spent = $spent_result['total'] ?? 0;
-                echo number_format($total_spent);
-              ?> RWF
-            </div>
-            <div class="card-change positive">
-              <ion-icon name="card-outline"></ion-icon>
-              <span>Lifetime spending</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Actions Section -->
-        <div class="dashboard-card">
-          <div class="card-header">
-            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">Quick Actions</h3>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-lg); padding: var(--spacing-lg);">
-            <a href="stock.php" style="display: flex; align-items: center; padding: var(--spacing-lg); background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-radius: var(--radius-lg); text-decoration: none; transition: all var(--transition-base);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-              <ion-icon name="storefront-outline" style="font-size: 2rem; margin-right: var(--spacing-md);"></ion-icon>
-              <div>
-                <div style="font-weight: 600; font-size: 1.1rem;">Inter Purchases</div>
-                <div style="font-size: 0.875rem; opacity: 0.9;">Explore available tools</div>
-              </div>
-            </a>
-            
-            <a href="orders.php" style="display: flex; align-items: center; padding: var(--spacing-lg); background: linear-gradient(135deg, var(--success-color), #059669); color: white; border-radius: var(--radius-lg); text-decoration: none; transition: all var(--transition-base);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-              <ion-icon name="bag-check-outline" style="font-size: 2rem; margin-right: var(--spacing-md);"></ion-icon>
-              <div>
-                <div style="font-weight: 600; font-size: 1.1rem;">View Orders</div>
-                <div style="font-size: 0.875rem; opacity: 0.9;">Track your orders</div>
-              </div>
-            </a>
-            
-            <a href="userprofile.php" style="display: flex; align-items: center; padding: var(--spacing-lg); background: linear-gradient(135deg, var(--secondary-color), #4f46e5); color: white; border-radius: var(--radius-lg); text-decoration: none; transition: all var(--transition-base);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-              <ion-icon name="person-outline" style="font-size: 2rem; margin-right: var(--spacing-md);"></ion-icon>
-              <div>
-                <div style="font-weight: 600; font-size: 1.1rem;">Update Profile</div>
-                <div style="font-size: 0.875rem; opacity: 0.9;">Manage your account</div>
-              </div>
-            </a>
-          </div>
-        </div>
-
-        <!-- Available Products Section (Shop View) -->
-        <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-lg); border-bottom: 1px solid var(--gray-200);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <ion-icon name="storefront-outline" style="font-size: 1.5rem; color: var(--primary-color);"></ion-icon>
-              <div>
-                <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">Available Products</h3>
-                <p style="margin: 4px 0 0 0; color: var(--gray-600); font-size: 0.875rem;">Browse our product catalog</p>
-              </div>
-            </div>
-            <a href="stock.php" style="color: var(--primary-color); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; font-size: 0.875rem; transition: all 0.2s; padding: 8px 16px; background: var(--primary-light); border-radius: 8px;" onmouseover="this.style.gap='8px'" onmouseout="this.style.gap='4px'">
-              View All Products <ion-icon name="arrow-forward-outline"></ion-icon>
-            </a>
-          </div>
-          <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="border-bottom: 2px solid var(--gray-200); background: var(--gray-50);">
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Product</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Type</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Stock</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php
-                // Get products grouped by name with total stock (user/shop view)
-                $available_products = mysqli_query($con, "
-                  SELECT t.u_toolname,
-                         SUM(t.u_itemsnumber) as total_stock,
-                         AVG(t.u_price) as avg_price,
-                         MAX(t.u_type) as u_type,
-                         MAX(t.image_url) as image_url
-                  FROM `tool` t
-                  WHERE t.u_itemsnumber > 0
-                  GROUP BY t.u_toolname
-                  ORDER BY t.u_toolname ASC
-                  LIMIT 6
-                ");
-                
-                if($available_products && mysqli_num_rows($available_products) > 0):
-                  while($product = mysqli_fetch_assoc($available_products)):
-                    // Get first tool ID for ordering
-                    $first_tool = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $product['u_toolname']) . "' AND u_itemsnumber > 0 ORDER BY u_date ASC LIMIT 1");
-                    $tool_id = mysqli_fetch_assoc($first_tool)['id'] ?? 0;
-                ?>
-                <tr style="border-bottom: 1px solid var(--gray-100); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='transparent'">
-                  <td style="padding: 12px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                      <?php if(!empty($product['image_url']) && file_exists('../' . $product['image_url'])): ?>
-                      <img src="../<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['u_toolname']); ?>" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-200);">
-                      <?php else: ?>
-                      <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
-                        <ion-icon name="cube-outline" style="font-size: 1.2rem;"></ion-icon>
-                      </div>
-                      <?php endif; ?>
-                      <strong style="color: var(--gray-900);"><?php echo htmlspecialchars($product['u_toolname']); ?></strong>
-                    </div>
-                  </td>
-                  <td style="padding: 12px;">
-                    <span style="display: inline-block; padding: 4px 10px; background: var(--gray-100); color: var(--gray-700); border-radius: 10px; font-size: 0.8rem; font-weight: 500;">
-                      <?php echo htmlspecialchars($product['u_type']); ?>
-                    </span>
-                  </td>
-                  <td style="padding: 12px;">
-                    <span style="display: inline-block; padding: 4px 10px; background: <?php echo $product['total_stock'] > 10 ? '#10b981' : '#f59e0b'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
-                      <?php echo number_format($product['total_stock']); ?> units
-                    </span>
-                  </td>
-                  <td style="padding: 12px; font-weight: 600; color: var(--primary-color);">
-                    RWF <?php echo number_format($product['avg_price']); ?>
-                  </td>
-                  <td style="padding: 12px;">
-                    <a href="stock.php?id=<?php echo $tool_id; ?>" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 0.8rem; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
-                      <ion-icon name="cart-outline"></ion-icon>
-                      Order
-                    </a>
-                  </td>
-                </tr>
-                <?php endwhile; else: ?>
-                <tr>
-                  <td colspan="5" style="padding: 32px; text-align: center;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                      <ion-icon name="cube-outline" style="font-size: 48px; color: var(--gray-400);"></ion-icon>
-                      <p style="color: var(--gray-500); margin: 0; font-size: 1rem;">No products available</p>
-                    </div>
-                  </td>
-                </tr>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Available Locations Section -->
-        <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
-          <div class="card-header">
-            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0; display: flex; align-items: center; gap: 8px;">
-              <ion-icon name="location-outline" style="color: var(--primary-color);"></ion-icon>
-              Available Pickup Locations
+        
+        <!-- Available Products Table -->
+        <div class="table-wrapper" style="margin-bottom: 2rem;">
+          <div class="table-header">
+            <h3 class="table-title">
+              <ion-icon name="storefront-outline"></ion-icon>
+              Available Products
             </h3>
-            <p style="margin: 8px 0 0 0; color: var(--gray-600); font-size: 0.875rem;">Choose from <?php echo $location_count; ?> convenient locations across Rwanda</p>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-md); padding: var(--spacing-lg);">
-            <?php
-            mysqli_data_seek($locations, 0); // Reset the result set
-            while($location = mysqli_fetch_array($locations)):
-              // Get total products available at this location
-              $location_inventory = mysqli_query($con, "
-                SELECT COUNT(DISTINCT sb.tool_id) as product_count, SUM(sb.quantity_remaining) as total_stock 
-                FROM stock_batches sb 
-                WHERE sb.location_id = {$location['id']} AND sb.quantity_remaining > 0
-              ");
-              $location_stats = mysqli_fetch_array($location_inventory);
-            ?>
-            <div style="padding: var(--spacing-lg); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); background: white; transition: all 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-md)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
-              <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
-                <div>
-                  <h4 style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--gray-900);">
-                    <?php echo htmlspecialchars($location['location_name']); ?>
-                  </h4>
-                  <p style="margin: 4px 0 0 0; font-size: 0.875rem; color: var(--gray-600);">
-                    <?php echo htmlspecialchars($location['address']); ?>
-                  </p>
-                </div>
-                <div style="padding: 4px 8px; background: #06b6d4; color: white; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                  <?php echo $location['location_type']; ?>
-                </div>
-              </div>
-              <div style="display: flex; justify-content: between; align-items: center;">
-                <div style="display: flex; gap: 16px;">
-                  <div>
-                    <span style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px;">Products</span>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">
-                      <?php echo $location_stats['product_count'] ?? 0; ?>
-                    </div>
-                  </div>
-                  <div>
-                    <span style="font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px;">Stock</span>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--success-color);">
-                      <?php echo $location_stats['total_stock'] ?? 0; ?>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <?php endwhile; ?>
-          </div>
-        </div>
-
-        <!-- Recent Orders Section -->
-        <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-lg); border-bottom: 1px solid var(--gray-200);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <ion-icon name="time-outline" style="font-size: 1.5rem; color: var(--primary-color);"></ion-icon>
-              <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">Recent Orders</h3>
-            </div>
-            <a href="orders.php" style="color: var(--primary-color); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; font-size: 0.875rem; transition: all 0.2s;" onmouseover="this.style.gap='8px'" onmouseout="this.style.gap='4px'">
+            <a href="stock.php" class="btn btn-primary btn-sm">
               View All <ion-icon name="arrow-forward-outline"></ion-icon>
             </a>
           </div>
-          <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="border-bottom: 2px solid var(--gray-200); background: var(--gray-50);">
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Order ID</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Tool Name</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
-                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php
-                $recent_user_orders = mysqli_query($con, "
-                  SELECT * 
-                  FROM `order` 
-                  WHERE user_id = '$id'
-                  ORDER BY id DESC 
-                  LIMIT 5
-                ");
-                
-                if($recent_user_orders && mysqli_num_rows($recent_user_orders) > 0):
-                  while($order = mysqli_fetch_assoc($recent_user_orders)):
-                    $status = $order['status'] ?? 'Pending';
-                    $status_class = '';
-                    $status_bg = '';
-                    switch($status) {
-                      case 'Completed': 
-                        $status_class = 'color: #10b981;'; 
-                        $status_bg = 'background: #d1fae5; padding: 4px 12px; border-radius: 12px;';
-                        break;
-                      case 'Pending': 
-                        $status_class = 'color: #f59e0b;'; 
-                        $status_bg = 'background: #fef3c7; padding: 4px 12px; border-radius: 12px;';
-                        break;
-                      case 'Cancelled': 
-                        $status_class = 'color: #ef4444;'; 
-                        $status_bg = 'background: #fee2e2; padding: 4px 12px; border-radius: 12px;';
-                        break;
-                      default: 
-                        $status_class = 'color: #2563eb;'; 
-                        $status_bg = 'background: #dbeafe; padding: 4px 12px; border-radius: 12px;';
-                    }
-                ?>
-                <tr style="border-bottom: 1px solid var(--gray-100); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='transparent'">
-                  <td style="padding: 12px; font-weight: 500; color: var(--gray-900);">#<?php echo str_pad($order['id'], 4, '0', STR_PAD_LEFT); ?></td>
-                  <td style="padding: 12px; color: var(--gray-700);"><?php echo htmlspecialchars($order['u_toolname'] ?? 'N/A'); ?></td>
-                  <td style="padding: 12px; font-weight: 600; color: var(--gray-900);">
-                    <?php echo number_format($order['u_totalprice'] ?? $order['u_price'] ?? 0); ?> <span style="color: var(--gray-500); font-size: 0.875rem;">RWF</span>
-                  </td>
-                  <td style="padding: 12px;">
-                    <span style="<?php echo $status_class . $status_bg; ?> font-weight: 500; font-size: 0.875rem; display: inline-block;">
-                      <?php echo $status; ?>
-                    </span>
-                  </td>
-                  <td style="padding: 12px; color: var(--gray-500); font-size: 0.875rem;">
-                    <?php echo date('M d, Y', strtotime($order['u_date'] ?? 'now')); ?>
-                  </td>
-                </tr>
-                <?php endwhile; else: ?>
-                <tr>
-                  <td colspan="5" style="padding: 32px; text-align: center;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                      <ion-icon name="bag-outline" style="font-size: 48px; color: var(--gray-400);"></ion-icon>
-                      <p style="color: var(--gray-500); margin: 0; font-size: 1rem;">No orders yet</p>
-                      <a href="stock.php" style="color: var(--primary-color); font-weight: 600; text-decoration: none; padding: 8px 16px; border: 2px solid var(--primary-color); border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='var(--primary-color)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='var(--primary-color)'">
-                        Start Shopping <ion-icon name="arrow-forward-outline" style="vertical-align: middle;"></ion-icon>
-                      </a>
+          <table class="enhanced-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Type</th>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              // Get products grouped by name with total stock (user/shop view)
+              $available_products = mysqli_query($con, "
+                SELECT t.u_toolname,
+                       SUM(t.u_itemsnumber) as total_stock,
+                       AVG(t.u_price) as avg_price,
+                       MAX(t.u_type) as u_type,
+                       MAX(t.image_url) as image_url
+                FROM `tool` t
+                WHERE t.u_itemsnumber > 0
+                GROUP BY t.u_toolname
+                ORDER BY t.u_toolname ASC
+                LIMIT 6
+              ");
+              
+              if($available_products && mysqli_num_rows($available_products) > 0):
+                while($product = mysqli_fetch_assoc($available_products)):
+                  // Get first tool ID for ordering
+                  $first_tool = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $product['u_toolname']) . "' AND u_itemsnumber > 0 ORDER BY u_date ASC LIMIT 1");
+                  $tool_id = mysqli_fetch_assoc($first_tool)['id'] ?? 0;
+              ?>
+              <tr>
+                <td>
+                  <div class="product-cell">
+                    <?php if(!empty($product['image_url']) && file_exists('../' . $product['image_url'])): ?>
+                    <img src="../<?php echo htmlspecialchars($product['image_url']); ?>" alt="" class="product-image">
+                    <?php else: ?>
+                    <div class="product-icon">
+                      <ion-icon name="cube-outline"></ion-icon>
                     </div>
-                  </td>
-                </tr>
-                <?php endif; ?>
-              </tbody>
-            </table>
+                    <?php endif; ?>
+                    <span class="product-name"><?php echo htmlspecialchars($product['u_toolname']); ?></span>
+                  </div>
+                </td>
+                <td><span class="badge badge-info"><?php echo htmlspecialchars($product['u_type']); ?></span></td>
+                <td>
+                  <span class="badge <?php echo $product['total_stock'] > 10 ? 'badge-success' : 'badge-warning'; ?>">
+                    <?php echo number_format($product['total_stock']); ?> units
+                  </span>
+                </td>
+                <td class="price"><?php echo number_format($product['avg_price']); ?><span class="currency">RWF</span></td>
+                <td>
+                  <a href="stock.php?id=<?php echo $tool_id; ?>" class="btn btn-primary btn-sm">
+                    <ion-icon name="cart-outline"></ion-icon> Order
+                  </a>
+                </td>
+              </tr>
+              <?php endwhile; else: ?>
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">
+                      <ion-icon name="cube-outline"></ion-icon>
+                    </div>
+                    <h3>No Products Available</h3>
+                    <p>Check back later for new products</p>
+                  </div>
+                </td>
+              </tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Recent Orders Section -->
+        <div class="table-wrapper">
+          <div class="table-header">
+            <h3 class="table-title">
+              <ion-icon name="time-outline"></ion-icon>
+              Recent Orders
+            </h3>
+            <a href="orders.php" class="btn btn-primary btn-sm">
+              View All <ion-icon name="arrow-forward-outline"></ion-icon>
+            </a>
           </div>
+          <table class="enhanced-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Product</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              $recent_user_orders = mysqli_query($con, "
+                SELECT * 
+                FROM `order` 
+                WHERE user_id = '$id'
+                ORDER BY id DESC 
+                LIMIT 5
+              ");
+              
+              if($recent_user_orders && mysqli_num_rows($recent_user_orders) > 0):
+                while($order = mysqli_fetch_assoc($recent_user_orders)):
+                  $status = $order['status'] ?? 'Pending';
+                  $status_class = 'status-pending';
+                  if(stripos($status, 'paid') !== false && stripos($status, 'pending') === false) {
+                    $status_class = 'status-paid';
+                  } elseif(stripos($status, 'complete') !== false) {
+                    $status_class = 'status-completed';
+                  } elseif(stripos($status, 'cancel') !== false || stripos($status, 'fail') !== false) {
+                    $status_class = 'status-cancelled';
+                  } elseif(stripos($status, 'pending payment') !== false) {
+                    $status_class = 'status-pending-payment';
+                  }
+              ?>
+              <tr>
+                <td><strong>#<?php echo str_pad($order['id'], 4, '0', STR_PAD_LEFT); ?></strong></td>
+                <td>
+                  <div class="product-cell">
+                    <div class="product-icon">
+                      <ion-icon name="cube-outline"></ion-icon>
+                    </div>
+                    <span class="product-name"><?php echo htmlspecialchars($order['u_toolname'] ?? 'N/A'); ?></span>
+                  </div>
+                </td>
+                <td class="price price-success"><?php echo number_format($order['u_totalprice'] ?? 0); ?><span class="currency">RWF</span></td>
+                <td><span class="status-badge <?php echo $status_class; ?>"><?php echo $status; ?></span></td>
+                <td class="date-cell"><?php echo date('M d, Y', strtotime($order['u_date'] ?? 'now')); ?></td>
+              </tr>
+              <?php endwhile; else: ?>
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">
+                      <ion-icon name="bag-outline"></ion-icon>
+                    </div>
+                    <h3>No Orders Yet</h3>
+                    <p>Start shopping to see your orders here</p>
+                    <a href="stock.php" class="btn btn-primary">
+                      <ion-icon name="cart-outline"></ion-icon>
+                      Browse Products
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
         </div>
       </div>
     </main>
@@ -514,5 +418,5 @@
 
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <!--   <!-- <script src="../JS/file.js"></script> -->
- -->
+</body>
+</html>

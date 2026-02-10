@@ -37,6 +37,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="../CSS/modern-dashboard.css">
+  <link rel="stylesheet" href="../CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - User Profile</title>
@@ -123,26 +124,14 @@
     <div class="sidebar-overlay"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <header class="header">
-        <div class="header-left">
-          <button class="mobile-menu-btn">
-            <ion-icon name="menu-outline"></ion-icon>
-          </button>
-          <button class="sidebar-toggle">
-            <ion-icon name="chevron-back-outline"></ion-icon>
-          </button>
-          <h1 class="page-title">My Profile</h1>
-        </div>
-        <div class="header-right">
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
-          </a>
-        </div>
-      </header>
+    <main class="main-content" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+      <!-- Page Banner -->
+      <div class="page-banner">
+        <h1><ion-icon name="person-circle-outline"></ion-icon> My Profile</h1>
+        <p>Manage your account information</p>
+      </div>
 
-      <div class="content-area">
+      <div class="page-content">
         <?php if(isset($success_message)): ?>
           <div style="background: var(--success-color); color: white; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg); font-weight: 500;">
             <ion-icon name="checkmark-circle-outline" style="margin-right: var(--spacing-sm);"></ion-icon>

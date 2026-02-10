@@ -71,6 +71,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="./CSS/modern-dashboard.css">
   <link rel="stylesheet" href="./CSS/modern-forms.css">
+  <link rel="stylesheet" href="./CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Add Order</title>
@@ -94,7 +95,6 @@
           <button class="sidebar-toggle">
             <ion-icon name="chevron-back-outline"></ion-icon>
           </button>
-          <h1 class="page-title"><?php echo $is_edit ? 'Edit Order' : 'Add New Order'; ?></h1>
         </div>
         <div class="header-right">
           <a href="logout.php" class="logout-btn">
@@ -103,6 +103,15 @@
           </a>
         </div>
       </header>
+      
+      <!-- Page Banner -->
+      <div class="page-banner">
+        <h1 class="page-banner-title">
+          <ion-icon name="<?php echo $is_edit ? 'create-outline' : 'add-circle-outline'; ?>"></ion-icon>
+          <?php echo $is_edit ? 'Edit Order' : 'Add New Order'; ?>
+        </h1>
+        <p class="page-banner-subtitle"><?php echo $is_edit ? 'Update the order details below' : 'Create a new order for a customer'; ?></p>
+      </div>
 
       <div class="content-area">
         <!-- Breadcrumb -->

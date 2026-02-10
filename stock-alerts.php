@@ -56,6 +56,7 @@ $current_page = 'stock-alerts';
     <link rel="stylesheet" href="CSS/modern-dashboard.css">
     <link rel="stylesheet" href="CSS/modern-tables.css">
     <link rel="stylesheet" href="CSS/modern-forms.css">
+    <link rel="stylesheet" href="CSS/enhanced-pages.css">
     <title>BAFRACOO - Stock Alerts</title>
     <style>
         .alert-critical { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; }
@@ -93,7 +94,9 @@ $current_page = 'stock-alerts';
         <main class="main-content">
             <header class="header">
                 <div class="header-left">
-                    <h1 class="page-title">🔔 Stock Alerts & Thresholds</h1>
+                    <button class="mobile-menu-btn">
+                        <ion-icon name="menu-outline"></ion-icon>
+                    </button>
                 </div>
                 <div class="header-right">
                     <a href="logout.php" class="logout-btn">
@@ -102,6 +105,15 @@ $current_page = 'stock-alerts';
                     </a>
                 </div>
             </header>
+            
+            <!-- Page Banner -->
+            <div class="page-banner">
+                <h1 class="page-banner-title">
+                    <ion-icon name="notifications-outline"></ion-icon>
+                    Stock Alerts & Thresholds
+                </h1>
+                <p class="page-banner-subtitle">Monitor stock levels and manage reorder thresholds</p>
+            </div>
             
             <div class="content-wrapper">
                 <?php if(isset($message)): ?>

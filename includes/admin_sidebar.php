@@ -48,6 +48,12 @@ $low_stock_count = $low_stock_query ? mysqli_fetch_assoc($low_stock_query)['coun
                         <span class="nav-text">Inventory</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="overall-stock.php" class="nav-link <?php echo ($current_page == 'overall-stock') ? 'active' : ''; ?>" data-tooltip="Overall Stock">
+                        <ion-icon name="layers-outline" class="nav-icon"></ion-icon>
+                        <span class="nav-text">Overall Stock</span>
+                    </a>
+                </li>
                 <!-- <li class="nav-item">
                     <a href="inventory-management.php" class="nav-link <?php echo ($current_page == 'inventory-management') ? 'active' : ''; ?>" data-tooltip="Enhanced Inventory">
                         <ion-icon name="library-outline" class="nav-icon"></ion-icon>

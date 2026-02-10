@@ -59,6 +59,7 @@ $current_page = 'returns';
     <link rel="stylesheet" href="CSS/modern-dashboard.css">
     <link rel="stylesheet" href="CSS/modern-tables.css">
     <link rel="stylesheet" href="CSS/modern-forms.css">
+    <link rel="stylesheet" href="CSS/enhanced-pages.css">
     <title>BAFRACOO - Returns Management</title>
     <style>
         .return-status-pending { background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
@@ -130,7 +131,9 @@ $current_page = 'returns';
         <main class="main-content">
             <header class="header">
                 <div class="header-left">
-                    <h1 class="page-title">↩️ Returns Management</h1>
+                    <button class="mobile-menu-btn">
+                        <ion-icon name="menu-outline"></ion-icon>
+                    </button>
                 </div>
                 <div class="header-right">
                     <button onclick="openNewReturnModal()" style="padding: 8px 16px; background: #16a34a; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 1rem;">
@@ -142,6 +145,15 @@ $current_page = 'returns';
                     </a>
                 </div>
             </header>
+            
+            <!-- Page Banner -->
+            <div class="page-banner">
+                <h1 class="page-banner-title">
+                    <ion-icon name="arrow-undo-outline"></ion-icon>
+                    Returns Management
+                </h1>
+                <p class="page-banner-subtitle">Process and track customer returns and refunds</p>
+            </div>
             
             <div class="content-wrapper">
                 <?php if(isset($message)): ?>

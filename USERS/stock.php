@@ -98,8 +98,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="../CSS/modern-dashboard.css">
-  <link rel="stylesheet" href="../CSS/modern-tables.css">
-  <link rel="stylesheet" href="../CSS/modern-forms.css">
+  <link rel="stylesheet" href="../CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Inter Purchases</title>
@@ -259,42 +258,38 @@
     <div class="sidebar-overlay"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <header class="header">
-        <div class="header-left">
-          <button class="mobile-menu-btn">
-            <ion-icon name="menu-outline"></ion-icon>
-          </button>
-          <button class="sidebar-toggle">
-            <ion-icon name="chevron-back-outline"></ion-icon>
-          </button>
-          <h1 class="page-title">Inter Purchases</h1>
-        </div>
-        <div class="header-right">
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
-          </a>
-        </div>
-      </header>
+    <main class="main-content" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+      <!-- Page Banner -->
+      <div class="page-banner">
+        <h1><ion-icon name="storefront-outline"></ion-icon> Inter Purchases</h1>
+        <p>Browse and order construction tools and equipment</p>
+      </div>
       
-      <!-- Page Content -->
-      <div class="content-wrapper">
-        <div class="content-header">
-          <h2 class="content-title">Available Tools & Equipment</h2>
-          <p class="content-subtitle">Browse and order construction tools</p>
+      <?php if(isset($error_message)): ?>
+      <div class="page-content">
+        <div class="alert alert-error">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          <?php echo $error_message; ?>
         </div>
-        
-        <div class="table-container">
-          <table class="modern-table">
+      </div>
+      <?php endif; ?>
+      
+      <!-- Products Table -->
+      <div class="page-content">
+        <div class="table-wrapper">
+          <div class="table-header">
+            <h3 class="table-title">
+              <ion-icon name="cube-outline"></ion-icon>
+              Available Products
+            </h3>
+          </div>
+          <table class="enhanced-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Tool Name</th>
+                <th>Product</th>
                 <th>Type</th>
-                <th>Description</th>
-                <th>Available Stock</th>
-                <th>Status</th>
+                <th>Stock</th>
                 <th>Price</th>
                 <th>Action</th>
               </tr>

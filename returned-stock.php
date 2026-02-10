@@ -104,6 +104,7 @@ if(isset($_POST['write_off_return'])) {
     <link rel="stylesheet" href="CSS/modern-dashboard.css">
     <link rel="stylesheet" href="CSS/modern-tables.css">
     <link rel="stylesheet" href="CSS/modern-forms.css">
+    <link rel="stylesheet" href="CSS/enhanced-pages.css">
     <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
     <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
     <title>BAFRACOO - Returned Stock</title>
@@ -211,7 +212,6 @@ if(isset($_POST['write_off_return'])) {
                     <button class="mobile-menu-btn">
                         <ion-icon name="menu-outline"></ion-icon>
                     </button>
-                    <h1 class="page-title">📦 Returned Stock Management</h1>
                 </div>
                 <div class="header-right">
                     <button onclick="openReturnModal()" class="btn btn-primary" style="margin-right: 1rem; padding: 8px 16px; border-radius: 8px; background: #f59e0b; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
@@ -223,6 +223,15 @@ if(isset($_POST['write_off_return'])) {
                     </a>
                 </div>
             </header>
+            
+            <!-- Page Banner -->
+            <div class="page-banner" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);">
+                <h1 class="page-banner-title">
+                    <ion-icon name="archive-outline"></ion-icon>
+                    Returned Stock Management
+                </h1>
+                <p class="page-banner-subtitle">Process returned items and manage restocking decisions</p>
+            </div>
 
             <div class="content-area">
                 <?php if(isset($message)): ?>

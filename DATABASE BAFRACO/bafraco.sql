@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 16, 2025 at 02:39 AM
+-- Generation Time: Feb 10, 2026 at 05:14 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -292,7 +292,8 @@ CREATE TABLE `order` (
 INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`) VALUES
 (9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending'),
 (11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending'),
-(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment');
+(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment'),
+(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid');
 
 -- --------------------------------------------------------
 
@@ -497,8 +498,8 @@ INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescri
 (5, 'APPLES', 11000, 'Very Good', 'I love these items', '2024-04-07', 10000, NULL),
 (6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, NULL),
 (7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, NULL),
-(8, 'Living Room Lamps', 100, 'Very Good', '100', '2025-11-21', 2000, NULL),
-(9, 'Berryfruits', 20, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL),
+(8, 'Living Room Lamps', 99, 'Very Good', '100', '2025-11-21', 2000, NULL),
+(9, 'Berryfruits', 10, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL),
 (10, 'Cinnamon Flour', 30, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
 (11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 'uploads/tools/tool_1765848888_6940b73808f08.png');
 
@@ -519,6 +520,13 @@ CREATE TABLE `transaction` (
   `u_id` int(11) NOT NULL,
   `order_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `transaction`
+--
+
+INSERT INTO `transaction` (`id`, `u_toolname`, `u_item`, `u_type`, `u_amount`, `u_status`, `u_date`, `u_id`, `order_id`) VALUES
+(0, 'Living Room Lamps', '1', 'Very Good', '2000', 'Completed', '2026-02-10', 1, 25);
 
 -- --------------------------------------------------------
 
@@ -792,7 +800,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `order`
 --
 ALTER TABLE `order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `returned_stock`

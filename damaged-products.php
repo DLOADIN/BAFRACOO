@@ -225,6 +225,7 @@ if(isset($_POST['transfer_to_returned'])) {
     <link rel="stylesheet" href="CSS/modern-dashboard.css">
     <link rel="stylesheet" href="CSS/modern-tables.css">
     <link rel="stylesheet" href="CSS/modern-forms.css">
+    <link rel="stylesheet" href="CSS/enhanced-pages.css">
     <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
     <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
     <title>BAFRACOO - Damage Control</title>
@@ -353,7 +354,6 @@ if(isset($_POST['transfer_to_returned'])) {
                     <button class="mobile-menu-btn">
                         <ion-icon name="menu-outline"></ion-icon>
                     </button>
-                    <h1 class="page-title">⚠️ Damage Control</h1>
                 </div>
                 <div class="header-right">
                     <button onclick="openDamageModal()" class="btn btn-primary" style="margin-right: 1rem; padding: 8px 16px; border-radius: 8px; background: #dc2626; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
@@ -365,6 +365,15 @@ if(isset($_POST['transfer_to_returned'])) {
                     </a>
                 </div>
             </header>
+            
+            <!-- Page Banner -->
+            <div class="page-banner" style="background: linear-gradient(135deg, #dc2626, #ef4444);">
+                <h1 class="page-banner-title">
+                    <ion-icon name="warning-outline"></ion-icon>
+                    Damage Control
+                </h1>
+                <p class="page-banner-subtitle">Track and manage damaged products and inventory adjustments</p>
+            </div>
 
             <div class="content-area">
                 <?php if(isset($message)): ?>

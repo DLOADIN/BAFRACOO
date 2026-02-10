@@ -17,31 +17,10 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="../CSS/modern-dashboard.css">
-  <link rel="stylesheet" href="../CSS/modern-tables.css">
+  <link rel="stylesheet" href="../CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Transactions</title>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <style>
-    /* Ensure Ionicons display properly */
-    ion-icon {
-      display: inline-block;
-      vertical-align: middle;
-    }
-    
-    .nav-icon {
-      font-size: 1.25rem;
-      width: 24px;
-      height: 24px;
-      display: inline-flex !important;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .nav-link ion-icon {
-      flex-shrink: 0;
-    }
-  </style>
 </head>
 <body>
   <div class="dashboard-container">
@@ -125,41 +104,55 @@
     <div class="sidebar-overlay"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
-      <header class="header">
-        <div class="header-left">
-          <button class="mobile-menu-btn">
-            <ion-icon name="menu-outline"></ion-icon>
-          </button>
-          <button class="sidebar-toggle">
-            <ion-icon name="chevron-back-outline"></ion-icon>
-          </button>
-          <h1 class="page-title">Transaction History</h1>
-        </div>
-        <div class="header-right">
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
-          </a>
-        </div>
-      </header>
+    <main class="main-content" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+      <!-- Page Banner -->
+      <div class="page-banner">
+        <h1><ion-icon name="receipt-outline"></ion-icon> Transaction History</h1>
+        <p>View your payment history and order transactions</p>
+      </div>
       
-      <!-- Page Content -->
-      <div class="content-wrapper">
-        <div class="content-header">
-          <h2 class="content-title">Payment Transactions</h2>
-          <p class="content-subtitle">View your payment history</p>
+      <!-- Stats Row -->
+      <?php
+      $total_trans = mysqli_query($con, "SELECT COUNT(*) as cnt FROM `transaction` WHERE u_id = '$id'");
+      $total_count = mysqli_fetch_assoc($total_trans)['cnt'] ?? 0;
+      
+      $total_paid = mysqli_query($con, "SELECT SUM(u_amount) as total FROM `transaction` WHERE u_id = '$id' AND u_status = 'Completed'");
+      $paid_amount = mysqli_fetch_assoc($total_paid)['total'] ?? 0;
+      ?>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon blue">
+            <ion-icon name="receipt-outline"></ion-icon>
+          </div>
+          <div class="stat-value"><?php echo number_format($total_count); ?></div>
+          <div class="stat-label">Total Transactions</div>
         </div>
-        
-        <div class="table-container">
-          <table class="modern-table">
+        <div class="stat-card">
+          <div class="stat-icon green">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+          </div>
+          <div class="stat-value"><?php echo number_format($paid_amount); ?></div>
+          <div class="stat-label">Total Paid (RWF)</div>
+        </div>
+      </div>
+      
+      <!-- Transactions Table -->
+      <div class="page-content">
+        <div class="table-wrapper">
+          <div class="table-header">
+            <h3 class="table-title">
+              <ion-icon name="analytics-outline"></ion-icon>
+              Payment Transactions
+            </h3>
+          </div>
+          <table class="enhanced-table">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Order Code</th>
                 <th>Item</th>
                 <th>Quantity</th>
-                <th>Amount Paid</th>
+                <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
               </tr>
@@ -177,62 +170,41 @@
             while($trans_row=mysqli_fetch_array($sql))
             { 
             $number++;
+            $status = $trans_row['u_status'] ?? 'Completed';
+            $status_class = 'status-completed';
+            if(stripos($status, 'pending') !== false) $status_class = 'status-pending';
+            elseif(stripos($status, 'fail') !== false) $status_class = 'status-cancelled';
+            elseif(stripos($status, 'refund') !== false) $status_class = 'status-processing';
           ?>
           <tr>
             <td><strong>#<?php echo str_pad($number, 3, '0', STR_PAD_LEFT)?></strong></td>
+            <td><span class="badge badge-primary">ORDER-<?php echo str_pad($trans_row['order_id'], 4, '0', STR_PAD_LEFT)?></span></td>
             <td>
-              <span style="display: inline-block; padding: 6px 14px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.5px;">
-                ORDER-<?php echo str_pad($trans_row['order_id'], 4, '0', STR_PAD_LEFT)?>
-              </span>
-            </td>
-            <td><strong><?php echo htmlspecialchars($trans_row['u_toolname'] ?? 'N/A')?></strong></td>
-            <td>
-              <span style="display: inline-block; padding: 4px 10px; background: var(--primary-color); color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                <?php echo number_format($trans_row['u_item'] ?? 0)?> items
-              </span>
-            </td>
-            <td>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <ion-icon name="cash-outline" style="color: #10b981; font-size: 1.25rem;"></ion-icon>
-                <strong style="color: #10b981; font-size: 1rem;">RWF <?php echo number_format($trans_row['u_amount'] ?? $trans_row['u_totalprice'])?></strong>
+              <div class="product-cell">
+                <div class="product-icon">
+                  <ion-icon name="cube-outline"></ion-icon>
+                </div>
+                <span class="product-name"><?php echo htmlspecialchars($trans_row['u_toolname'] ?? 'N/A')?></span>
               </div>
             </td>
-            <td>
-              <?php
-              $status = $trans_row['u_status'] ?? 'Completed';
-              $status_colors = [
-                'Completed' => '#10b981',
-                'Pending' => '#f59e0b',
-                'Failed' => '#ef4444',
-                'Refunded' => '#8b5cf6'
-              ];
-              $color = $status_colors[$status] ?? '#6b7280';
-              ?>
-              <span style="display: inline-block; padding: 4px 10px; background: <?php echo $color; ?>; color: white; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                <?php echo $status; ?>
-              </span>
-            </td>
-            <td>
-              <div style="display: flex; align-items: center; gap: 8px; color: var(--gray-600);">
-                <ion-icon name="calendar-outline" style="font-size: 1rem;"></ion-icon>
-                <?php echo date('M d, Y', strtotime($trans_row['u_date']))?>
-              </div>
-            </td>
+            <td><span class="badge badge-info"><?php echo number_format($trans_row['u_item'] ?? 0)?> items</span></td>
+            <td class="price price-success"><?php echo number_format($trans_row['u_amount'] ?? $trans_row['u_totalprice'])?><span class="currency">RWF</span></td>
+            <td><span class="status-badge <?php echo $status_class; ?>"><?php echo $status; ?></span></td>
+            <td class="date-cell"><?php echo date('M d, Y', strtotime($trans_row['u_date']))?></td>
           </tr>
             <?php
             }
           } else {
             ?>
             <tr>
-              <td colspan="7" style="text-align: center; padding: var(--spacing-xl);">
-                <div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); padding: var(--spacing-xl);">
-                  <ion-icon name="receipt-outline" style="font-size: 4rem; color: var(--gray-400);"></ion-icon>
-                  <h3 style="color: var(--gray-700); margin: 0;">No Transactions Yet</h3>
-                  <p style="color: var(--gray-500); margin: 0;">You haven't made any payments yet.</p>
-                  <a href="orders.php" style="margin-top: var(--spacing-sm); padding: 10px 20px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
-                    <ion-icon name="bag-handle-outline"></ion-icon>
-                    View Orders
-                  </a>
+              <td colspan="7">
+                <div class="empty-state">
+                  <div class="empty-state-icon">
+                    <ion-icon name="receipt-outline"></ion-icon>
+                  </div>
+                  <h3>No Transactions Yet</h3>
+                  <p>You haven't made any payments yet.</p>
+                  <a href="orders.php" class="btn btn-primary">
                 </div>
               </td>
             </tr>

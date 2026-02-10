@@ -18,6 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="./CSS/modern-dashboard.css">
   <link rel="stylesheet" href="./CSS/modern-tables.css">
+  <link rel="stylesheet" href="./CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Reports</title>
@@ -40,7 +41,6 @@
           <button class="sidebar-toggle">
             <ion-icon name="chevron-back-outline"></ion-icon>
           </button>
-          <h1 class="page-title">Reports & Analytics</h1>
         </div>
         <div class="header-right">
           <a href="logout.php" class="logout-btn">
@@ -49,6 +49,15 @@
           </a>
         </div>
       </header>
+      
+      <!-- Page Banner -->
+      <div class="page-banner">
+        <h1 class="page-banner-title">
+          <ion-icon name="analytics-outline"></ion-icon>
+          Reports & Analytics
+        </h1>
+        <p class="page-banner-subtitle">View detailed reports and export data for business analysis</p>
+      </div>
 
       <div class="content-area">
         <!-- Entry/Stock Data Table -->
