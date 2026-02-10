@@ -270,6 +270,101 @@
           </div>
         </div>
 
+        <!-- Available Products Section (Shop View) -->
+        <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-lg); border-bottom: 1px solid var(--gray-200);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <ion-icon name="storefront-outline" style="font-size: 1.5rem; color: var(--primary-color);"></ion-icon>
+              <div>
+                <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">Available Products</h3>
+                <p style="margin: 4px 0 0 0; color: var(--gray-600); font-size: 0.875rem;">Browse our product catalog</p>
+              </div>
+            </div>
+            <a href="stock.php" style="color: var(--primary-color); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; font-size: 0.875rem; transition: all 0.2s; padding: 8px 16px; background: var(--primary-light); border-radius: 8px;" onmouseover="this.style.gap='8px'" onmouseout="this.style.gap='4px'">
+              View All Products <ion-icon name="arrow-forward-outline"></ion-icon>
+            </a>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--gray-200); background: var(--gray-50);">
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Product</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Type</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Stock</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Price</th>
+                  <th style="padding: 14px 12px; text-align: left; font-weight: 600; color: var(--gray-700); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                // Get products grouped by name with total stock (user/shop view)
+                $available_products = mysqli_query($con, "
+                  SELECT t.u_toolname,
+                         SUM(t.u_itemsnumber) as total_stock,
+                         AVG(t.u_price) as avg_price,
+                         MAX(t.u_type) as u_type,
+                         MAX(t.image_url) as image_url
+                  FROM `tool` t
+                  WHERE t.u_itemsnumber > 0
+                  GROUP BY t.u_toolname
+                  ORDER BY t.u_toolname ASC
+                  LIMIT 6
+                ");
+                
+                if($available_products && mysqli_num_rows($available_products) > 0):
+                  while($product = mysqli_fetch_assoc($available_products)):
+                    // Get first tool ID for ordering
+                    $first_tool = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $product['u_toolname']) . "' AND u_itemsnumber > 0 ORDER BY u_date ASC LIMIT 1");
+                    $tool_id = mysqli_fetch_assoc($first_tool)['id'] ?? 0;
+                ?>
+                <tr style="border-bottom: 1px solid var(--gray-100); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='transparent'">
+                  <td style="padding: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <?php if(!empty($product['image_url']) && file_exists('../' . $product['image_url'])): ?>
+                      <img src="../<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['u_toolname']); ?>" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-200);">
+                      <?php else: ?>
+                      <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+                        <ion-icon name="cube-outline" style="font-size: 1.2rem;"></ion-icon>
+                      </div>
+                      <?php endif; ?>
+                      <strong style="color: var(--gray-900);"><?php echo htmlspecialchars($product['u_toolname']); ?></strong>
+                    </div>
+                  </td>
+                  <td style="padding: 12px;">
+                    <span style="display: inline-block; padding: 4px 10px; background: var(--gray-100); color: var(--gray-700); border-radius: 10px; font-size: 0.8rem; font-weight: 500;">
+                      <?php echo htmlspecialchars($product['u_type']); ?>
+                    </span>
+                  </td>
+                  <td style="padding: 12px;">
+                    <span style="display: inline-block; padding: 4px 10px; background: <?php echo $product['total_stock'] > 10 ? '#10b981' : '#f59e0b'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
+                      <?php echo number_format($product['total_stock']); ?> units
+                    </span>
+                  </td>
+                  <td style="padding: 12px; font-weight: 600; color: var(--primary-color);">
+                    RWF <?php echo number_format($product['avg_price']); ?>
+                  </td>
+                  <td style="padding: 12px;">
+                    <a href="stock.php?id=<?php echo $tool_id; ?>" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 0.8rem; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                      <ion-icon name="cart-outline"></ion-icon>
+                      Order
+                    </a>
+                  </td>
+                </tr>
+                <?php endwhile; else: ?>
+                <tr>
+                  <td colspan="5" style="padding: 32px; text-align: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                      <ion-icon name="cube-outline" style="font-size: 48px; color: var(--gray-400);"></ion-icon>
+                      <p style="color: var(--gray-500); margin: 0; font-size: 1rem;">No products available</p>
+                    </div>
+                  </td>
+                </tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Available Locations Section -->
         <div class="dashboard-card" style="margin-top: var(--spacing-xl);">
           <div class="card-header">

@@ -18,17 +18,21 @@ $status = isset($_GET['status']) ? $_GET['status'] : '';
 $order_details = null;
 $tool_details = null;
 if($order_id > 0) {
-    $order_query = mysqli_query($con, "SELECT o.*, t.image, t.u_toolname as tool_name, t.u_category, t.u_description 
+    $order_query = mysqli_query($con, "SELECT o.*, t.image_url, t.u_toolname as tool_name, t.u_type, t.u_tooldescription 
                                         FROM `order` o 
                                         LEFT JOIN tool t ON o.tool_id = t.id 
                                         WHERE o.id = '$order_id' AND o.user_id = '$id'");
-    $order_details = mysqli_fetch_array($order_query);
+    if($order_query) {
+        $order_details = mysqli_fetch_array($order_query);
+    }
     
     // If tool_id wasn't set, try to find tool by name
-    if($order_details && empty($order_details['image'])) {
+    if($order_details && empty($order_details['image_url'])) {
         $tool_name = mysqli_real_escape_string($con, $order_details['u_toolname']);
-        $tool_query = mysqli_query($con, "SELECT * FROM tool WHERE u_toolname = '$tool_name'");
-        $tool_details = mysqli_fetch_array($tool_query);
+        $tool_query = mysqli_query($con, "SELECT * FROM tool WHERE u_toolname = '$tool_name' LIMIT 1");
+        if($tool_query) {
+            $tool_details = mysqli_fetch_array($tool_query);
+        }
     }
 }
 
@@ -285,15 +289,22 @@ unset($_SESSION['payment_amount']);
       <p class="success-subtitle">Thank you for your purchase, <?php echo htmlspecialchars($row['u_name'] ?? 'Customer'); ?>!</p>
       
       <?php if($order_details): 
-        // Get product image
-        $product_image = $order_details['image'] ?? ($tool_details['image'] ?? '');
-        $product_category = $order_details['u_category'] ?? ($tool_details['u_category'] ?? 'Product');
+        // Get product image - use image_url from tool table
+        $product_image = $order_details['image_url'] ?? ($tool_details['image_url'] ?? '');
+        $product_category = $order_details['u_type'] ?? ($tool_details['u_type'] ?? 'Product');
+        
+        // Extract just the filename if it's a full path
+        if($product_image && strpos($product_image, 'uploads/tools/') !== false) {
+            $product_image = basename($product_image);
+        }
       ?>
       
       <!-- Product Preview -->
       <div class="product-preview">
         <?php if($product_image && file_exists('../uploads/tools/' . $product_image)): ?>
         <img src="../uploads/tools/<?php echo htmlspecialchars($product_image); ?>" alt="<?php echo htmlspecialchars($order_details['u_toolname']); ?>" class="product-image">
+        <?php elseif($product_image && file_exists('../' . $order_details['image_url'])): ?>
+        <img src="../<?php echo htmlspecialchars($order_details['image_url']); ?>" alt="<?php echo htmlspecialchars($order_details['u_toolname']); ?>" class="product-image">
         <?php else: ?>
         <div class="product-image" style="display: flex; align-items: center; justify-content: center;">
           <ion-icon name="cube-outline" style="font-size: 32px; color: #9ca3af;"></ion-icon>

@@ -194,13 +194,14 @@
               <tbody>
               <?php
               $number=0;
-              // Updated query to include location information
+              // Query user's orders - shows all orders created by this user
+              // Orders are created when user places order from stock.php
               $sql = "SELECT `order`.*, user.u_name, user.firstName, user.lastName, l.location_name 
                       FROM `order` 
                       INNER JOIN user ON `order`.user_id = user.id 
                       LEFT JOIN locations l ON `order`.location_id = l.id
                       WHERE `order`.user_id = '$id' 
-                      ORDER BY `order`.u_date DESC";
+                      ORDER BY `order`.id DESC";
               $result = mysqli_query($con, $sql);
               if ($result && mysqli_num_rows($result) > 0) {
                 while ($order_row = mysqli_fetch_array($result)) {

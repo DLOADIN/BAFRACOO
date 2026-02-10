@@ -159,11 +159,6 @@
                 <ion-icon name="download-outline"></ion-icon>
                 Export PDF
               </button>
-              <button type="submit" name="submit" class="btn-primary" style="width:20vh;height:5vh; border-radius:15px;">
-                <a href="addtool.php" class="btn-primary" style="text-decoration:none; color:black;">
-                <ion-icon name="add-outline"></ion-icon>
-                Add Order
-              </a>
             </div>
           </div>
 

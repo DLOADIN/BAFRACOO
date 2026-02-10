@@ -28,12 +28,6 @@ $low_stock_count = $low_stock_query ? mysqli_fetch_assoc($low_stock_query)['coun
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="addtool.php" class="nav-link <?php echo ($current_page == 'addorder') ? 'active' : ''; ?>" data-tooltip="Add Order">
-                        <ion-icon name="add-circle-outline" class="nav-icon"></ion-icon>
-                        <span class="nav-text">Add Order</span>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="addorder.php" class="nav-link <?php echo ($current_page == 'addtool') ? 'active' : ''; ?>" data-tooltip="Add Tool">
                         <ion-icon name="construct-outline" class="nav-icon"></ion-icon>
                         <span class="nav-text">Add Tool</span>
