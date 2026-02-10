@@ -59,6 +59,12 @@
                 <span class="nav-text">Transactions</span>
               </a>
             </li>
+            <li class="nav-item">
+              <a href="refund-requests.php" class="nav-link">
+                <ion-icon name="card-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Refund Requests</span>
+              </a>
+            </li>
           </ul>
         </div>
         

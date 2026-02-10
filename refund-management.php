@@ -78,12 +78,12 @@ if(!empty($status_filter)) {
     $where_clause .= " AND rr.status = '$status_filter'";
 }
 if(!empty($search)) {
-    $where_clause .= " AND (rr.id LIKE '%$search%' OR rr.tool_name LIKE '%$search%' OR u.u_fullname LIKE '%$search%')";
+    $where_clause .= " AND (rr.id LIKE '%$search%' OR rr.tool_name LIKE '%$search%' OR u.u_name LIKE '%$search%')";
 }
 
 // Get refund requests with user info
 $refund_requests = mysqli_query($con, "
-    SELECT rr.*, u.u_fullname, u.u_email, o.status as order_status 
+    SELECT rr.*, u.u_name, u.u_email, o.status as order_status 
     FROM `refund_requests` rr 
     LEFT JOIN `user` u ON rr.user_id = u.id 
     LEFT JOIN `order` o ON rr.order_id = o.id 
@@ -587,7 +587,7 @@ $current_page = 'refunds';
                 </div>
                 <div class="header-right">
                     <div class="user-info">
-                        <span class="user-name"><?php echo htmlspecialchars($row['u_fullname']); ?></span>
+                        <span class="user-name"><?php echo htmlspecialchars($row['u_name'] ?? 'Admin'); ?></span>
                         <span class="user-role">Administrator</span>
                     </div>
                 </div>
@@ -690,7 +690,7 @@ $current_page = 'refunds';
 
                 <!-- Refunds Table -->
                 <div class="refunds-table">
-                    <?php if(mysqli_num_rows($refund_requests) > 0): ?>
+                    <?php if($refund_requests && mysqli_num_rows($refund_requests) > 0): ?>
                     <table>
                         <thead>
                             <tr>
@@ -710,8 +710,8 @@ $current_page = 'refunds';
                                 <td><strong>#<?php echo $request['id']; ?></strong></td>
                                 <td>
                                     <div class="customer-info">
-                                        <span class="customer-name"><?php echo htmlspecialchars($request['u_fullname']); ?></span>
-                                        <span class="customer-email"><?php echo htmlspecialchars($request['u_email']); ?></span>
+                                        <span class="customer-name"><?php echo htmlspecialchars($request['u_name'] ?? 'N/A'); ?></span>
+                                        <span class="customer-email"><?php echo htmlspecialchars($request['u_email'] ?? ''); ?></span>
                                     </div>
                                 </td>
                                 <td>
@@ -856,7 +856,7 @@ $current_page = 'refunds';
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Customer</span>
-                    <span class="detail-value">${data.u_fullname} (${data.u_email})</span>
+                    <span class="detail-value">${data.u_name || 'N/A'} (${data.u_email || ''})</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Order ID</span>
@@ -942,5 +942,9 @@ $current_page = 'refunds';
             });
         });
     </script>
+    
+    <!-- Ionicons for sidebar icons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </body>
 </html>
