@@ -150,5 +150,9 @@ $pending_refunds_count = $pending_refunds_query ? mysqli_fetch_assoc($pending_re
                 <div class="user-role">Administrator</div>
             </div>
         </div>
+        <a href="logout.php" class="logout-btn">
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+        </a>
     </div>
 </aside>

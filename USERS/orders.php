@@ -419,6 +419,10 @@
             <div class="user-role">Customer</div>
           </div>
         </div>
+        <a href="logout.php" class="logout-btn">
+          <ion-icon name="log-out-outline"></ion-icon>
+          <span>Logout</span>
+        </a>
       </div>
     </aside>
 

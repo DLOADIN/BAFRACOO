@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 10, 2026 at 06:57 PM
+-- Generation Time: Feb 10, 2026 at 07:36 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -25,6 +25,56 @@ DELIMITER $$
 --
 -- Procedures
 --
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_check_refund_eligibility` (IN `p_order_id` INT, IN `p_user_id` INT, OUT `p_eligible` BOOLEAN, OUT `p_message` VARCHAR(255), OUT `p_max_refund_amount` DECIMAL(12,2))   BEGIN
+    DECLARE v_order_status VARCHAR(50);
+    DECLARE v_order_amount DECIMAL(12,2);
+    DECLARE v_refunded_amount DECIMAL(12,2);
+    DECLARE v_order_date DATE;
+    DECLARE v_refund_window INT;
+    DECLARE v_existing_request INT;
+    
+    SET p_eligible = FALSE;
+    SET p_max_refund_amount = 0;
+    
+    -- Get refund window setting
+    SELECT CAST(setting_value AS UNSIGNED) INTO v_refund_window
+    FROM refund_policy_settings 
+    WHERE setting_name = 'refund_window_days' AND is_active = 1
+    LIMIT 1;
+    
+    IF v_refund_window IS NULL THEN
+        SET v_refund_window = 30;
+    END IF;
+    
+    -- Get order details
+    SELECT status, u_totalprice, IFNULL(refunded_amount, 0), u_date
+    INTO v_order_status, v_order_amount, v_refunded_amount, v_order_date
+    FROM `order`
+    WHERE id = p_order_id AND user_id = p_user_id;
+    
+    IF v_order_status IS NULL THEN
+        SET p_message = 'Order not found or does not belong to this user';
+    ELSEIF v_order_status NOT IN ('Paid', 'Completed', 'Payment Failed') THEN
+        SET p_message = 'Order status does not qualify for refund';
+    ELSEIF DATEDIFF(CURDATE(), v_order_date) > v_refund_window THEN
+        SET p_message = CONCAT('Refund window of ', v_refund_window, ' days has expired');
+    ELSE
+        -- Check for existing pending requests
+        SELECT COUNT(*) INTO v_existing_request
+        FROM refund_requests
+        WHERE order_id = p_order_id 
+          AND status IN ('PENDING', 'UNDER_REVIEW', 'APPROVED');
+        
+        IF v_existing_request > 0 THEN
+            SET p_message = 'A refund request for this order is already in progress';
+        ELSE
+            SET p_eligible = TRUE;
+            SET p_max_refund_amount = v_order_amount - v_refunded_amount;
+            SET p_message = 'Order is eligible for refund';
+        END IF;
+    END IF;
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_deduct_stock_fifo_lifo` (IN `p_tool_id` INT, IN `p_quantity` INT, IN `p_order_id` INT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255))   BEGIN
     DECLARE v_method VARCHAR(10);
     DECLARE v_batch_id INT;
@@ -133,6 +183,61 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_deduct_stock_fifo_lifo` (IN `p_t
             ROLLBACK;
             SET p_message = 'Failed to deduct all required stock';
         END IF;
+    END IF;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_process_refund` (IN `p_refund_request_id` INT, IN `p_admin_id` INT, IN `p_stripe_refund_id` VARCHAR(100), IN `p_notes` TEXT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255))   BEGIN
+    DECLARE v_order_id INT;
+    DECLARE v_user_id INT;
+    DECLARE v_refund_amount DECIMAL(12,2);
+    DECLARE v_current_status VARCHAR(50);
+    
+    -- Initialize
+    SET p_success = FALSE;
+    
+    -- Get refund request details
+    SELECT order_id, user_id, refund_amount, status 
+    INTO v_order_id, v_user_id, v_refund_amount, v_current_status
+    FROM refund_requests 
+    WHERE id = p_refund_request_id;
+    
+    -- Validate status
+    IF v_current_status != 'APPROVED' THEN
+        SET p_message = 'Refund must be in APPROVED status to process';
+    ELSE
+        START TRANSACTION;
+        
+        -- Update refund request status
+        UPDATE refund_requests 
+        SET status = 'PROCESSED',
+            stripe_refund_id = p_stripe_refund_id,
+            processed_by = p_admin_id,
+            processed_at = NOW(),
+            admin_notes = CONCAT(IFNULL(admin_notes, ''), '\n[', NOW(), '] Processed: ', IFNULL(p_notes, ''))
+        WHERE id = p_refund_request_id;
+        
+        -- Create refund transaction record
+        INSERT INTO refund_transactions 
+            (refund_request_id, order_id, user_id, amount, stripe_refund_id, status, notes, processed_by)
+        VALUES 
+            (p_refund_request_id, v_order_id, v_user_id, v_refund_amount, p_stripe_refund_id, 'COMPLETED', p_notes, p_admin_id);
+        
+        -- Update order refund status
+        UPDATE `order`
+        SET refund_status = 'FULL',
+            refunded_amount = IFNULL(refunded_amount, 0) + v_refund_amount
+        WHERE id = v_order_id;
+        
+        -- Log the action
+        INSERT INTO refund_audit_log 
+            (refund_request_id, action, old_status, new_status, action_by, action_by_type, notes)
+        VALUES 
+            (p_refund_request_id, 'PROCESS_REFUND', 'APPROVED', 'PROCESSED', p_admin_id, 'ADMIN', p_notes);
+        
+        COMMIT;
+        
+        SET p_success = TRUE;
+        SET p_message = CONCAT('Refund of ', v_refund_amount, ' RWF processed successfully');
     END IF;
 END$$
 
@@ -284,18 +389,67 @@ CREATE TABLE `order` (
   `u_totalprice` int(100) NOT NULL,
   `status` varchar(50) NOT NULL DEFAULT 'Pending',
   `stripe_payment_intent` varchar(100) DEFAULT NULL,
-  `stripe_charge_id` varchar(100) DEFAULT NULL
+  `stripe_charge_id` varchar(100) DEFAULT NULL,
+  `refund_status` enum('NONE','PENDING','PARTIAL','FULL') DEFAULT 'NONE',
+  `refunded_amount` decimal(12,2) DEFAULT 0.00,
+  `payment_date` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `order`
 --
 
-INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`, `stripe_payment_intent`, `stripe_charge_id`) VALUES
-(9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending', NULL, NULL),
-(11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending', NULL, NULL),
-(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment', NULL, NULL),
-(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid', NULL, NULL);
+INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`, `stripe_payment_intent`, `stripe_charge_id`, `refund_status`, `refunded_amount`, `payment_date`) VALUES
+(9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending', NULL, NULL, 'NONE', 0.00, NULL),
+(11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending', NULL, NULL, 'NONE', 0.00, NULL),
+(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
+(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `refund_audit_log`
+--
+
+CREATE TABLE `refund_audit_log` (
+  `id` int(11) NOT NULL,
+  `refund_request_id` int(11) NOT NULL,
+  `action` varchar(50) NOT NULL,
+  `old_status` varchar(50) DEFAULT NULL,
+  `new_status` varchar(50) DEFAULT NULL,
+  `action_by` int(11) DEFAULT NULL,
+  `action_by_type` enum('ADMIN','USER','SYSTEM') DEFAULT 'ADMIN',
+  `ip_address` varchar(45) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `refund_policy_settings`
+--
+
+CREATE TABLE `refund_policy_settings` (
+  `id` int(11) NOT NULL,
+  `setting_name` varchar(100) NOT NULL,
+  `setting_value` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `refund_policy_settings`
+--
+
+INSERT INTO `refund_policy_settings` (`id`, `setting_name`, `setting_value`, `description`, `is_active`, `updated_at`) VALUES
+(1, 'refund_window_days', '30', 'Number of days after purchase within which refund can be requested', 1, '2026-02-10 18:02:20'),
+(2, 'auto_approve_below_amount', '5000', 'Automatically approve refunds below this amount (in RWF)', 1, '2026-02-10 18:02:20'),
+(3, 'require_evidence_above', '50000', 'Require evidence upload for refunds above this amount', 1, '2026-02-10 18:02:20'),
+(4, 'allow_partial_refunds', '1', 'Allow partial refund requests (1=yes, 0=no)', 1, '2026-02-10 18:02:20'),
+(5, 'restocking_fee_percentage', '0', 'Restocking fee percentage for non-defective returns', 1, '2026-02-10 18:02:20'),
+(6, 'payment_failed_auto_approve', '1', 'Auto-approve refunds for failed payments (1=yes, 0=no)', 1, '2026-02-10 18:02:20');
 
 -- --------------------------------------------------------
 
@@ -323,6 +477,13 @@ CREATE TABLE `refund_requests` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `processed_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `refund_requests`
+--
+
+INSERT INTO `refund_requests` (`id`, `order_id`, `user_id`, `tool_name`, `quantity`, `order_amount`, `refund_amount`, `refund_reason`, `reason_details`, `evidence_file`, `status`, `admin_notes`, `processed_by`, `stripe_refund_id`, `stripe_payment_intent`, `created_at`, `updated_at`, `processed_at`) VALUES
+(1, 25, 1, 'Living Room Lamps', 1, 2000.00, 2000.00, 'WRONG_PRODUCT', 'rrj', NULL, 'PENDING', NULL, NULL, NULL, '', '2026-02-10 18:34:22', '2026-02-10 18:34:22', NULL);
 
 -- --------------------------------------------------------
 
@@ -597,7 +758,8 @@ INSERT INTO `user` (`id`, `u_name`, `u_email`, `u_phonenumber`, `u_address`, `u_
 (1, 'Hendricks', 'david@gmail.com', '0791291003', 'Musanze', '12345'),
 (2, 'Ganza', 'manzidavid111@gmail.com', '188171212', 'Kigalui', 'Chrispaul_120'),
 (3, 'Test User', 'test123@test.com', '0781234567', 'Kigali', 'test123'),
-(4, 'TestUser', 'testuser999@test.com', '0781234567', 'Kigali', 'test123');
+(4, 'TestUser', 'testuser999@test.com', '0781234567', 'Kigali', 'test123'),
+(5, 'Marie Claire', 'marieclaire@gmail.com', '0728375922', 'Kigali', 'majweuh4890239!');
 
 -- --------------------------------------------------------
 
@@ -659,6 +821,57 @@ CREATE TABLE `vw_lifo_stock_order` (
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `vw_pending_refunds`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_pending_refunds` (
+`refund_id` int(11)
+,`order_id` int(11)
+,`customer_name` varchar(80)
+,`customer_email` varchar(80)
+,`tool_name` varchar(100)
+,`refund_amount` decimal(12,2)
+,`refund_reason` enum('PAYMENT_FAILED','DUPLICATE_CHARGE','PRODUCT_NOT_RECEIVED','PRODUCT_DEFECTIVE','WRONG_PRODUCT','CHANGED_MIND','OTHER')
+,`status` enum('PENDING','UNDER_REVIEW','APPROVED','REJECTED','PROCESSED','CANCELLED')
+,`created_at` timestamp
+,`days_pending` int(7)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_refund_statistics`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_refund_statistics` (
+`month` varchar(7)
+,`total_requests` bigint(21)
+,`processed_count` decimal(22,0)
+,`rejected_count` decimal(22,0)
+,`pending_count` decimal(22,0)
+,`total_refunded_amount` decimal(34,2)
+,`avg_refund_amount` decimal(16,6)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_user_refund_history`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_user_refund_history` (
+`user_id` int(11)
+,`customer_name` varchar(80)
+,`total_refund_requests` bigint(21)
+,`approved_refunds` decimal(22,0)
+,`rejected_refunds` decimal(22,0)
+,`total_refunded` decimal(34,2)
+,`last_refund_request` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `vw_current_stock_by_method`
 --
 DROP TABLE IF EXISTS `vw_current_stock_by_method`;
@@ -682,6 +895,33 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 DROP TABLE IF EXISTS `vw_lifo_stock_order`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_lifo_stock_order`  AS SELECT `sb`.`id` AS `batch_id`, `sb`.`tool_id` AS `tool_id`, `t`.`u_toolname` AS `tool_name`, `sb`.`batch_number` AS `batch_number`, `sb`.`quantity_remaining` AS `quantity_remaining`, `sb`.`purchase_price` AS `purchase_price`, `sb`.`batch_date` AS `batch_date`, `sb`.`supplier` AS `supplier`, `l`.`location_name` AS `location_name`, `im`.`method` AS `inventory_method`, row_number() over ( partition by `sb`.`tool_id` order by `sb`.`batch_date` desc) AS `lifo_order` FROM (((`stock_batches` `sb` join `tool` `t` on(`sb`.`tool_id` = `t`.`id`)) join `locations` `l` on(`sb`.`location_id` = `l`.`id`)) left join `inventory_method` `im` on(`sb`.`tool_id` = `im`.`tool_id`)) WHERE `sb`.`quantity_remaining` > 0 ORDER BY `sb`.`tool_id` ASC, `sb`.`batch_date` DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_pending_refunds`
+--
+DROP TABLE IF EXISTS `vw_pending_refunds`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_pending_refunds`  AS SELECT `rr`.`id` AS `refund_id`, `rr`.`order_id` AS `order_id`, `u`.`u_name` AS `customer_name`, `u`.`u_email` AS `customer_email`, `rr`.`tool_name` AS `tool_name`, `rr`.`refund_amount` AS `refund_amount`, `rr`.`refund_reason` AS `refund_reason`, `rr`.`status` AS `status`, `rr`.`created_at` AS `created_at`, to_days(current_timestamp()) - to_days(`rr`.`created_at`) AS `days_pending` FROM (`refund_requests` `rr` join `user` `u` on(`rr`.`user_id` = `u`.`id`)) WHERE `rr`.`status` in ('PENDING','UNDER_REVIEW') ORDER BY `rr`.`created_at` ASC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_refund_statistics`
+--
+DROP TABLE IF EXISTS `vw_refund_statistics`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_refund_statistics`  AS SELECT date_format(`rr`.`created_at`,'%Y-%m') AS `month`, count(0) AS `total_requests`, sum(case when `rr`.`status` = 'PROCESSED' then 1 else 0 end) AS `processed_count`, sum(case when `rr`.`status` = 'REJECTED' then 1 else 0 end) AS `rejected_count`, sum(case when `rr`.`status` = 'PENDING' then 1 else 0 end) AS `pending_count`, sum(case when `rr`.`status` = 'PROCESSED' then `rr`.`refund_amount` else 0 end) AS `total_refunded_amount`, avg(case when `rr`.`status` = 'PROCESSED' then `rr`.`refund_amount` else NULL end) AS `avg_refund_amount` FROM `refund_requests` AS `rr` GROUP BY date_format(`rr`.`created_at`,'%Y-%m') ORDER BY date_format(`rr`.`created_at`,'%Y-%m') DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_user_refund_history`
+--
+DROP TABLE IF EXISTS `vw_user_refund_history`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_user_refund_history`  AS SELECT `rr`.`user_id` AS `user_id`, `u`.`u_name` AS `customer_name`, count(0) AS `total_refund_requests`, sum(case when `rr`.`status` = 'PROCESSED' then 1 else 0 end) AS `approved_refunds`, sum(case when `rr`.`status` = 'REJECTED' then 1 else 0 end) AS `rejected_refunds`, sum(case when `rr`.`status` = 'PROCESSED' then `rr`.`refund_amount` else 0 end) AS `total_refunded`, max(`rr`.`created_at`) AS `last_refund_request` FROM (`refund_requests` `rr` join `user` `u` on(`rr`.`user_id` = `u`.`id`)) GROUP BY `rr`.`user_id`, `u`.`u_name` ORDER BY count(0) DESC ;
 
 --
 -- Indexes for dumped tables
@@ -732,6 +972,22 @@ ALTER TABLE `order`
   ADD KEY `idx_order_tool_id` (`tool_id`);
 
 --
+-- Indexes for table `refund_audit_log`
+--
+ALTER TABLE `refund_audit_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_refund_request_id` (`refund_request_id`),
+  ADD KEY `idx_action` (`action`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Indexes for table `refund_policy_settings`
+--
+ALTER TABLE `refund_policy_settings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_setting_name` (`setting_name`);
+
+--
 -- Indexes for table `refund_requests`
 --
 ALTER TABLE `refund_requests`
@@ -739,7 +995,8 @@ ALTER TABLE `refund_requests`
   ADD KEY `idx_order_id` (`order_id`),
   ADD KEY `idx_user_id` (`user_id`),
   ADD KEY `idx_status` (`status`),
-  ADD KEY `idx_created_at` (`created_at`);
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `fk_refund_requests_admin` (`processed_by`);
 
 --
 -- Indexes for table `refund_transactions`
@@ -747,7 +1004,8 @@ ALTER TABLE `refund_requests`
 ALTER TABLE `refund_transactions`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_refund_request_id` (`refund_request_id`),
-  ADD KEY `idx_order_id` (`order_id`);
+  ADD KEY `idx_order_id` (`order_id`),
+  ADD KEY `fk_refund_transactions_user` (`user_id`);
 
 --
 -- Indexes for table `returned_stock`
@@ -869,10 +1127,22 @@ ALTER TABLE `order`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
+-- AUTO_INCREMENT for table `refund_audit_log`
+--
+ALTER TABLE `refund_audit_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `refund_policy_settings`
+--
+ALTER TABLE `refund_policy_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
 -- AUTO_INCREMENT for table `refund_requests`
 --
 ALTER TABLE `refund_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `refund_transactions`
@@ -932,7 +1202,7 @@ ALTER TABLE `tool`
 -- AUTO_INCREMENT for table `user`
 --
 ALTER TABLE `user`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- Constraints for dumped tables
@@ -957,6 +1227,22 @@ ALTER TABLE `inventory_method`
 --
 ALTER TABLE `order`
   ADD CONSTRAINT `order_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
+
+--
+-- Constraints for table `refund_requests`
+--
+ALTER TABLE `refund_requests`
+  ADD CONSTRAINT `fk_refund_requests_admin` FOREIGN KEY (`processed_by`) REFERENCES `admin` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_refund_requests_order` FOREIGN KEY (`order_id`) REFERENCES `order` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_refund_requests_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `refund_transactions`
+--
+ALTER TABLE `refund_transactions`
+  ADD CONSTRAINT `fk_refund_transactions_order` FOREIGN KEY (`order_id`) REFERENCES `order` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_refund_transactions_request` FOREIGN KEY (`refund_request_id`) REFERENCES `refund_requests` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_refund_transactions_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `returns`
