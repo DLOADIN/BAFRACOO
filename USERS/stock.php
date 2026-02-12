@@ -286,9 +286,15 @@
       
       <!-- Page Content -->
       <div class="content-wrapper">
-        <div class="content-header">
-          <h2 class="content-title">Available Tools & Equipment</h2>
-          <p class="content-subtitle">Browse and order construction tools</p>
+        <div class="content-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 class="content-title">Available Tools & Equipment</h2>
+            <p class="content-subtitle">Browse and order construction tools</p>
+          </div>
+          <button onclick="exportAvailableProductsPDF()" style="padding: 10px 20px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+            <ion-icon name="download-outline"></ion-icon>
+            Export Catalog PDF
+          </button>
         </div>
         
         <div class="table-container">
@@ -845,5 +851,10 @@
 
 <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
 <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+<script>
+  function exportAvailableProductsPDF() {
+    window.open('export_pdf.php?type=available_products', '_blank');
+  }
+</script>
 </body>
 </html>

@@ -198,9 +198,15 @@ $current_page = 'stock-alerts';
 
                 <!-- Stock Thresholds Management -->
                 <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>📊 Stock Threshold Management</h3>
-                        <p>Set minimum, reorder, and maximum stock levels for each product and location</p>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3>📊 Stock Threshold Management</h3>
+                            <p>Set minimum, reorder, and maximum stock levels for each product and location</p>
+                        </div>
+                        <button onclick="exportStockAlertsPDF()" style="padding: 8px 16px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <ion-icon name="download-outline"></ion-icon>
+                            Export PDF
+                        </button>
                     </div>
                     
                     <div class="table-container">
@@ -365,6 +371,10 @@ $current_page = 'stock-alerts';
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     
     <script>
+        function exportStockAlertsPDF() {
+            window.open('export_pdf.php?type=stock_alerts', '_blank');
+        }
+        
         function editThreshold(toolId, locationId, minStock, reorderLevel, maxStock) {
             document.getElementById('edit_tool_id').value = toolId;
             document.getElementById('edit_location_id').value = locationId;

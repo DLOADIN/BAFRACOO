@@ -470,6 +470,12 @@
       
       <!-- Orders Table -->
       <div class="orders-container">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+          <button onclick="exportMyOrdersPDF()" style="padding: 10px 20px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); transition: all 0.2s;">
+            <ion-icon name="download-outline"></ion-icon>
+            Export PDF
+          </button>
+        </div>
         <div class="orders-table-wrapper">
           <table class="orders-table">
             <thead>
@@ -590,6 +596,10 @@
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
   
   <script>
+    function exportMyOrdersPDF() {
+      window.open('export_pdf.php?type=my_orders', '_blank');
+    }
+    
     // Mobile sidebar toggle
     document.querySelector('.mobile-menu-btn')?.addEventListener('click', function() {
       document.querySelector('.sidebar').classList.toggle('active');

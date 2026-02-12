@@ -743,6 +743,10 @@ if(isset($_POST['transfer_to_returned'])) {
                             <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">All reported damaged goods - Edit, Transfer, or Mark as Processed</p>
                         </div>
                         <div style="display: flex; gap: 1rem; align-items: center;">
+                            <button onclick="exportDamagedGoodsPDF()" style="padding: 8px 16px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                                <ion-icon name="download-outline"></ion-icon>
+                                Export PDF
+                            </button>
                             <span style="font-size: 0.75rem; color: #6b7280;">
                                 <?php
                                 // Build filter query for count
@@ -1009,6 +1013,10 @@ if(isset($_POST['transfer_to_returned'])) {
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     
     <script>
+        function exportDamagedGoodsPDF() {
+            window.open('export_pdf.php?type=damaged_goods', '_blank');
+        }
+        
         function openDamageModal() {
             document.getElementById('damageModal').style.display = 'block';
         }

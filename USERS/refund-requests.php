@@ -678,6 +678,13 @@ error_reporting(0);
         
         <!-- Requests List -->
         <div class="requests-list">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0;"><ion-icon name="list-outline"></ion-icon> My Refund Requests</h3>
+            <button onclick="exportMyRefundsPDF()" style="padding: 8px 16px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.875rem;">
+              <ion-icon name="download-outline"></ion-icon>
+              Export PDF
+            </button>
+          </div>
           <h3><ion-icon name="list-outline"></ion-icon> Your Refund Requests</h3>
           
           <?php if($refund_requests && mysqli_num_rows($refund_requests) > 0): ?>
@@ -744,6 +751,10 @@ error_reporting(0);
   </div>
   
   <script>
+    function exportMyRefundsPDF() {
+      window.open('export_pdf.php?type=my_refunds', '_blank');
+    }
+    
     function showOrderInfo() {
       const select = document.getElementById('orderSelect');
       const info = document.getElementById('orderInfo');

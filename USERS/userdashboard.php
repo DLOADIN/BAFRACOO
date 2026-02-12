@@ -265,14 +265,19 @@
         
         <!-- Available Products Table -->
         <div class="table-wrapper" style="margin-bottom: 2rem;">
-          <div class="table-header">
+          <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <h3 class="table-title">
               <ion-icon name="storefront-outline"></ion-icon>
               Available Products
             </h3>
-            <a href="stock.php" class="btn btn-primary btn-sm">
-              View All <ion-icon name="arrow-forward-outline"></ion-icon>
-            </a>
+            <div style="display: flex; gap: 0.5rem;">
+              <button onclick="exportAvailableProductsPDF()" class="btn btn-primary btn-sm" style="background: #3b82f6;">
+                <ion-icon name="download-outline"></ion-icon> Export
+              </button>
+              <a href="stock.php" class="btn btn-primary btn-sm">
+                View All <ion-icon name="arrow-forward-outline"></ion-icon>
+              </a>
+            </div>
           </div>
           <table class="enhanced-table">
             <thead>
@@ -354,14 +359,19 @@
 
         <!-- Recent Orders Section -->
         <div class="table-wrapper">
-          <div class="table-header">
+          <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <h3 class="table-title">
               <ion-icon name="time-outline"></ion-icon>
               Recent Orders
             </h3>
-            <a href="orders.php" class="btn btn-primary btn-sm">
-              View All <ion-icon name="arrow-forward-outline"></ion-icon>
-            </a>
+            <div style="display: flex; gap: 0.5rem;">
+              <button onclick="exportMyOrdersPDF()" class="btn btn-primary btn-sm" style="background: #3b82f6;">
+                <ion-icon name="download-outline"></ion-icon> Export
+              </button>
+              <a href="orders.php" class="btn btn-primary btn-sm">
+                View All <ion-icon name="arrow-forward-outline"></ion-icon>
+              </a>
+            </div>
           </div>
           <table class="enhanced-table">
             <thead>
@@ -437,5 +447,14 @@
 
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <script>
+    function exportAvailableProductsPDF() {
+      window.open('export_pdf.php?type=available_products', '_blank');
+    }
+    
+    function exportMyOrdersPDF() {
+      window.open('export_pdf.php?type=my_orders', '_blank');
+    }
+  </script>
 </body>
 </html>

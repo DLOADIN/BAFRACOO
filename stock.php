@@ -574,6 +574,11 @@
         new window.Dashboard();
       }
     });
+    
+    // Export Stock PDF function
+    function exportStockPDF() {
+      window.open('export_pdf.php?type=stock', '_blank');
+    }
   </script>
   
   <style>

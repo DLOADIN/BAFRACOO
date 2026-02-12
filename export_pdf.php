@@ -197,6 +197,283 @@ switch($export_type){
         $table_html .= '</tbody>';
         break;
         
+    case 'overall_stock':
+        $title = 'Overall Stock Report';
+        $query = "SELECT 
+                    u_toolname,
+                    SUM(u_itemsnumber) as total_stock,
+                    COUNT(*) as batch_count,
+                    ROUND(AVG(u_price)) as avg_price,
+                    SUM(u_itemsnumber * u_price) as total_value,
+                    MAX(u_type) as u_type
+                  FROM `tool`
+                  GROUP BY u_toolname
+                  ORDER BY u_toolname ASC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>#</th>
+            <th>Product Name</th>
+            <th>Type</th>
+            <th>Total Quantity</th>
+            <th>Batches</th>
+            <th>Avg Price (RWF)</th>
+            <th>Total Value (RWF)</th>
+        </tr></thead><tbody>';
+        
+        $row_num = 0;
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $row_num++;
+                $table_html .= '<tr>
+                    <td>' . $row_num . '</td>
+                    <td>' . htmlspecialchars($row['u_toolname']) . '</td>
+                    <td>' . htmlspecialchars($row['u_type'] ?? 'General') . '</td>
+                    <td>' . number_format($row['total_stock']) . '</td>
+                    <td>' . $row['batch_count'] . '</td>
+                    <td>' . number_format($row['avg_price']) . '</td>
+                    <td>' . number_format($row['total_value']) . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="7" style="text-align: center;">No products found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
+    case 'damaged_goods':
+        $title = 'Damaged Goods Report';
+        $query = "SELECT * FROM `damaged_goods` ORDER BY damage_date DESC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Damage Reason</th>
+            <th>Loss Value (RWF)</th>
+            <th>Date</th>
+            <th>Notes</th>
+        </tr></thead><tbody>';
+        
+        $row_num = 0;
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $row_num++;
+                $table_html .= '<tr>
+                    <td>' . $row_num . '</td>
+                    <td>' . htmlspecialchars($row['tool_name']) . '</td>
+                    <td>' . $row['quantity_removed'] . '</td>
+                    <td>' . htmlspecialchars($row['damage_reason']) . '</td>
+                    <td>' . number_format($row['original_value'] ?? 0) . '</td>
+                    <td>' . date('M d, Y', strtotime($row['damage_date'])) . '</td>
+                    <td>' . htmlspecialchars($row['notes'] ?? '-') . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="7" style="text-align: center;">No damaged goods records found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
+    case 'refunds':
+        $title = 'Refund Requests Report';
+        $query = "SELECT rr.*, u.u_name, u.u_email 
+                  FROM `refund_requests` rr 
+                  LEFT JOIN `user` u ON rr.user_id = u.id 
+                  ORDER BY rr.created_at DESC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Order ID</th>
+            <th>Product</th>
+            <th>Reason</th>
+            <th>Amount (RWF)</th>
+            <th>Status</th>
+            <th>Date</th>
+        </tr></thead><tbody>';
+        
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $table_html .= '<tr>
+                    <td>#' . $row['id'] . '</td>
+                    <td>' . htmlspecialchars($row['u_name'] ?? 'N/A') . '</td>
+                    <td>#' . $row['order_id'] . '</td>
+                    <td>' . htmlspecialchars($row['tool_name']) . '</td>
+                    <td>' . str_replace('_', ' ', $row['refund_reason']) . '</td>
+                    <td>' . number_format($row['refund_amount']) . '</td>
+                    <td>' . str_replace('_', ' ', $row['status']) . '</td>
+                    <td>' . date('M d, Y', strtotime($row['created_at'])) . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="8" style="text-align: center;">No refund requests found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
+    case 'returns':
+        $title = 'Returns Management Report';
+        $query = "SELECT r.*, u.u_name, u.u_email 
+                  FROM `returns` r 
+                  LEFT JOIN `user` u ON r.user_id = u.id 
+                  ORDER BY r.return_date DESC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>Return ID</th>
+            <th>Customer</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Condition</th>
+            <th>Reason</th>
+            <th>Refund Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+        </tr></thead><tbody>';
+        
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $table_html .= '<tr>
+                    <td>#' . str_pad($row['id'], 4, '0', STR_PAD_LEFT) . '</td>
+                    <td>' . htmlspecialchars($row['u_name'] ?? 'N/A') . '</td>
+                    <td>' . htmlspecialchars($row['tool_name']) . '</td>
+                    <td>' . $row['quantity_returned'] . '</td>
+                    <td>' . ucwords(str_replace('_', ' ', $row['item_condition'])) . '</td>
+                    <td>' . ucwords(str_replace('_', ' ', $row['return_reason'])) . '</td>
+                    <td>' . number_format($row['refund_amount'] ?? 0) . ' RWF</td>
+                    <td>' . ucfirst($row['return_status']) . '</td>
+                    <td>' . date('M d, Y', strtotime($row['return_date'])) . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="9" style="text-align: center;">No return records found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
+    case 'stock_alerts':
+        $title = 'Stock Alerts Report';
+        $query = "SELECT sa.*, t.u_toolname, l.location_name 
+                  FROM `stock_alerts` sa 
+                  LEFT JOIN `tool` t ON sa.tool_id = t.id 
+                  LEFT JOIN `locations` l ON sa.location_id = l.id 
+                  ORDER BY sa.created_at DESC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Location</th>
+            <th>Alert Type</th>
+            <th>Level</th>
+            <th>Threshold</th>
+            <th>Current Value</th>
+            <th>Status</th>
+            <th>Date</th>
+        </tr></thead><tbody>';
+        
+        $row_num = 0;
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $row_num++;
+                $table_html .= '<tr>
+                    <td>' . $row_num . '</td>
+                    <td>' . htmlspecialchars($row['u_toolname'] ?? 'N/A') . '</td>
+                    <td>' . htmlspecialchars($row['location_name'] ?? 'N/A') . '</td>
+                    <td>' . str_replace('_', ' ', $row['alert_type']) . '</td>
+                    <td>' . $row['alert_level'] . '</td>
+                    <td>' . ($row['threshold_value'] ?? '-') . '</td>
+                    <td>' . ($row['current_value'] ?? '-') . '</td>
+                    <td>' . ($row['is_resolved'] ? 'Resolved' : 'Active') . '</td>
+                    <td>' . date('M d, Y', strtotime($row['created_at'])) . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="9" style="text-align: center;">No stock alerts found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
+    case 'inventory_management':
+        $title = 'Inventory Management Report';
+        $query = "SELECT t.*, COALESCE(im.method, 'FIFO') as inventory_method 
+                  FROM `tool` t 
+                  LEFT JOIN `inventory_method` im ON t.id = im.tool_id 
+                  ORDER BY t.u_toolname ASC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>Tool ID</th>
+            <th>Tool Name</th>
+            <th>Type</th>
+            <th>Current Stock</th>
+            <th>Unit Price</th>
+            <th>Inventory Method</th>
+            <th>Date Added</th>
+        </tr></thead><tbody>';
+        
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $table_html .= '<tr>
+                    <td>' . $row['id'] . '</td>
+                    <td>' . htmlspecialchars($row['u_toolname']) . '</td>
+                    <td>' . htmlspecialchars($row['u_type']) . '</td>
+                    <td>' . number_format($row['u_itemsnumber']) . ' units</td>
+                    <td>' . number_format($row['u_price']) . ' RWF</td>
+                    <td>' . $row['inventory_method'] . '</td>
+                    <td>' . date('M d, Y', strtotime($row['u_date'])) . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="7" style="text-align: center;">No inventory records found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
+    case 'returned_stock':
+        $title = 'Returned Stock Report';
+        $query = "SELECT rs.*, t.u_price 
+                  FROM `returned_stock` rs 
+                  LEFT JOIN `tool` t ON rs.tool_id = t.id 
+                  ORDER BY rs.return_date DESC";
+        $result = mysqli_query($con, $query);
+        
+        $table_html = '<thead><tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Reason</th>
+            <th>Condition</th>
+            <th>Loss Value</th>
+            <th>Status</th>
+        </tr></thead><tbody>';
+        
+        $row_num = 0;
+        if($result && mysqli_num_rows($result) > 0){
+            while($row = mysqli_fetch_assoc($result)){
+                $row_num++;
+                $loss_value = $row['original_value'] ?? ($row['quantity_returned'] * ($row['u_price'] ?? 0));
+                $table_html .= '<tr>
+                    <td>' . $row_num . '</td>
+                    <td>' . date('M d, Y', strtotime($row['return_date'])) . '</td>
+                    <td>' . htmlspecialchars($row['tool_name']) . '</td>
+                    <td>' . $row['quantity_returned'] . '</td>
+                    <td>' . htmlspecialchars($row['return_reason']) . '</td>
+                    <td>' . $row['condition_status'] . '</td>
+                    <td>' . number_format($loss_value) . ' RWF</td>
+                    <td>' . str_replace('_', ' ', $row['restock_status']) . '</td>
+                </tr>';
+            }
+        } else {
+            $table_html .= '<tr><td colspan="8" style="text-align: center;">No returned stock records found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
+        
     default:
         $title = 'BAFRACOO Report';
         $table_html = '<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Invalid export type</td></tr></tbody>';

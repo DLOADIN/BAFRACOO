@@ -283,9 +283,15 @@ if(isset($_POST['write_off_return'])) {
 
                 <!-- Damaged Items Pending Processing -->
                 <div class="dashboard-card" style="margin-bottom: 2rem;">
-                    <div class="card-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb;">
-                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">🚨 Damaged Items Pending Processing</h3>
-                        <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">Items reported as damaged that need to be written off</p>
+                    <div class="card-header" style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">🚨 Damaged Items Pending Processing</h3>
+                            <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">Items reported as damaged that need to be written off</p>
+                        </div>
+                        <button onclick="exportReturnedStockPDF()" style="padding: 8px 16px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <ion-icon name="download-outline"></ion-icon>
+                            Export PDF
+                        </button>
                     </div>
                     <div class="table-container" style="padding: 0;">
                         <table class="modern-table" style="width: 100%;">
@@ -507,6 +513,10 @@ if(isset($_POST['write_off_return'])) {
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     
     <script>
+        function exportReturnedStockPDF() {
+            window.open('export_pdf.php?type=returned_stock', '_blank');
+        }
+        
         function openReturnModal() {
             document.getElementById('returnModal').style.display = 'block';
         }

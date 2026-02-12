@@ -225,9 +225,15 @@ $current_page = 'returns';
 
                 <!-- Returns Table -->
                 <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>📦 Return Requests</h3>
-                        <p>Manage customer return requests and process refunds</p>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3>📦 Return Requests</h3>
+                            <p>Manage customer return requests and process refunds</p>
+                        </div>
+                        <button onclick="exportReturnsPDF()" style="padding: 8px 16px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <ion-icon name="download-outline"></ion-icon>
+                            Export PDF
+                        </button>
                     </div>
                     
                     <div class="table-container">
@@ -428,6 +434,10 @@ $current_page = 'returns';
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     
     <script>
+        function exportReturnsPDF() {
+            window.open('export_pdf.php?type=returns', '_blank');
+        }
+        
         function processReturn(returnId, productName, quantity, refundAmount) {
             document.getElementById('process_return_id').value = returnId;
             document.getElementById('returnDetails').innerHTML = 

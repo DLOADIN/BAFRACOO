@@ -149,11 +149,15 @@
       <!-- Transactions Table -->
       <div class="page-content">
         <div class="table-wrapper">
-          <div class="table-header">
+          <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <h3 class="table-title">
               <ion-icon name="analytics-outline"></ion-icon>
               Payment Transactions
             </h3>
+            <button onclick="exportMyTransactionsPDF()" style="padding: 8px 16px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);">
+              <ion-icon name="download-outline"></ion-icon>
+              Export PDF
+            </button>
           </div>
           <table class="enhanced-table">
             <thead>
@@ -230,5 +234,10 @@
 
 <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
 <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+<script>
+  function exportMyTransactionsPDF() {
+    window.open('export_pdf.php?type=my_transactions', '_blank');
+  }
+</script>
 </body>
 </html>

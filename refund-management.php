@@ -681,6 +681,9 @@ $current_page = 'refunds';
                     <button type="submit" class="btn-filter">
                         <i class="fas fa-filter"></i> Filter
                     </button>
+                    <button type="button" onclick="exportRefundsPDF()" class="btn-filter" style="background: #3b82f6; color: white;">
+                        <i class="fas fa-download"></i> Export PDF
+                    </button>
                     <?php if(!empty($status_filter) || !empty($search)): ?>
                     <a href="refund-management.php" style="color: #64748b; text-decoration: none; font-size: 0.9rem;">
                         <i class="fas fa-times"></i> Clear
@@ -848,6 +851,10 @@ $current_page = 'refunds';
     </div>
 
     <script>
+        function exportRefundsPDF() {
+            window.open('export_pdf.php?type=refunds', '_blank');
+        }
+        
         function viewRefund(data) {
             const details = `
                 <div class="detail-row">

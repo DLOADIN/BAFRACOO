@@ -358,9 +358,11 @@
               <ion-icon name="grid-outline"></ion-icon>
               Consolidated Inventory Table
             </div>
-            <div class="batch-badge">
-              <ion-icon name="information-circle-outline"></ion-icon>
-              Items with same name are grouped
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button class="btn-secondary" onclick="exportOverallStockPDF()" style="padding: 8px 16px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                <ion-icon name="download-outline"></ion-icon>
+                Export PDF
+              </button>
             </div>
           </div>
           
@@ -538,6 +540,10 @@
         noResults.style.display = 'none';
         tableWrapper.style.display = 'block';
       }
+    }
+    
+    function exportOverallStockPDF() {
+      window.open('export_pdf.php?type=overall_stock', '_blank');
     }
     
     // Mobile menu toggle

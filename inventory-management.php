@@ -322,12 +322,18 @@ $current_page = 'enhanced-inventory';
 
                 <!-- Tools with Inventory Methods -->
                 <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>
-                            <ion-icon name="list-outline" style="margin-right: 8px;"></ion-icon>
-                            Tools & Inventory Methods
-                        </h3>
-                        <p style="margin: 4px 0 0 0; color: var(--gray-500); font-size: 0.875rem;">Manage FIFO/LIFO methods and stock levels for each tool</p>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h3>
+                                <ion-icon name="list-outline" style="margin-right: 8px;"></ion-icon>
+                                Tools & Inventory Methods
+                            </h3>
+                            <p style="margin: 4px 0 0 0; color: var(--gray-500); font-size: 0.875rem;">Manage FIFO/LIFO methods and stock levels for each tool</p>
+                        </div>
+                        <button onclick="exportInventoryManagementPDF()" style="padding: 8px 16px; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <ion-icon name="download-outline"></ion-icon>
+                            Export PDF
+                        </button>
                     </div>
                     
                     <div class="table-container">
@@ -487,6 +493,10 @@ $current_page = 'enhanced-inventory';
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     
     <script>
+        function exportInventoryManagementPDF() {
+            window.open('export_pdf.php?type=inventory_management', '_blank');
+        }
+        
         // Update inventory method via AJAX
         function updateMethod(toolId, method, btn) {
             const toggle = btn.closest('.method-toggle');
