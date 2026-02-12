@@ -280,10 +280,6 @@
             <ion-icon name="list-outline"></ion-icon>
             View Detailed Inventory
           </a>
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
-          </a>
         </div>
       </header>
       

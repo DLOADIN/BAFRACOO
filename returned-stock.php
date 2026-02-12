@@ -217,10 +217,6 @@ if(isset($_POST['write_off_return'])) {
                     <button onclick="openReturnModal()" class="btn btn-primary" style="margin-right: 1rem; padding: 8px 16px; border-radius: 8px; background: #f59e0b; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                         <ion-icon name="add-outline"></ion-icon> Record Return
                     </button>
-                    <a href="logout.php" class="logout-btn">
-                        <ion-icon name="log-out-outline"></ion-icon>
-                        <span>Logout</span>
-                    </a>
                 </div>
             </header>
             

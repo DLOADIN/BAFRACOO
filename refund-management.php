@@ -583,7 +583,6 @@ $current_page = 'refunds';
             <header class="content-header">
                 <div class="header-left">
                     <h1>Refund Management</h1>
-                    <p class="breadcrumb">Review and process customer refund requests</p>
                 </div>
                 <div class="header-right">
                     <div class="user-info">

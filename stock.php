@@ -120,12 +120,6 @@
             <ion-icon name="chevron-back-outline"></ion-icon>
           </button>
         </div>
-        <div class="header-right">
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
-          </a>
-        </div>
       </header>
       
       <!-- Page Banner -->

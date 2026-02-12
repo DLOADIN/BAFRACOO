@@ -287,10 +287,6 @@ $current_page = 'system-test';
                             <ion-icon name="play-outline"></ion-icon> Run All Tests
                         </button>
                     </form>
-                    <a href="logout.php" class="logout-btn">
-                        <ion-icon name="log-out-outline"></ion-icon>
-                        <span>Logout</span>
-                    </a>
                 </div>
             </header>
             

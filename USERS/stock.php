@@ -276,12 +276,7 @@
           </button>
           <h1 class="page-title">Inter Purchases</h1>
         </div>
-        <div class="header-right">
-          <a href="logout.php" class="logout-btn">
-            <ion-icon name="log-out-outline"></ion-icon>
-            <span>Logout</span>
-          </a>
-        </div>
+        
       </header>
       
       <!-- Page Content -->

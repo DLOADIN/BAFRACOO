@@ -359,10 +359,6 @@ if(isset($_POST['transfer_to_returned'])) {
                     <button onclick="openDamageModal()" class="btn btn-primary" style="margin-right: 1rem; padding: 8px 16px; border-radius: 8px; background: #dc2626; color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                         <ion-icon name="alert-circle-outline"></ion-icon> Report Damage
                     </button>
-                    <a href="logout.php" class="logout-btn">
-                        <ion-icon name="log-out-outline"></ion-icon>
-                        <span>Logout</span>
-                    </a>
                 </div>
             </header>
             
