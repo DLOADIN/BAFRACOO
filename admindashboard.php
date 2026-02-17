@@ -270,8 +270,9 @@
                   <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Tool Name</th>
                   <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Type</th>
                   <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Quantity</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Unit Price</th>
-                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Total Value</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Purchase Price</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Sale Price</th>
+                  <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Total Value (Sale)</th>
                   <th style="padding: 12px; text-align: left; font-weight: 600; color: var(--gray-600); font-size: 0.875rem; text-transform: uppercase;">Status</th>
                 </tr>
               </thead>
@@ -284,7 +285,7 @@
                 ");
                 
                 if($tools_query === false) {
-                  echo "<tr><td colspan='7' style='text-align: center; color: red;'>Database error: " . htmlspecialchars(mysqli_error($con)) . "</td></tr>";
+                  echo "<tr><td colspan='8' style='text-align: center; color: red;'>Database error: " . htmlspecialchars(mysqli_error($con)) . "</td></tr>";
                 } else if(mysqli_num_rows($tools_query) > 0):
                   while($tool = mysqli_fetch_assoc($tools_query)):
                     $status_class = '';
@@ -319,6 +320,7 @@
                   <td style="padding: 16px; font-weight: 700; color: <?php echo $tool['u_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
                     <?php echo $tool['u_itemsnumber']; ?>
                   </td>
+                  <td style="padding: 16px; font-weight: 600; color: var(--gray-800);"><?php echo isset($tool['purchase_price']) ? number_format($tool['purchase_price']) : '-'; ?> RWF</td>
                   <td style="padding: 16px; font-weight: 600; color: var(--gray-800);"><?php echo number_format($tool['u_price']); ?> RWF</td>
                   <td style="padding: 16px; font-weight: 700; color: var(--gray-900);"><?php echo number_format($total_value); ?> RWF</td>
                   <td style="padding: 16px;">
