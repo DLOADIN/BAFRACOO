@@ -27,6 +27,68 @@
   // Initialize Enhanced Inventory Manager
   $inventoryManager = new EnhancedInventoryManager($con);
   
+  // Get cart count for navigation badge
+  $cart_count = 0;
+  $cart_check = mysqli_query($con, "SELECT COUNT(ci.id) as cnt FROM cart c JOIN cart_items ci ON c.id = ci.cart_id WHERE c.user_id = $id AND c.status = 'ACTIVE'");
+  if ($cart_check) {
+      $cart_count = mysqli_fetch_assoc($cart_check)['cnt'] ?? 0;
+  }
+  
+  // Handle Add to Cart
+  if(isset($_POST['add_to_cart'])){
+    $tool_id = (int)$_POST['tool_id'];
+    $quantity = (int)$_POST['quantity'];
+    
+    // Get tool details
+    $tool_check = mysqli_query($con, "SELECT u_toolname, u_price, u_itemsnumber FROM tool WHERE id = $tool_id");
+    $tool_data = mysqli_fetch_assoc($tool_check);
+    
+    if($tool_data) {
+      $tool_name = mysqli_real_escape_string($con, $tool_data['u_toolname']);
+      $tool_price = (float)$tool_data['u_price'];
+      $available = (int)$tool_data['u_itemsnumber'];
+      
+      // Get or create active cart
+      $cart_result = mysqli_query($con, "SELECT id FROM cart WHERE user_id = $id AND status = 'ACTIVE' LIMIT 1");
+      
+      if($cart_result && mysqli_num_rows($cart_result) > 0) {
+        $cart_id = mysqli_fetch_assoc($cart_result)['id'];
+      } else {
+        // Create new cart
+        mysqli_query($con, "INSERT INTO cart (user_id, status, expires_at) VALUES ($id, 'ACTIVE', DATE_ADD(NOW(), INTERVAL 24 HOUR))");
+        $cart_id = mysqli_insert_id($con);
+      }
+      
+      // Check if item already in cart
+      $existing = mysqli_query($con, "SELECT id, quantity FROM cart_items WHERE cart_id = $cart_id AND tool_id = $tool_id");
+      
+      if($existing && mysqli_num_rows($existing) > 0) {
+        $existing_data = mysqli_fetch_assoc($existing);
+        $new_qty = $existing_data['quantity'] + $quantity;
+        
+        if($new_qty > $available) {
+          $cart_message = "Cannot add more. You already have {$existing_data['quantity']} in cart. Only $available available.";
+          $cart_message_type = 'error';
+        } else {
+          mysqli_query($con, "UPDATE cart_items SET quantity = $new_qty, unit_price = $tool_price WHERE id = {$existing_data['id']}");
+          $cart_message = "Updated cart: Now $new_qty × $tool_name";
+          $cart_message_type = 'success';
+          $cart_count++;
+        }
+      } else {
+        if($quantity > $available) {
+          $cart_message = "Cannot add $quantity. Only $available available.";
+          $cart_message_type = 'error';
+        } else {
+          mysqli_query($con, "INSERT INTO cart_items (cart_id, tool_id, tool_name, quantity, unit_price) VALUES ($cart_id, $tool_id, '$tool_name', $quantity, $tool_price)");
+          $cart_message = "Added $quantity × $tool_name to cart";
+          $cart_message_type = 'success';
+          $cart_count++;
+        }
+      }
+    }
+  }
+  
   // Handle form submission
   if(isset($_POST['order_tool'])){
     // Use the session user ID (already verified at top of file)
@@ -203,6 +265,15 @@
               </a>
             </li>
             <li class="nav-item">
+              <a href="cart.php" class="nav-link">
+                <ion-icon name="cart-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Shopping Cart</span>
+                <?php if($cart_count > 0): ?>
+                <span class="nav-badge" style="background: #10b981;"><?php echo $cart_count; ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="orders.php" class="nav-link">
                 <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">My Orders</span>
@@ -281,6 +352,38 @@
       
       <!-- Page Content -->
       <div class="content-wrapper">
+        <!-- Cart Message Toast -->
+        <?php if(isset($cart_message)): ?>
+        <div id="cart-toast" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 16px 24px; border-radius: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: slideIn 0.3s ease-out; <?php echo $cart_message_type == 'success' ? 'background: linear-gradient(135deg, #10b981, #059669); color: white;' : 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;'; ?>">
+          <ion-icon name="<?php echo $cart_message_type == 'success' ? 'checkmark-circle' : 'alert-circle'; ?>-outline" style="font-size: 1.5rem;"></ion-icon>
+          <span style="font-weight: 500;"><?php echo htmlspecialchars($cart_message); ?></span>
+          <?php if($cart_message_type == 'success'): ?>
+          <a href="cart.php" style="margin-left: 8px; padding: 6px 12px; background: rgba(255,255,255,0.2); border-radius: 6px; color: white; text-decoration: none; font-weight: 600; font-size: 0.875rem;">View Cart</a>
+          <?php endif; ?>
+          <button onclick="this.parentElement.style.display='none'" style="margin-left: 8px; background: none; border: none; cursor: pointer; opacity: 0.7;">
+            <ion-icon name="close-outline" style="font-size: 1.25rem; color: <?php echo $cart_message_type == 'success' ? 'white' : '#dc2626'; ?>;"></ion-icon>
+          </button>
+        </div>
+        <style>
+          @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        </style>
+        <script>setTimeout(() => { const toast = document.getElementById('cart-toast'); if(toast) toast.style.display = 'none'; }, 5000);</script>
+        <?php endif; ?>
+        
+        <!-- Cart Summary Bar -->
+        <?php if($cart_count > 0): ?>
+        <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <ion-icon name="cart" style="font-size: 1.5rem;"></ion-icon>
+            <span><strong><?php echo $cart_count; ?> item<?php echo $cart_count > 1 ? 's' : ''; ?></strong> in your cart</span>
+          </div>
+          <a href="cart.php" style="padding: 8px 20px; background: white; color: #059669; text-decoration: none; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            <ion-icon name="eye-outline"></ion-icon>
+            View Cart & Checkout
+          </a>
+        </div>
+        <?php endif; ?>
+        
         <div class="content-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
           <div>
             <h2 class="content-title">Available Tools & Equipment</h2>
@@ -408,13 +511,29 @@
               </td>
               <td>  
                 <?php if($total_stock > 0): ?>
-                <a href="stock.php?id=<?php echo $display_tool_id; ?>" 
-                  style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);"
-                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.35)';"
-                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(37, 99, 235, 0.25)';">
-                  <ion-icon name="cart-outline"></ion-icon>
-                  Order Now
-                </a>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <!-- Add to Cart Form -->
+                  <form method="POST" style="display: flex; gap: 6px; align-items: center;">
+                    <input type="hidden" name="tool_id" value="<?php echo $display_tool_id; ?>">
+                    <input type="number" name="quantity" value="1" min="1" max="<?php echo $total_stock; ?>" 
+                           style="width: 60px; padding: 6px 8px; border: 1px solid var(--gray-300); border-radius: 6px; text-align: center; font-weight: 600;">
+                    <button type="submit" name="add_to_cart"
+                      style="display: inline-flex; align-items: center; gap: 4px; padding: 8px 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;"
+                      onmouseover="this.style.transform='translateY(-1px)';"
+                      onmouseout="this.style.transform='translateY(0)';">
+                      <ion-icon name="cart-outline"></ion-icon>
+                      Add
+                    </button>
+                  </form>
+                  <!-- Quick Buy Link -->
+                  <a href="stock.php?id=<?php echo $display_tool_id; ?>" 
+                    style="display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 12px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.8rem; transition: all 0.2s;"
+                    onmouseover="this.style.transform='translateY(-1px)';"
+                    onmouseout="this.style.transform='translateY(0)';">
+                    <ion-icon name="flash-outline"></ion-icon>
+                    Buy Now
+                  </a>
+                </div>
                 <?php else: ?>
                 <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--gray-300); color: var(--gray-600); border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
                   <ion-icon name="ban-outline"></ion-icon>

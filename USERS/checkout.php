@@ -17,6 +17,9 @@ $status = isset($_GET['status']) ? $_GET['status'] : '';
 
 $order_details = null;
 $tool_details = null;
+$order_items = [];
+$is_cart_order = false;
+
 if($order_id > 0) {
     $order_query = mysqli_query($con, "SELECT o.*, t.image_url, t.u_toolname as tool_name, t.u_type, t.u_tooldescription 
                                         FROM `order` o 
@@ -24,6 +27,15 @@ if($order_id > 0) {
                                         WHERE o.id = '$order_id' AND o.user_id = '$id'");
     if($order_query) {
         $order_details = mysqli_fetch_array($order_query);
+    }
+    
+    // Check if this is a cart order (has order_items)
+    $order_items_query = mysqli_query($con, "SELECT oi.*, t.image_url FROM order_items oi LEFT JOIN tool t ON oi.tool_id = t.id WHERE oi.order_id = '$order_id'");
+    if($order_items_query && mysqli_num_rows($order_items_query) > 0) {
+        $is_cart_order = true;
+        while($oi = mysqli_fetch_assoc($order_items_query)) {
+            $order_items[] = $oi;
+        }
     }
     
     // If tool_id wasn't set, try to find tool by name
@@ -299,7 +311,32 @@ unset($_SESSION['payment_amount']);
         }
       ?>
       
-      <!-- Product Preview -->
+      <?php if($is_cart_order && count($order_items) > 0): ?>
+      <!-- Cart Order - Multiple Items -->
+      <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
+        <div style="font-size: 0.9rem; font-weight: 600; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <ion-icon name="cart-outline"></ion-icon>
+          Cart Order - <?php echo count($order_items); ?> Items
+        </div>
+        <?php foreach($order_items as $oi): ?>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed #bbf7d0;">
+          <?php if(!empty($oi['image_url']) && file_exists('../' . $oi['image_url'])): ?>
+          <img src="../<?php echo htmlspecialchars($oi['image_url']); ?>" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;">
+          <?php else: ?>
+          <div style="width: 50px; height: 50px; border-radius: 8px; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
+            <ion-icon name="cube-outline" style="color: #166534;"></ion-icon>
+          </div>
+          <?php endif; ?>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($oi['tool_name']); ?></div>
+            <div style="font-size: 0.85rem; color: #64748b;">Qty: <?php echo $oi['quantity']; ?> × RWF <?php echo number_format($oi['unit_price']); ?></div>
+          </div>
+          <div style="font-weight: 700; color: #166534;">RWF <?php echo number_format($oi['total_price']); ?></div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php else: ?>
+      <!-- Single Item Order - Product Preview -->
       <div class="product-preview">
         <?php if($product_image && file_exists('../uploads/tools/' . $product_image)): ?>
         <img src="../uploads/tools/<?php echo htmlspecialchars($product_image); ?>" alt="<?php echo htmlspecialchars($order_details['u_toolname']); ?>" class="product-image">
@@ -316,6 +353,7 @@ unset($_SESSION['payment_amount']);
           <span class="product-qty"><?php echo number_format($order_details['u_itemsnumber']); ?> units purchased</span>
         </div>
       </div>
+      <?php endif; ?>
       
       <!-- Delivery Notice -->
       <div class="delivery-notice">
@@ -332,6 +370,12 @@ unset($_SESSION['payment_amount']);
           <span class="order-summary-label">Order ID</span>
           <span class="order-summary-value">#<?php echo $order_details['id']; ?></span>
         </div>
+        <?php if($is_cart_order): ?>
+        <div class="order-summary-row">
+          <span class="order-summary-label">Items</span>
+          <span class="order-summary-value"><?php echo count($order_items); ?> different products</span>
+        </div>
+        <?php else: ?>
         <div class="order-summary-row">
           <span class="order-summary-label">Item</span>
           <span class="order-summary-value"><?php echo htmlspecialchars($order_details['u_toolname']); ?></span>
@@ -340,6 +384,7 @@ unset($_SESSION['payment_amount']);
           <span class="order-summary-label">Quantity</span>
           <span class="order-summary-value"><?php echo number_format($order_details['u_itemsnumber']); ?> units</span>
         </div>
+        <?php endif; ?>
         <div class="order-summary-row">
           <span class="order-summary-label">Status</span>
           <span class="order-summary-value" style="color: #10b981;"><?php echo $order_details['status']; ?></span>

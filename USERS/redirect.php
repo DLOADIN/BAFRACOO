@@ -64,32 +64,107 @@ function deductStock($con, $order_id) {
         return false;
     }
     
-    $tool_id = isset($order['tool_id']) ? (int)$order['tool_id'] : 0;
-    $quantity = (int)$order['u_itemsnumber'];
-    $tool_name = $order['u_toolname'];
+    // Check if this is a cart order (has order_items)
+    $order_items_query = mysqli_query($con, "SELECT * FROM order_items WHERE order_id = $order_id");
     
-    // If tool_id is not set, try to find it by tool name
-    if($tool_id == 0) {
-        $tool_query = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'");
-        if($tool_row = mysqli_fetch_array($tool_query)) {
-            $tool_id = (int)$tool_row['id'];
+    if($order_items_query && mysqli_num_rows($order_items_query) > 0) {
+        // CART ORDER - Process multiple items with FIFO
+        while($item = mysqli_fetch_assoc($order_items_query)) {
+            $tool_id = (int)$item['tool_id'];
+            $quantity_needed = (int)$item['quantity'];
+            $sale_price = (float)$item['unit_price'];
+            $order_item_id = (int)$item['id'];
+            
+            // Deduct stock using FIFO
+            deductStockFIFO($con, $tool_id, $quantity_needed, $order_id, $order_item_id, $sale_price);
+        }
+        return true;
+    } else {
+        // SINGLE ITEM ORDER - Original logic
+        $tool_id = isset($order['tool_id']) ? (int)$order['tool_id'] : 0;
+        $quantity = (int)$order['u_itemsnumber'];
+        $tool_name = $order['u_toolname'];
+        
+        // If tool_id is not set, try to find it by tool name
+        if($tool_id == 0) {
+            $tool_query = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'");
+            if($tool_row = mysqli_fetch_array($tool_query)) {
+                $tool_id = (int)$tool_row['id'];
+            }
+        }
+        
+        if($tool_id > 0 && $quantity > 0) {
+            // Get current stock
+            $stock_query = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
+            $stock_row = mysqli_fetch_array($stock_query);
+            $current_stock = (int)$stock_row['u_itemsnumber'];
+            
+            // Deduct stock (ensure it doesn't go negative)
+            $new_stock = max(0, $current_stock - $quantity);
+            mysqli_query($con, "UPDATE tool SET u_itemsnumber = '$new_stock' WHERE id = '$tool_id'");
+            
+            return true;
         }
     }
     
-    if($tool_id > 0 && $quantity > 0) {
-        // Get current stock
-        $stock_query = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
-        $stock_row = mysqli_fetch_array($stock_query);
-        $current_stock = (int)$stock_row['u_itemsnumber'];
-        
-        // Deduct stock (ensure it doesn't go negative)
-        $new_stock = max(0, $current_stock - $quantity);
-        mysqli_query($con, "UPDATE tool SET u_itemsnumber = '$new_stock' WHERE id = '$tool_id'");
-        
-        return true;
+    return false;
+}
+
+/**
+ * Deduct stock using FIFO method and record batch usage
+ * This ensures oldest stock is sold first and tracks profit per batch
+ */
+function deductStockFIFO($con, $tool_id, $quantity_needed, $order_id, $order_item_id, $sale_price) {
+    $remaining = $quantity_needed;
+    
+    // Get inventory method for this tool (default to FIFO)
+    $method_query = mysqli_query($con, "SELECT method FROM inventory_method WHERE tool_id = $tool_id");
+    $method = 'FIFO';
+    if($method_query && mysqli_num_rows($method_query) > 0) {
+        $method = mysqli_fetch_assoc($method_query)['method'];
     }
     
-    return false;
+    // Order batches by date (FIFO = oldest first, LIFO = newest first)
+    $order_direction = ($method === 'FIFO') ? 'ASC' : 'DESC';
+    
+    // Get batches with remaining stock
+    $batches_query = mysqli_query($con, "
+        SELECT id, quantity_remaining, purchase_price 
+        FROM stock_batches 
+        WHERE tool_id = $tool_id AND quantity_remaining > 0 
+        ORDER BY batch_date $order_direction
+    ");
+    
+    if($batches_query) {
+        while($remaining > 0 && $batch = mysqli_fetch_assoc($batches_query)) {
+            $batch_id = (int)$batch['id'];
+            $batch_qty = (int)$batch['quantity_remaining'];
+            $purchase_price = (float)$batch['purchase_price'];
+            
+            $take_qty = min($remaining, $batch_qty);
+            
+            // Update batch quantity
+            mysqli_query($con, "UPDATE stock_batches SET quantity_remaining = quantity_remaining - $take_qty WHERE id = $batch_id");
+            
+            // Record stock movement
+            $reference = 'ORDER-' . str_pad($order_id, 6, '0', STR_PAD_LEFT);
+            mysqli_query($con, "INSERT INTO stock_movements (batch_id, order_id, movement_type, quantity, unit_cost, reference) 
+                               VALUES ($batch_id, $order_id, 'OUT', $take_qty, $purchase_price, '$reference')");
+            
+            // Record order item batch (for profit tracking) - if order_items table exists
+            if($order_item_id > 0) {
+                mysqli_query($con, "INSERT INTO order_item_batches (order_item_id, batch_id, quantity_from_batch, purchase_price, sale_price) 
+                                   VALUES ($order_item_id, $batch_id, $take_qty, $purchase_price, $sale_price)");
+            }
+            
+            $remaining -= $take_qty;
+        }
+    }
+    
+    // Also update the tool table stock (for backwards compatibility)
+    mysqli_query($con, "UPDATE tool SET u_itemsnumber = u_itemsnumber - $quantity_needed WHERE id = $tool_id AND u_itemsnumber >= $quantity_needed");
+    
+    return ($remaining == 0);
 }
 
 // Function to record transaction

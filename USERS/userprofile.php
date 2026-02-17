@@ -68,6 +68,18 @@
               </a>
             </li>
             <li class="nav-item">
+              <a href="cart.php" class="nav-link">
+                <ion-icon name="cart-outline" class="nav-icon"></ion-icon>
+                <span class="nav-text">Shopping Cart</span>
+                <?php 
+                $cart_count_query = mysqli_query($con,"SELECT COUNT(ci.id) as cnt FROM cart c JOIN cart_items ci ON c.id = ci.cart_id WHERE c.user_id='$id' AND c.status='ACTIVE'");
+                $cart_count = $cart_count_query ? mysqli_fetch_array($cart_count_query)['cnt'] : 0;
+                if($cart_count > 0): ?>
+                  <span class="nav-badge" style="background: #10b981;"><?php echo $cart_count; ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="orders.php" class="nav-link">
                 <ion-icon name="bag-handle-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">My Orders</span>

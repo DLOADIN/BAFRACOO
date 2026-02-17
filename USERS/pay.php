@@ -155,6 +155,7 @@
 
   // Get order ID from URL
   $O_id = isset($_GET['o_id']) ? (int)$_GET['o_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
+  $is_cart_order = isset($_GET['cart']) && $_GET['cart'] == '1';
   
   if($O_id == 0) {
     echo '<div class="payment-container"><div class="payment-card"><div class="error-message">Invalid order. Please try again.</div><a href="orders.php" class="cancel-link">Return to Orders</a></div></div>';
@@ -180,6 +181,16 @@
   $tool_name = $row_order['u_toolname'];
   $quantity = $row_order['u_itemsnumber'];
   $unit_price = $row_order['u_price'];
+  
+  // Check if this is a cart order (has order_items)
+  $order_items = [];
+  $order_items_query = mysqli_query($con, "SELECT * FROM order_items WHERE order_id = $O_id ORDER BY id");
+  if ($order_items_query && mysqli_num_rows($order_items_query) > 0) {
+    $is_cart_order = true;
+    while ($oi = mysqli_fetch_assoc($order_items_query)) {
+      $order_items[] = $oi;
+    }
+  }
   
   // Include Stripe helper
   require_once 'stripe_helper.php';
@@ -231,6 +242,23 @@
           <span class="order-detail-label">Order ID</span>
           <span class="order-detail-value">#<?php echo $O_id; ?></span>
         </div>
+        
+        <?php if($is_cart_order && count($order_items) > 0): ?>
+        <!-- Cart Order - Multiple Items -->
+        <div style="margin: 12px 0; padding: 12px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
+          <div style="font-size: 0.85rem; font-weight: 600; color: #166534; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <ion-icon name="cart-outline"></ion-icon>
+            Cart Order (<?php echo count($order_items); ?> items)
+          </div>
+          <?php foreach($order_items as $oi): ?>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #bbf7d0; font-size: 0.875rem;">
+            <span style="color: #374151;"><?php echo htmlspecialchars($oi['tool_name']); ?> × <?php echo $oi['quantity']; ?></span>
+            <span style="font-weight: 600; color: #166534;">RWF <?php echo number_format($oi['total_price']); ?></span>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <!-- Single Item Order -->
         <div class="order-detail-row">
           <span class="order-detail-label">Item</span>
           <span class="order-detail-value"><?php echo htmlspecialchars($tool_name); ?></span>
@@ -243,6 +271,7 @@
           <span class="order-detail-label">Unit Price</span>
           <span class="order-detail-value">RWF <?php echo number_format($unit_price); ?></span>
         </div>
+        <?php endif; ?>
       </div>
       
       <div class="amount-display">
