@@ -1,14 +1,17 @@
 <?php
   require "connection.php";
-  if(!empty($_SESSION["id"])){
+  session_start();
+  if(!isset($_SESSION["id"])){
+    header('location:loginadmin.php');
+    exit();
+  }
   $id = $_SESSION["id"];
   $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+  if(!$check || mysqli_num_rows($check) == 0){
+    header('location:loginadmin.php');
+    exit();
   }
-  else{
-  header('location:loginadmin.php');
-  exit();
-  } 
+  $row = mysqli_fetch_array($check);
   error_reporting(0);
   $current_page = 'orders';
 ?>
@@ -169,14 +172,16 @@
             <table class="modern-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th>Order ID</th>
                   <th>Customer</th>
-                  <th>Tool Name</th>
+                  <th>Product</th>
                   <th>Type</th>
                   <th>Quantity</th>
                   <th>Description</th>
-                  <th>Unit Price</th>
-                  <th>Total Price</th>
+                  <th>Purchase Price (RWF)</th>
+                  <th>Sale Price (RWF)</th>
+                  <th>Total Purchase Value</th>
+                  <th>Total Sale Value</th>
                   <th>Date</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -215,39 +220,41 @@
                   }
             ?>
                 <tr>
-                  <td><?php echo $row['id']; ?></td>
-                  <td>
-                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
-                      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
-                        <?php echo strtoupper(substr($row['u_name'], 0, 2)); ?>
+                    <td><?php echo $row['id']; ?></td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                          <?php echo strtoupper(substr($row['u_name'], 0, 2)); ?>
+                        </div>
+                        <div>
+                          <div style="font-weight: 500;"><?php echo htmlspecialchars($row['u_name']); ?></div>
+                        </div>
                       </div>
-                      <div>
-                        <div style="font-weight: 500;"><?php echo htmlspecialchars($row['u_name']); ?></div>
+                    </td>
+                    <td><?php echo htmlspecialchars($row['u_toolname']); ?></td>
+                    <td><?php echo htmlspecialchars($row['u_type']); ?></td>
+                    <td><?php echo $row['u_itemsnumber']; ?></td>
+                    <td><?php echo htmlspecialchars($row['u_tooldescription']); ?></td>
+                    <td><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price']) : '-'; ?> RWF</td>
+                    <td><?php echo number_format($row['u_price']); ?> RWF</td>
+                    <td><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price'] * $row['u_itemsnumber']) : '-'; ?> RWF</td>
+                    <td><?php echo number_format($row['u_price'] * $row['u_itemsnumber']); ?> RWF</td>
+                    <td><?php echo date('M d, Y', strtotime($row['u_date'])); ?></td>
+                    <td>
+                      <span class="status-badge <?php echo $status_class; ?>">
+                        <?php echo ucfirst($status_text); ?>
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <button class="btn-icon btn-edit" onclick="editOrder(<?php echo $row['id']; ?>)">
+                          <ion-icon name="create-outline"></ion-icon>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="confirmDelete(<?php echo $row['id']; ?>)">
+                          <ion-icon name="trash-outline"></ion-icon>
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td><?php echo htmlspecialchars($row['u_toolname']); ?></td>
-                  <td><?php echo htmlspecialchars($row['u_type']); ?></td>
-                  <td><?php echo $row['u_itemsnumber']; ?></td>
-                  <td><?php echo htmlspecialchars($row['u_tooldescription']); ?></td>
-                  <td><?php echo number_format($row['u_price']); ?> RWF</td>
-                  <td style="font-weight: 600;"><?php echo number_format($row['total_price'] ?? $row['u_totalprice']); ?> RWF</td>
-                  <td><?php echo date('M d, Y', strtotime($row['u_date'])); ?></td>
-                  <td>
-                    <span class="status-badge <?php echo $status_class; ?>">
-                      <?php echo ucfirst($status_text); ?>
-                    </span>
-                  </td>
-                  <td>
-                    <div class="action-buttons">
-                      <button class="btn-icon btn-edit" onclick="editOrder(<?php echo $row['id']; ?>)">
-                        <ion-icon name="create-outline"></ion-icon>
-                      </button>
-                      <button class="btn-icon btn-delete" onclick="confirmDelete(<?php echo $row['id']; ?>)">
-                        <ion-icon name="trash-outline"></ion-icon>
-                      </button>
-                    </div>
-                  </td>
+                    </td>
                 </tr>
               <?php
                 }

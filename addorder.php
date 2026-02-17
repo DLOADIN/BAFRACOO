@@ -1,14 +1,17 @@
 <?php
   require "connection.php";
-  if(!empty($_SESSION["id"])){
+  session_start();
+  if(!isset($_SESSION["id"])){
+    header('location:loginadmin.php');
+    exit();
+  }
   $id = $_SESSION["id"];
   $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
-  $row = mysqli_fetch_array($check);
+  if(!$check || mysqli_num_rows($check) == 0){
+    header('location:loginadmin.php');
+    exit();
   }
-  else{
-  header('location:loginadmin.php');
-  exit();
-  } 
+  $row = mysqli_fetch_array($check);
   
   // Create uploads directory if it doesn't exist
   $upload_dir = 'uploads/tools/';
@@ -37,7 +40,8 @@
     $itemsnumber = mysqli_real_escape_string($con, $_POST['u_itemsnumber']);
     $type = mysqli_real_escape_string($con, $_POST['u_type']);
     $tooldescription = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
-    $price = mysqli_real_escape_string($con, $_POST['u_price']);
+    $price = mysqli_real_escape_string($con, $_POST['u_price']); // Sale Price
+    $purchase_price = mysqli_real_escape_string($con, $_POST['purchase_price']);
     
     // Handle image upload
     $image_url = null;
@@ -69,7 +73,7 @@
       }
       
       $image_sql = $image_url ? ", image_url='$image_url'" : "";
-      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_date='$date', u_price='$price'$image_sql WHERE id='$tool_id'");
+      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_date='$date', u_price='$price', purchase_price='$purchase_price'$image_sql WHERE id='$tool_id'");
       
       if($sql){
         header('Location: stock.php');
@@ -81,7 +85,7 @@
       // Insert new tool - use custom date from form or default to today
       $date = isset($_POST['u_date']) && !empty($_POST['u_date']) ? mysqli_real_escape_string($con, $_POST['u_date']) : date('Y-m-d');
       $image_url_escaped = $image_url ? "'$image_url'" : "NULL";
-      $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, image_url) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', $image_url_escaped)");
+      $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, purchase_price, image_url) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', '$purchase_price', $image_url_escaped)");
       
       if($sql){
         header('Location: stock.php');
@@ -286,16 +290,33 @@
                 </div>
 
                 <div class="form-group">
+                  <label for="purchase_price" class="form-label">
+                    <ion-icon name="cash-outline" style="margin-right: 4px;"></ion-icon>
+                    Purchase Price (RWF) *
+                  </label>
+                  <input 
+                    type="number" 
+                    id="purchase_price" 
+                    name="purchase_price" 
+                    class="form-control" 
+                    placeholder="Enter purchase price in RWF"
+                    value="<?php echo $is_edit && $tool_data ? $tool_data['purchase_price'] ?? '' : ''; ?>"
+                    min="0"
+                    required
+                    style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
+                  >
+                </div>
+                <div class="form-group">
                   <label for="u_price" class="form-label">
                     <ion-icon name="cash-outline" style="margin-right: 4px;"></ion-icon>
-                    Unit Price (RWF) *
+                    Sale Price (RWF) *
                   </label>
                   <input 
                     type="number" 
                     id="u_price" 
                     name="u_price" 
                     class="form-control" 
-                    placeholder="Enter price in RWF"
+                    placeholder="Enter sale price in RWF"
                     value="<?php echo $is_edit && $tool_data ? $tool_data['u_price'] : ''; ?>"
                     min="0"
                     required

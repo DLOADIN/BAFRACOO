@@ -1,15 +1,18 @@
 <?php
   require "connection.php";
   
-  if(!empty($_SESSION["id"])){
-    $id = $_SESSION["id"];
-    $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
-    $row = mysqli_fetch_array($check);
-  }
-  else{
+  session_start();
+  if(!isset($_SESSION["id"])){
     header('location:loginadmin.php');
     exit();
   }
+  $id = $_SESSION["id"];
+  $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
+  if(!$check || mysqli_num_rows($check) == 0){
+    header('location:loginadmin.php');
+    exit();
+  }
+  $row = mysqli_fetch_array($check);
   
   $current_page = 'overall-stock';
   
@@ -371,8 +374,10 @@
                   <th>Type</th>
                   <th>Total Quantity</th>
                   <th>Batches</th>
-                  <th>Price (RWF)</th>
-                  <th>Total Value (RWF)</th>
+                  <th>Avg Purchase Price (RWF)</th>
+                  <th>Avg Sale Price (RWF)</th>
+                  <th>Total Value (Purchase)</th>
+                  <th>Total Value (Sale)</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -384,10 +389,10 @@
                     u_toolname,
                     SUM(u_itemsnumber) as total_stock,
                     COUNT(*) as batch_count,
-                    MIN(u_price) as min_price,
-                    MAX(u_price) as max_price,
-                    ROUND(AVG(u_price)) as avg_price,
-                    SUM(u_itemsnumber * u_price) as total_value,
+                    ROUND(AVG(purchase_price)) as avg_purchase_price,
+                    ROUND(AVG(u_price)) as avg_sale_price,
+                    SUM(u_itemsnumber * purchase_price) as total_purchase_value,
+                    SUM(u_itemsnumber * u_price) as total_sale_value,
                     MAX(u_type) as u_type,
                     MAX(u_tooldescription) as u_tooldescription,
                     MAX(u_date) as last_updated
@@ -395,22 +400,18 @@
                   GROUP BY u_toolname
                   ORDER BY u_toolname ASC
                 ");
-                
                 $row_num = 0;
                 $displayed_count = 0;
-                
                 if($products_query && mysqli_num_rows($products_query) > 0):
                   while($product = mysqli_fetch_assoc($products_query)):
                     $row_num++;
                     $displayed_count++;
                     $stock = (int)$product['total_stock'];
-                    
                     // Determine status
                     $status_class = 'in-stock';
                     $status_text = 'In Stock';
                     $stock_color = 'success';
                     $filter_class = 'in-stock';
-                    
                     if($stock == 0) {
                       $status_class = 'out-of-stock';
                       $status_text = 'Out of Stock';
@@ -448,8 +449,10 @@
                       <?php echo $product['batch_count']; ?>
                     </span>
                   </td>
-                  <td class="price-range"><?php echo number_format($product['avg_price']); ?></td>
-                  <td class="value-cell"><?php echo number_format($product['total_value']); ?></td>
+                  <td class="price-range"><?php echo number_format($product['avg_purchase_price']); ?></td>
+                  <td class="price-range"><?php echo number_format($product['avg_sale_price']); ?></td>
+                  <td class="value-cell"><?php echo number_format($product['total_purchase_value']); ?></td>
+                  <td class="value-cell"><?php echo number_format($product['total_sale_value']); ?></td>
                   <td>
                     <span class="stock-badge <?php echo $status_class; ?>">
                       <ion-icon name="<?php echo $stock == 0 ? 'close-circle' : ($stock < 10 ? 'alert-circle' : 'checkmark-circle'); ?>-outline"></ion-icon>

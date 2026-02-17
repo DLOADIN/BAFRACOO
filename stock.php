@@ -2,15 +2,18 @@
   require "connection.php";
   require "EnhancedInventoryManager.php";
   
-  if(!empty($_SESSION["id"])){
+  session_start();
+  if(!isset($_SESSION["id"])){
+    header('location:loginadmin.php');
+    exit();
+  }
   $id = $_SESSION["id"];
   $check = mysqli_query($con,"SELECT * FROM `admin` WHERE id=$id ");
+  if(!$check || mysqli_num_rows($check) == 0){
+    header('location:loginadmin.php');
+    exit();
+  }
   $row = mysqli_fetch_array($check);
-  }
-  else{
-  header('location:loginadmin.php');
-  exit();
-  }
   
   // Initialize Inventory Manager
   $inventoryManager = new EnhancedInventoryManager($con);
@@ -292,8 +295,10 @@
                   <th>Tool Name</th>
                   <th>Type</th>
                   <th>Quantity</th>
-                  <th>Unit Price</th>
-                  <th>Total Value</th>
+                  <th>Purchase Price</th>
+                  <th>Sale Price</th>
+                  <th>Total Value (Sale)</th>
+                  <th>Total Value (Purchase)</th>
                   <th>Inventory Method</th>
                   <th>Date Added</th>
                   <th>Status</th>
@@ -357,8 +362,10 @@
                       <?php echo number_format($row['u_itemsnumber']); ?>
                     </span>
                   </td>
+                  <td><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price']) . ' RWF' : '-'; ?></td>
                   <td><?php echo number_format($row['u_price']); ?> RWF</td>
                   <td style="font-weight: 600;"><?php echo number_format($row['u_price'] * $row['u_itemsnumber']); ?> RWF</td>
+                  <td style="font-weight: 600;"><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price'] * $row['u_itemsnumber']) . ' RWF' : '-'; ?></td>
                   <td>
                     <div class="method-toggle" data-tool-id="<?php echo $row['id']; ?>">
                       <button class="method-btn fifo <?php echo $current_method === 'FIFO' ? 'active' : ''; ?>" 
