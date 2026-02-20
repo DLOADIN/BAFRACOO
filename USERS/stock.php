@@ -308,83 +308,6 @@
         <img src="../images/Captured.JPG" alt="BAFRACOO Logo">
         <span class="logo-text">BAFRACOO</span>
       </div>
-              <!-- Live Cart Table -->
-              <div class="cart-table-container" id="cart-table-section" style="display:none;">
-                <div class="cart-table-title"><ion-icon name="cart-outline"></ion-icon> Your Cart</div>
-                <div id="cart-table-wrapper">
-                  <!-- Cart table will be loaded here by JS -->
-                </div>
-              </div>
-
-              <script>
-              function renderCartTable(cart) {
-                const wrapper = document.getElementById('cart-table-wrapper');
-                if (!cart.items || cart.items.length === 0) {
-                  wrapper.innerHTML = '<div style="color:#64748b;text-align:center;padding:1.5rem 0;">Your cart is empty.</div>';
-                  document.getElementById('cart-table-section').style.display = 'none';
-                  return;
-                }
-                let html = `<table class="cart-table"><thead><tr>
-                  <th>Item</th><th>Type</th><th>Price</th><th>Quantity</th><th>Total</th><th></th>
-                </tr></thead><tbody>`;
-                for (const item of cart.items) {
-                  html += `<tr>
-                    <td style="display:flex;align-items:center;gap:10px;">
-                      ${item.image_url ? `<img src="../${item.image_url}" alt="${item.tool_name}">` : `<div style='width:48px;height:48px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;'><ion-icon name='construct-outline' style='font-size:1.5rem;color:#3b82f6;'></ion-icon></div>`}
-                      <span>${item.tool_name}</span>
-                    </td>
-                    <td>${item.u_type || ''}</td>
-                    <td>RWF ${parseInt(item.unit_price).toLocaleString('en-US')}</td>
-                    <td>
-                      <input type="number" min="1" max="${item.available}" value="${item.quantity}" style="width:55px;padding:3px 6px;border-radius:6px;border:1px solid #e5e7eb;text-align:center;font-weight:600;" onchange="updateCartItem(${item.id}, this.value)">
-                    </td>
-                    <td>RWF ${(item.unit_price * item.quantity).toLocaleString('en-US')}</td>
-                    <td><button class="remove-btn" onclick="removeCartItem(${item.id})"><ion-icon name='trash-outline'></ion-icon></button></td>
-                  </tr>`;
-                }
-                html += `</tbody><tfoot><tr><td colspan="4" style="text-align:right;">Total:</td><td colspan="2">RWF ${parseInt(cart.cart_total).toLocaleString('en-US')}</td></tr></tfoot></table>`;
-                wrapper.innerHTML = html;
-                document.getElementById('cart-table-section').style.display = '';
-              }
-
-              function fetchCartTable() {
-                fetch('cart_api.php?action=get')
-                  .then(r => r.json())
-                  .then(data => renderCartTable(data));
-              }
-
-              function updateCartItem(cart_item_id, quantity) {
-                fetch('cart_api.php', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                  body: `action=update&cart_item_id=${cart_item_id}&quantity=${quantity}`
-                })
-                .then(r => r.json())
-                .then(data => fetchCartTable());
-              }
-
-              function removeCartItem(cart_item_id) {
-                fetch('cart_api.php', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                  body: `action=remove&cart_item_id=${cart_item_id}`
-                })
-                .then(r => r.json())
-                .then(data => fetchCartTable());
-              }
-
-              // Hook into Add to Cart forms to refresh cart table after add
-              document.addEventListener('DOMContentLoaded', function() {
-                fetchCartTable();
-                document.querySelectorAll('form').forEach(form => {
-                  if (form.querySelector('button[name="add_to_cart"]')) {
-                    form.addEventListener('submit', function(e) {
-                      setTimeout(fetchCartTable, 500); // Delay to allow PHP to process
-                    });
-                  }
-                });
-              });
-              </script>
       
       <nav class="sidebar-nav">
         <div class="nav-section">
@@ -640,12 +563,13 @@
           align-items: center;
           justify-content: center;
           gap: 6px;
-          padding: 10px 0;
+          padding: 10px 8px;
           border-radius: 8px;
           font-weight: 700;
           font-size: 0.98rem;
           border: none;
           cursor: pointer;
+          margin-top: 1rem;
           transition: background 0.18s, box-shadow 0.18s;
         }
         .add-cart-btn {
@@ -749,6 +673,162 @@
         <div style="grid-column: 1/-1; text-align: center; color: #64748b; font-size: 1.1rem; padding: 2.5rem 0;">No tools available</div>
         <?php } ?>
         </div>
+
+        <!-- Live Cart Table (now under product cards) -->
+        <div class="cart-table-container" id="cart-table-section" style="display:none; margin-bottom:2.5rem;">
+          <div class="cart-table-title"><ion-icon name="cart-outline"></ion-icon> Your Cart</div>
+          <div id="cart-table-wrapper">
+            <!-- Cart table will be loaded here by JS -->
+          </div>
+        </div>
+
+        <script>
+        function renderCartTable(cart) {
+          const wrapper = document.getElementById('cart-table-wrapper');
+          if (!cart.items || cart.items.length === 0) {
+            wrapper.innerHTML = '<div style="color:#64748b;text-align:center;padding:1.5rem 0;">Your cart is empty.</div>';
+            document.getElementById('cart-table-section').style.display = 'none';
+            return;
+          }
+          let html = `<table class="cart-table"><thead><tr>
+            <th>Item</th><th>Type</th><th>Price</th><th>Quantity</th><th>Total</th><th></th>
+          </tr></thead><tbody>`;
+          for (const item of cart.items) {
+            html += `<tr>
+              <td style="display:flex;align-items:center;gap:10px;">
+                ${item.image_url ? `<img src="../${item.image_url}" alt="${item.tool_name}">` : `<div style='width:48px;height:48px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;'><ion-icon name='construct-outline' style='font-size:1.5rem;color:#3b82f6;'></ion-icon></div>`}
+                <span>${item.tool_name}</span>
+              </td>
+              <td>${item.u_type || ''}</td>
+              <td>RWF ${parseInt(item.unit_price).toLocaleString('en-US')}</td>
+              <td>
+                <input type="number" min="1" max="${item.available}" value="${item.quantity}" style="width:55px;padding:3px 6px;border-radius:6px;border:1px solid #e5e7eb;text-align:center;font-weight:600;" onchange="updateCartItem(${item.id}, this.value)">
+              </td>
+              <td>RWF ${(item.unit_price * item.quantity).toLocaleString('en-US')}</td>
+              <td><button class="remove-btn" onclick="removeCartItem(${item.id})"><ion-icon name='trash-outline'></ion-icon></button></td>
+            </tr>`;
+          }
+          html += `</tbody><tfoot><tr><td colspan="4" style="text-align:right;">Total:</td><td colspan="2">RWF ${parseInt(cart.cart_total).toLocaleString('en-US')}</td></tr></tfoot></table>`;
+          wrapper.innerHTML = html;
+          document.getElementById('cart-table-section').style.display = '';
+        }
+
+        function fetchCartTable() {
+          fetch('cart_api.php?action=get')
+            .then(r => r.json())
+            .then(data => renderCartTable(data));
+        }
+
+        function updateCartItem(cart_item_id, quantity) {
+          fetch('cart_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=update&cart_item_id=${cart_item_id}&quantity=${quantity}`
+          })
+          .then(r => r.json())
+          .then(data => fetchCartTable());
+        }
+
+        function removeCartItem(cart_item_id) {
+          fetch('cart_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=remove&cart_item_id=${cart_item_id}`
+          })
+          .then(r => r.json())
+          .then(data => fetchCartTable());
+        }
+
+        // Hook into Add to Cart forms to refresh cart table after add
+        document.addEventListener('DOMContentLoaded', function() {
+          fetchCartTable();
+          document.querySelectorAll('form').forEach(form => {
+            if (form.querySelector('button[name="add_to_cart"]')) {
+              form.addEventListener('submit', function(e) {
+                setTimeout(fetchCartTable, 500); // Delay to allow PHP to process
+              });
+            }
+          });
+        });
+        </script>
+
+        <!-- Live Cart Table (now under product cards) -->
+        <div class="cart-table-container" id="cart-table-section" style="display:none; margin-bottom:2.5rem;">
+          <div class="cart-table-title"><ion-icon name="cart-outline"></ion-icon> Your Cart</div>
+          <div id="cart-table-wrapper">
+            <!-- Cart table will be loaded here by JS -->
+          </div>
+        </div>
+
+        <script>
+        function renderCartTable(cart) {
+          const wrapper = document.getElementById('cart-table-wrapper');
+          if (!cart.items || cart.items.length === 0) {
+            wrapper.innerHTML = '<div style="color:#64748b;text-align:center;padding:1.5rem 0;">Your cart is empty.</div>';
+            document.getElementById('cart-table-section').style.display = 'none';
+            return;
+          }
+          let html = `<table class="cart-table"><thead><tr>
+            <th>Item</th><th>Type</th><th>Price</th><th>Quantity</th><th>Total</th><th></th>
+          </tr></thead><tbody>`;
+          for (const item of cart.items) {
+            html += `<tr>
+              <td style="display:flex;align-items:center;gap:10px;">
+                ${item.image_url ? `<img src="../${item.image_url}" alt="${item.tool_name}">` : `<div style='width:48px;height:48px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;'><ion-icon name='construct-outline' style='font-size:1.5rem;color:#3b82f6;'></ion-icon></div>`}
+                <span>${item.tool_name}</span>
+              </td>
+              <td>${item.u_type || ''}</td>
+              <td>RWF ${parseInt(item.unit_price).toLocaleString('en-US')}</td>
+              <td>
+                <input type="number" min="1" max="${item.available}" value="${item.quantity}" style="width:55px;padding:3px 6px;border-radius:6px;border:1px solid #e5e7eb;text-align:center;font-weight:600;" onchange="updateCartItem(${item.id}, this.value)">
+              </td>
+              <td>RWF ${(item.unit_price * item.quantity).toLocaleString('en-US')}</td>
+              <td><button class="remove-btn" onclick="removeCartItem(${item.id})"><ion-icon name='trash-outline'></ion-icon></button></td>
+            </tr>`;
+          }
+          html += `</tbody><tfoot><tr><td colspan="4" style="text-align:right;">Total:</td><td colspan="2">RWF ${parseInt(cart.cart_total).toLocaleString('en-US')}</td></tr></tfoot></table>`;
+          wrapper.innerHTML = html;
+          document.getElementById('cart-table-section').style.display = '';
+        }
+
+        function fetchCartTable() {
+          fetch('cart_api.php?action=get')
+            .then(r => r.json())
+            .then(data => renderCartTable(data));
+        }
+
+        function updateCartItem(cart_item_id, quantity) {
+          fetch('cart_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=update&cart_item_id=${cart_item_id}&quantity=${quantity}`
+          })
+          .then(r => r.json())
+          .then(data => fetchCartTable());
+        }
+
+        function removeCartItem(cart_item_id) {
+          fetch('cart_api.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=remove&cart_item_id=${cart_item_id}`
+          })
+          .then(r => r.json())
+          .then(data => fetchCartTable());
+        }
+
+        // Hook into Add to Cart forms to refresh cart table after add
+        document.addEventListener('DOMContentLoaded', function() {
+          fetchCartTable();
+          document.querySelectorAll('form').forEach(form => {
+            if (form.querySelector('button[name="add_to_cart"]')) {
+              form.addEventListener('submit', function(e) {
+                setTimeout(fetchCartTable, 500); // Delay to allow PHP to process
+              });
+            }
+          });
+        });
+        </script>
       </div>
 
         <!-- Order Form Modal/Section -->
