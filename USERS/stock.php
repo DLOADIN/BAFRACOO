@@ -238,6 +238,67 @@
       margin-top: 4px;
     }
   </style>
+        <style>
+        .cart-table-container {
+          margin: 2.5rem auto 0 auto;
+          max-width: 900px;
+          background: #fff;
+          border-radius: 16px;
+          box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+          padding: 1.5rem 1.2rem;
+        }
+        .cart-table-title {
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 1rem;
+        }
+        .cart-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .cart-table th, .cart-table td {
+          padding: 0.7rem 0.5rem;
+          text-align: left;
+        }
+        .cart-table th {
+          background: #f1f5f9;
+          color: #475569;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        .cart-table td {
+          border-bottom: 1px solid #e5e7eb;
+          font-size: 0.98rem;
+        }
+        .cart-table img {
+          width: 48px;
+          height: 48px;
+          border-radius: 8px;
+          object-fit: cover;
+          border: 1px solid #e5e7eb;
+        }
+        .cart-table .remove-btn {
+          background: none;
+          border: none;
+          color: #dc2626;
+          font-size: 1.2rem;
+          cursor: pointer;
+          transition: color 0.15s;
+        }
+        .cart-table .remove-btn:hover {
+          color: #b91c1c;
+        }
+        .cart-table tfoot td {
+          font-weight: 700;
+          font-size: 1.05rem;
+          color: #2563eb;
+        }
+        @media (max-width: 600px) {
+          .cart-table-container { padding: 1rem 0.3rem; }
+          .cart-table th, .cart-table td { font-size: 0.93rem; }
+        }
+        </style>
 </head>
 <body>
   <div class="dashboard-container">
@@ -247,6 +308,83 @@
         <img src="../images/Captured.JPG" alt="BAFRACOO Logo">
         <span class="logo-text">BAFRACOO</span>
       </div>
+              <!-- Live Cart Table -->
+              <div class="cart-table-container" id="cart-table-section" style="display:none;">
+                <div class="cart-table-title"><ion-icon name="cart-outline"></ion-icon> Your Cart</div>
+                <div id="cart-table-wrapper">
+                  <!-- Cart table will be loaded here by JS -->
+                </div>
+              </div>
+
+              <script>
+              function renderCartTable(cart) {
+                const wrapper = document.getElementById('cart-table-wrapper');
+                if (!cart.items || cart.items.length === 0) {
+                  wrapper.innerHTML = '<div style="color:#64748b;text-align:center;padding:1.5rem 0;">Your cart is empty.</div>';
+                  document.getElementById('cart-table-section').style.display = 'none';
+                  return;
+                }
+                let html = `<table class="cart-table"><thead><tr>
+                  <th>Item</th><th>Type</th><th>Price</th><th>Quantity</th><th>Total</th><th></th>
+                </tr></thead><tbody>`;
+                for (const item of cart.items) {
+                  html += `<tr>
+                    <td style="display:flex;align-items:center;gap:10px;">
+                      ${item.image_url ? `<img src="../${item.image_url}" alt="${item.tool_name}">` : `<div style='width:48px;height:48px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;'><ion-icon name='construct-outline' style='font-size:1.5rem;color:#3b82f6;'></ion-icon></div>`}
+                      <span>${item.tool_name}</span>
+                    </td>
+                    <td>${item.u_type || ''}</td>
+                    <td>RWF ${parseInt(item.unit_price).toLocaleString('en-US')}</td>
+                    <td>
+                      <input type="number" min="1" max="${item.available}" value="${item.quantity}" style="width:55px;padding:3px 6px;border-radius:6px;border:1px solid #e5e7eb;text-align:center;font-weight:600;" onchange="updateCartItem(${item.id}, this.value)">
+                    </td>
+                    <td>RWF ${(item.unit_price * item.quantity).toLocaleString('en-US')}</td>
+                    <td><button class="remove-btn" onclick="removeCartItem(${item.id})"><ion-icon name='trash-outline'></ion-icon></button></td>
+                  </tr>`;
+                }
+                html += `</tbody><tfoot><tr><td colspan="4" style="text-align:right;">Total:</td><td colspan="2">RWF ${parseInt(cart.cart_total).toLocaleString('en-US')}</td></tr></tfoot></table>`;
+                wrapper.innerHTML = html;
+                document.getElementById('cart-table-section').style.display = '';
+              }
+
+              function fetchCartTable() {
+                fetch('cart_api.php?action=get')
+                  .then(r => r.json())
+                  .then(data => renderCartTable(data));
+              }
+
+              function updateCartItem(cart_item_id, quantity) {
+                fetch('cart_api.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: `action=update&cart_item_id=${cart_item_id}&quantity=${quantity}`
+                })
+                .then(r => r.json())
+                .then(data => fetchCartTable());
+              }
+
+              function removeCartItem(cart_item_id) {
+                fetch('cart_api.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: `action=remove&cart_item_id=${cart_item_id}`
+                })
+                .then(r => r.json())
+                .then(data => fetchCartTable());
+              }
+
+              // Hook into Add to Cart forms to refresh cart table after add
+              document.addEventListener('DOMContentLoaded', function() {
+                fetchCartTable();
+                document.querySelectorAll('form').forEach(form => {
+                  if (form.querySelector('button[name="add_to_cart"]')) {
+                    form.addEventListener('submit', function(e) {
+                      setTimeout(fetchCartTable, 500); // Delay to allow PHP to process
+                    });
+                  }
+                });
+              });
+              </script>
       
       <nav class="sidebar-nav">
         <div class="nav-section">
@@ -395,166 +533,221 @@
           </button>
         </div>
         
-        <div class="table-container">
-          <table class="modern-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Tool Name</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Quantity</th>
-                <th>Inventory Method</th>
-                <th>Price</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-            <?php
-            // Get products grouped by name with TOTAL aggregated stock from ALL batches
-            // Users see ONE entry per product with the combined quantity (like overall-stock on admin side)
-            // No batches shown - just total units available
-            
-            $sql = mysqli_query($con, "
-                SELECT 
-                    t.u_toolname,
-                    SUM(t.u_itemsnumber) as total_stock,
-                    ROUND(AVG(t.u_price)) as avg_price,
-                    MAX(t.u_type) as u_type,
-                    MAX(t.u_tooldescription) as u_tooldescription,
-                    MAX(t.image_url) as image_url,
-                    MIN(t.id) as first_tool_id,
-                    COALESCE(MAX(im.method), 'FIFO') as inventory_method,
-                    COUNT(*) as batch_count
-                FROM `tool` t
-                LEFT JOIN inventory_method im ON t.id = im.tool_id
-                GROUP BY t.u_toolname
-                HAVING SUM(t.u_itemsnumber) > 0
-                ORDER BY t.u_toolname ASC
-            ");
-            $row_count = mysqli_num_rows($sql);
-            if($row_count){
-              $counter = 1;
-              while($product=mysqli_fetch_array($sql))
-              { 
-                $product_name = $product['u_toolname'];
-                $total_stock = (int)$product['total_stock'];
-                $display_price = (int)$product['avg_price'];
-                $display_type = $product['u_type'];
-                $display_description = $product['u_tooldescription'];
-                $display_image = $product['image_url'];
-                $inventory_method = $product['inventory_method'] ?? 'FIFO';
-                $batch_count = (int)$product['batch_count'];
-                
-                // Get the tool ID that should be used for ordering (based on FIFO/LIFO)
-                $order_direction = ($inventory_method === 'FIFO') ? 'ASC' : 'DESC';
-                $first_available = mysqli_query($con, "
-                    SELECT id, u_date FROM tool 
-                    WHERE u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
-                    AND u_itemsnumber > 0
-                    ORDER BY u_date $order_direction
-                    LIMIT 1
-                ");
-                $first_tool = mysqli_fetch_assoc($first_available);
-                $display_tool_id = $first_tool['id'] ?? $product['first_tool_id'];
-                $oldest_date = $first_tool['u_date'] ?? date('Y-m-d');
-            ?>
-            <tr>
-              <td><?php echo $counter++; ?></td>
-              <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <?php if(!empty($display_image) && file_exists('../' . $display_image)): ?>
-                  <img src="../<?php echo htmlspecialchars($display_image); ?>" alt="<?php echo htmlspecialchars($product_name); ?>" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-200);">
-                  <?php else: ?>
-                  <div style="width: 50px; height: 50px; border-radius: 8px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
-                    <ion-icon name="construct-outline" style="font-size: 1.5rem;"></ion-icon>
-                  </div>
-                  <?php endif; ?>
-                  <strong><?php echo htmlspecialchars($product_name); ?></strong>
-                </div>
-              </td>
-              <td>
-                <span style="display: inline-block; padding: 4px 12px; background: var(--gray-100); color: var(--gray-700); border-radius: 12px; font-size: 0.875rem; font-weight: 500;">
-                  <?php echo htmlspecialchars($display_type); ?>
-                </span>
-              </td>
-              <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <?php echo htmlspecialchars($display_description); ?>
-              </td>
-              <td>
-                <div style="display: flex; align-items: center; gap: 6px; flex-direction: column;">
-                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $total_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
-                    <?php echo number_format($total_stock); ?> units
-                  </span>
-                  <?php if($total_stock > 0 && $total_stock <= 10): ?>
-                  <small style="color: #f59e0b; font-size: 0.75rem; font-weight: 600;">
-                    Low Stock
-                  </small>
-                  <?php endif; ?>
-                </div>
-              </td>
-              <td>
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                  <span class="method-badge <?php echo strtolower($inventory_method); ?>">
-                    <ion-icon name="<?php echo $inventory_method === 'FIFO' ? 'arrow-forward-outline' : 'arrow-back-outline'; ?>"></ion-icon>
-                    <?php echo $inventory_method; ?>
-                  </span>
-                  <div class="batch-preview">
-                    <ion-icon name="layers-outline"></ion-icon>
-                    <?php echo $inventory_method === 'FIFO' ? 'Oldest' : 'Newest'; ?>: 
-                    <?php echo date('M d', strtotime($oldest_date)); ?>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <strong style="color: var(--primary-color);">RWF <?php echo number_format($display_price); ?></strong>
-              </td>
-              <td>  
-                <?php if($total_stock > 0): ?>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  <!-- Add to Cart Form -->
-                  <form method="POST" style="display: flex; gap: 6px; align-items: center;">
-                    <input type="hidden" name="tool_id" value="<?php echo $display_tool_id; ?>">
-                    <input type="number" name="quantity" value="1" min="1" max="<?php echo $total_stock; ?>" 
-                           style="width: 60px; padding: 6px 8px; border: 1px solid var(--gray-300); border-radius: 6px; text-align: center; font-weight: 600;">
-                    <button type="submit" name="add_to_cart"
-                      style="display: inline-flex; align-items: center; gap: 4px; padding: 8px 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;"
-                      onmouseover="this.style.transform='translateY(-1px)';"
-                      onmouseout="this.style.transform='translateY(0)';">
-                      <ion-icon name="cart-outline"></ion-icon>
-                      Add
-                    </button>
-                  </form>
-                  <!-- Quick Buy Link -->
-                  <a href="stock.php?id=<?php echo $display_tool_id; ?>" 
-                    style="display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 12px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.8rem; transition: all 0.2s;"
-                    onmouseover="this.style.transform='translateY(-1px)';"
-                    onmouseout="this.style.transform='translateY(0)';">
-                    <ion-icon name="flash-outline"></ion-icon>
-                    Buy Now
-                  </a>
-                </div>
-                <?php else: ?>
-                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--gray-300); color: var(--gray-600); border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
-                  <ion-icon name="ban-outline"></ion-icon>
-                  Out of Stock
-                </span>
-                <?php endif; ?>
-              </td>
-              <?php
-            }
-          } else {
-            ?>
-            <tr>
-              <td colspan="8" style="text-align: center; padding: var(--spacing-xl); color: var(--gray-500);">
-                No tools available
-              </td>
-            </tr>
-            <?php
+        <style>
+        .product-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+        @media (max-width: 900px) {
+          .product-grid {
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1.2rem;
           }
-              ?>
-            </tbody>
-          </table>
+        }
+        @media (max-width: 600px) {
+          .product-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+        }
+        .product-card {
+          background: #fff;
+          border-radius: 18px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1.5px 6px rgba(0,0,0,0.03);
+          padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          transition: box-shadow 0.2s, transform 0.2s;
+          position: relative;
+        }
+        .product-card:hover {
+          box-shadow: 0 8px 32px rgba(59,130,246,0.18), 0 2px 8px rgba(0,0,0,0.06);
+          transform: translateY(-4px) scale(1.02);
+        }
+        .product-image {
+          width: 160px;
+          height: 160px;
+          border-radius: 12px;
+          object-fit: cover;
+          background: #f3f4f6;
+          border: 1.5px solid #e5e7eb;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        @media (max-width: 600px) {
+          .product-image {
+            width: 120px;
+            height: 120px;
+          }
+        }
+        .product-title {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 0.3rem;
+          text-align: center;
+        }
+        .product-type {
+          font-size: 0.85rem;
+          color: #64748b;
+          background: #f1f5f9;
+          border-radius: 8px;
+          padding: 2px 10px;
+          margin-bottom: 0.5rem;
+        }
+        .product-description {
+          font-size: 0.93rem;
+          color: #475569;
+          margin-bottom: 0.7rem;
+          text-align: center;
+          min-height: 38px;
+        }
+        .product-stock {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #059669;
+          margin-bottom: 0.5rem;
+        }
+        .product-stock.low {
+          color: #f59e0b;
+        }
+        .product-stock.out {
+          color: #dc2626;
+        }
+        .product-price {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #2563eb;
+          margin-bottom: 1rem;
+        }
+        .product-actions {
+          display: flex;
+          gap: 0.7rem;
+          width: 100%;
+          justify-content: center;
+        }
+        .product-actions form,
+        .product-actions a {
+          flex: 1;
+        }
+        .add-cart-btn, .buy-now-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 10px 0;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.98rem;
+          border: none;
+          cursor: pointer;
+          transition: background 0.18s, box-shadow 0.18s;
+        }
+        .add-cart-btn {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: #fff;
+        }
+        .add-cart-btn:hover {
+          background: linear-gradient(135deg, #059669, #10b981);
+        }
+        .buy-now-btn {
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          color: #fff;
+        }
+        .buy-now-btn:hover {
+          background: linear-gradient(135deg, #2563eb, #3b82f6);
+        }
+        </style>
+        <div class="product-grid">
+        <?php
+        $sql = mysqli_query($con, "
+            SELECT 
+                t.u_toolname,
+                SUM(t.u_itemsnumber) as total_stock,
+                ROUND(AVG(t.u_price)) as avg_price,
+                MAX(t.u_type) as u_type,
+                MAX(t.u_tooldescription) as u_tooldescription,
+                MAX(t.image_url) as image_url,
+                MIN(t.id) as first_tool_id,
+                COALESCE(MAX(im.method), 'FIFO') as inventory_method,
+                COUNT(*) as batch_count
+            FROM `tool` t
+            LEFT JOIN inventory_method im ON t.id = im.tool_id
+            GROUP BY t.u_toolname
+            HAVING SUM(t.u_itemsnumber) > 0
+            ORDER BY t.u_toolname ASC
+        ");
+        $row_count = mysqli_num_rows($sql);
+        if($row_count){
+          while($product=mysqli_fetch_array($sql))
+          { 
+            $product_name = $product['u_toolname'];
+            $total_stock = (int)$product['total_stock'];
+            $display_price = (int)$product['avg_price'];
+            $display_type = $product['u_type'];
+            $display_description = $product['u_tooldescription'];
+            $display_image = $product['image_url'];
+            $inventory_method = $product['inventory_method'] ?? 'FIFO';
+            $batch_count = (int)$product['batch_count'];
+            $order_direction = ($inventory_method === 'FIFO') ? 'ASC' : 'DESC';
+            $first_available = mysqli_query($con, "
+                SELECT id, u_date FROM tool 
+                WHERE u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
+                AND u_itemsnumber > 0
+                ORDER BY u_date $order_direction
+                LIMIT 1
+            ");
+            $first_tool = mysqli_fetch_assoc($first_available);
+            $display_tool_id = $first_tool['id'] ?? $product['first_tool_id'];
+            $oldest_date = $first_tool['u_date'] ?? date('Y-m-d');
+        ?>
+        <div class="product-card">
+          <?php if(!empty($display_image) && file_exists('../' . $display_image)): ?>
+            <img src="../<?php echo htmlspecialchars($display_image); ?>" alt="<?php echo htmlspecialchars($product_name); ?>" class="product-image">
+          <?php else: ?>
+            <div class="product-image" style="justify-content:center;align-items:center;display:flex;">
+              <ion-icon name="construct-outline" style="font-size: 3.5rem; color: #3b82f6;"></ion-icon>
+            </div>
+          <?php endif; ?>
+          <div class="product-title"><?php echo htmlspecialchars($product_name); ?></div>
+          <div class="product-type"><?php echo htmlspecialchars($display_type); ?></div>
+          <div class="product-description"><?php echo htmlspecialchars($display_description); ?></div>
+          <div class="product-stock <?php echo $total_stock <= 10 ? ($total_stock == 0 ? 'out' : 'low') : ''; ?>">
+            <?php if($total_stock > 0): ?>
+              <?php echo number_format($total_stock); ?> units<?php if($total_stock <= 10): ?> (Low Stock)<?php endif; ?>
+            <?php else: ?>
+              Out of Stock
+            <?php endif; ?>
+          </div>
+          <div class="product-price">RWF <?php echo number_format($display_price); ?></div>
+          <div class="product-actions">
+            <?php if($total_stock > 0): ?>
+              <form method="POST">
+                <input type="hidden" name="tool_id" value="<?php echo $display_tool_id; ?>">
+                <input type="number" name="quantity" value="1" min="1" max="<?php echo $total_stock; ?>" style="width: 60px; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 6px; text-align: center; font-weight: 600; margin-right: 6px;">
+                <button type="submit" name="add_to_cart" class="add-cart-btn">
+                  <ion-icon name="cart-outline"></ion-icon> Add to Cart
+                </button>
+              </form>
+              <a href="stock.php?id=<?php echo $display_tool_id; ?>" class="buy-now-btn">
+                <ion-icon name="flash-outline"></ion-icon> Buy Now
+              </a>
+            <?php else: ?>
+              <span class="product-stock out" style="width:100%;text-align:center;display:block;background:#f3f4f6;padding:10px 0;border-radius:8px;">Out of Stock</span>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php
+          }
+        } else {
+        ?>
+        <div style="grid-column: 1/-1; text-align: center; color: #64748b; font-size: 1.1rem; padding: 2.5rem 0;">No tools available</div>
+        <?php } ?>
         </div>
       </div>
 
