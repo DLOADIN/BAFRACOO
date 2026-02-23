@@ -299,6 +299,7 @@
                   <th>Sale Price</th>
                   <th>Total Value (Sale)</th>
                   <th>Total Value (Purchase)</th>
+                  <th>Net Value</th>
                   <th>Inventory Method</th>
                   <th>Date Added</th>
                   <th>Status</th>
@@ -366,6 +367,9 @@
                   <td><?php echo number_format($row['u_price']); ?> RWF</td>
                   <td style="font-weight: 600;"><?php echo number_format($row['u_price'] * $row['u_itemsnumber']); ?> RWF</td>
                   <td style="font-weight: 600;"><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price'] * $row['u_itemsnumber']) . ' RWF' : '-'; ?></td>
+                  <td style="font-weight: 600; color: <?php echo ($row['net_value'] > 0) ? 'var(--success-color)' : 'var(--warning-color)'; ?>;">
+                    <?php echo isset($row['net_value']) ? number_format($row['net_value']) . ' RWF' : '-'; ?>
+                  </td>
                   <td>
                     <div class="method-toggle" data-tool-id="<?php echo $row['id']; ?>">
                       <button class="method-btn fifo <?php echo $current_method === 'FIFO' ? 'active' : ''; ?>" 

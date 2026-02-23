@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 28, 2026 at 08:36 PM
+-- Generation Time: Feb 23, 2026 at 08:13 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -25,6 +25,69 @@ DELIMITER $$
 --
 -- Procedures
 --
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_add_to_cart` (IN `p_user_id` INT, IN `p_tool_id` INT, IN `p_quantity` INT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255), OUT `p_cart_id` INT)   BEGIN
+    DECLARE v_cart_id INT;
+    DECLARE v_tool_name VARCHAR(100);
+    DECLARE v_tool_price DECIMAL(12,2);
+    DECLARE v_available_stock INT;
+    DECLARE v_existing_qty INT;
+    
+    SET p_success = FALSE;
+    
+    -- Get tool details
+    SELECT u_toolname, u_price, u_itemsnumber 
+    INTO v_tool_name, v_tool_price, v_available_stock
+    FROM tool WHERE id = p_tool_id;
+    
+    IF v_tool_name IS NULL THEN
+        SET p_message = 'Tool not found';
+    ELSEIF v_available_stock < p_quantity THEN
+        SET p_message = CONCAT('Insufficient stock. Only ', v_available_stock, ' available.');
+    ELSE
+        -- Get or create active cart for user
+        SELECT id INTO v_cart_id 
+        FROM cart 
+        WHERE user_id = p_user_id AND status = 'ACTIVE' 
+        LIMIT 1;
+        
+        IF v_cart_id IS NULL THEN
+            INSERT INTO cart (user_id, status, expires_at) 
+            VALUES (p_user_id, 'ACTIVE', DATE_ADD(NOW(), INTERVAL 24 HOUR));
+            SET v_cart_id = LAST_INSERT_ID();
+        END IF;
+        
+        -- Check if item already in cart
+        SELECT quantity INTO v_existing_qty 
+        FROM cart_items 
+        WHERE cart_id = v_cart_id AND tool_id = p_tool_id;
+        
+        IF v_existing_qty IS NOT NULL THEN
+            -- Check total quantity doesn't exceed stock
+            IF (v_existing_qty + p_quantity) > v_available_stock THEN
+                SET p_message = CONCAT('Cannot add more. You have ', v_existing_qty, ' in cart, only ', v_available_stock, ' available.');
+            ELSE
+                -- Update existing cart item
+                UPDATE cart_items 
+                SET quantity = quantity + p_quantity,
+                    unit_price = v_tool_price
+                WHERE cart_id = v_cart_id AND tool_id = p_tool_id;
+                
+                SET p_success = TRUE;
+                SET p_message = CONCAT('Updated cart. Now ', (v_existing_qty + p_quantity), ' x ', v_tool_name);
+            END IF;
+        ELSE
+            -- Insert new cart item
+            INSERT INTO cart_items (cart_id, tool_id, tool_name, quantity, unit_price)
+            VALUES (v_cart_id, p_tool_id, v_tool_name, p_quantity, v_tool_price);
+            
+            SET p_success = TRUE;
+            SET p_message = CONCAT('Added ', p_quantity, ' x ', v_tool_name, ' to cart');
+        END IF;
+        
+        SET p_cart_id = v_cart_id;
+    END IF;
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_check_refund_eligibility` (IN `p_order_id` INT, IN `p_user_id` INT, OUT `p_eligible` BOOLEAN, OUT `p_message` VARCHAR(255), OUT `p_max_refund_amount` DECIMAL(12,2))   BEGIN
     DECLARE v_order_status VARCHAR(50);
     DECLARE v_order_amount DECIMAL(12,2);
@@ -72,6 +135,141 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_check_refund_eligibility` (IN `p
             SET p_max_refund_amount = v_order_amount - v_refunded_amount;
             SET p_message = 'Order is eligible for refund';
         END IF;
+    END IF;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_deduct_order_items_fifo` (IN `p_order_id` INT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255), OUT `p_total_cost` DECIMAL(12,2), OUT `p_total_profit` DECIMAL(12,2))   BEGIN
+    DECLARE v_done INT DEFAULT FALSE;
+    DECLARE v_order_item_id INT;
+    DECLARE v_tool_id INT;
+    DECLARE v_quantity INT;
+    DECLARE v_unit_price DECIMAL(12,2);
+    DECLARE v_remaining INT;
+    DECLARE v_method VARCHAR(10);
+    
+    DECLARE v_batch_id INT;
+    DECLARE v_batch_qty INT;
+    DECLARE v_batch_purchase_price DECIMAL(12,2);
+    DECLARE v_take_qty INT;
+    
+    DECLARE v_batch_done INT DEFAULT FALSE;
+    
+    DECLARE v_total_cost DECIMAL(12,2) DEFAULT 0;
+    DECLARE v_total_revenue DECIMAL(12,2) DEFAULT 0;
+    
+    -- Cursor for order items
+    DECLARE items_cursor CURSOR FOR 
+        SELECT id, tool_id, quantity, unit_price
+        FROM order_items 
+        WHERE order_id = p_order_id;
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
+    
+    SET p_success = FALSE;
+    SET p_total_cost = 0;
+    SET p_total_profit = 0;
+    
+    START TRANSACTION;
+    
+    OPEN items_cursor;
+    
+    items_loop: LOOP
+        FETCH items_cursor INTO v_order_item_id, v_tool_id, v_quantity, v_unit_price;
+        
+        IF v_done THEN
+            LEAVE items_loop;
+        END IF;
+        
+        SET v_remaining = v_quantity;
+        
+        -- Get inventory method for this tool (default FIFO)
+        SELECT COALESCE(method, 'FIFO') INTO v_method
+        FROM inventory_method WHERE tool_id = v_tool_id;
+        
+        IF v_method IS NULL THEN
+            SET v_method = 'FIFO';
+        END IF;
+        
+        -- Process batches based on FIFO or LIFO
+        SET v_batch_done = FALSE;
+        
+        batch_block: BEGIN
+            DECLARE batch_cursor CURSOR FOR 
+                SELECT id, quantity_remaining, purchase_price 
+                FROM stock_batches 
+                WHERE tool_id = v_tool_id AND quantity_remaining > 0
+                ORDER BY CASE WHEN v_method = 'FIFO' THEN batch_date END ASC,
+                         CASE WHEN v_method = 'LIFO' THEN batch_date END DESC;
+            
+            DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_batch_done = TRUE;
+            
+            OPEN batch_cursor;
+            
+            batch_loop: LOOP
+                IF v_remaining <= 0 THEN
+                    LEAVE batch_loop;
+                END IF;
+                
+                FETCH batch_cursor INTO v_batch_id, v_batch_qty, v_batch_purchase_price;
+                
+                IF v_batch_done THEN
+                    LEAVE batch_loop;
+                END IF;
+                
+                SET v_take_qty = LEAST(v_remaining, v_batch_qty);
+                
+                -- Update batch quantity
+                UPDATE stock_batches 
+                SET quantity_remaining = quantity_remaining - v_take_qty 
+                WHERE id = v_batch_id;
+                
+                -- Record stock movement
+                INSERT INTO stock_movements (batch_id, order_id, movement_type, quantity, unit_cost, reference)
+                VALUES (v_batch_id, p_order_id, 'OUT', v_take_qty, v_batch_purchase_price, 
+                        CONCAT('ORDER-', LPAD(p_order_id, 6, '0')));
+                
+                -- Record order item batch (for profit tracking)
+                INSERT INTO order_item_batches (order_item_id, batch_id, quantity_from_batch, purchase_price, sale_price)
+                VALUES (v_order_item_id, v_batch_id, v_take_qty, v_batch_purchase_price, v_unit_price);
+                
+                SET v_total_cost = v_total_cost + (v_take_qty * v_batch_purchase_price);
+                SET v_total_revenue = v_total_revenue + (v_take_qty * v_unit_price);
+                
+                SET v_remaining = v_remaining - v_take_qty;
+                
+            END LOOP;
+            
+            CLOSE batch_cursor;
+        END batch_block;
+        
+        -- Also update tool table stock (legacy compatibility)
+        UPDATE tool SET u_itemsnumber = u_itemsnumber - v_quantity WHERE id = v_tool_id;
+        
+        IF v_remaining > 0 THEN
+            -- Not enough stock - rollback
+            ROLLBACK;
+            SET p_message = CONCAT('Insufficient stock for tool ID ', v_tool_id);
+            SET p_success = FALSE;
+            LEAVE items_loop;
+        END IF;
+        
+    END LOOP;
+    
+    CLOSE items_cursor;
+    
+    IF p_success = FALSE AND p_message IS NOT NULL THEN
+        -- Already rolled back
+        SELECT 1;
+    ELSE
+        -- Update order status
+        UPDATE `order` SET status = 'Paid', payment_date = NOW() WHERE id = p_order_id;
+        
+        COMMIT;
+        
+        SET p_success = TRUE;
+        SET p_total_cost = v_total_cost;
+        SET p_total_profit = v_total_revenue - v_total_cost;
+        SET p_message = CONCAT('Stock deducted successfully. Profit: ', ROUND(v_total_revenue - v_total_cost, 2), ' RWF');
     END IF;
 END$$
 
@@ -186,6 +384,86 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_deduct_stock_fifo_lifo` (IN `p_t
     END IF;
 END$$
 
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_process_cart_order_fifo` (IN `p_cart_id` INT, IN `p_user_id` INT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255), OUT `p_order_id` INT, OUT `p_total_amount` DECIMAL(12,2))   BEGIN
+    DECLARE v_done INT DEFAULT FALSE;
+    DECLARE v_cart_item_id INT;
+    DECLARE v_tool_id INT;
+    DECLARE v_tool_name VARCHAR(100);
+    DECLARE v_quantity INT;
+    DECLARE v_unit_price DECIMAL(12,2);
+    DECLARE v_total_price DECIMAL(12,2);
+    DECLARE v_order_item_id INT;
+    DECLARE v_grand_total DECIMAL(12,2) DEFAULT 0;
+    DECLARE v_items_count INT DEFAULT 0;
+    
+    -- Cursor for cart items
+    DECLARE cart_cursor CURSOR FOR 
+        SELECT id, tool_id, tool_name, quantity, unit_price, total_price
+        FROM cart_items 
+        WHERE cart_id = p_cart_id;
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
+    
+    SET p_success = FALSE;
+    SET p_order_id = NULL;
+    SET p_total_amount = 0;
+    
+    -- Validate cart exists and belongs to user
+    IF NOT EXISTS (SELECT 1 FROM cart WHERE id = p_cart_id AND user_id = p_user_id AND status = 'ACTIVE') THEN
+        SET p_message = 'Invalid or inactive cart';
+    ELSE
+        -- Calculate grand total
+        SELECT COALESCE(SUM(total_price), 0), COUNT(*) 
+        INTO v_grand_total, v_items_count
+        FROM cart_items WHERE cart_id = p_cart_id;
+        
+        IF v_items_count = 0 THEN
+            SET p_message = 'Cart is empty';
+        ELSE
+            START TRANSACTION;
+            
+            -- Create the main order
+            INSERT INTO `order` (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status)
+            VALUES (p_user_id, NULL, CONCAT('Cart Order (', v_items_count, ' items)'), v_items_count, 'Cart Order', 
+                    CONCAT('Multi-item order from cart #', p_cart_id), CURDATE(), 0, v_grand_total, 'Pending Payment');
+            
+            SET p_order_id = LAST_INSERT_ID();
+            
+            -- Process each cart item
+            OPEN cart_cursor;
+            
+            cart_loop: LOOP
+                FETCH cart_cursor INTO v_cart_item_id, v_tool_id, v_tool_name, v_quantity, v_unit_price, v_total_price;
+                
+                IF v_done THEN
+                    LEAVE cart_loop;
+                END IF;
+                
+                -- Create order item
+                INSERT INTO order_items (order_id, tool_id, tool_name, quantity, unit_price, total_price)
+                VALUES (p_order_id, v_tool_id, v_tool_name, v_quantity, v_unit_price, v_total_price);
+                
+                SET v_order_item_id = LAST_INSERT_ID();
+                
+                -- FIFO stock deduction will happen after payment (in success-payment.php)
+                -- We just record the order items here
+                
+            END LOOP;
+            
+            CLOSE cart_cursor;
+            
+            -- Mark cart as checked out
+            UPDATE cart SET status = 'CHECKED_OUT' WHERE id = p_cart_id;
+            
+            COMMIT;
+            
+            SET p_success = TRUE;
+            SET p_total_amount = v_grand_total;
+            SET p_message = CONCAT('Order created with ', v_items_count, ' items. Total: ', v_grand_total, ' RWF');
+        END IF;
+    END IF;
+END$$
+
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_process_refund` (IN `p_refund_request_id` INT, IN `p_admin_id` INT, IN `p_stripe_refund_id` VARCHAR(100), IN `p_notes` TEXT, OUT `p_success` BOOLEAN, OUT `p_message` VARCHAR(255))   BEGIN
     DECLARE v_order_id INT;
     DECLARE v_user_id INT;
@@ -264,6 +542,62 @@ CREATE TABLE `admin` (
 
 INSERT INTO `admin` (`id`, `u_name`, `u_email`, `u_phonenumber`, `u_address`, `u_password`) VALUES
 (9, 'Manzi David', 'm.david@alustudent.com', 791291003, 'Kigalui', '12345');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cart`
+--
+
+CREATE TABLE `cart` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `status` enum('ACTIVE','CHECKED_OUT','ABANDONED','EXPIRED') DEFAULT 'ACTIVE',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `expires_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `cart`
+--
+
+INSERT INTO `cart` (`id`, `user_id`, `status`, `created_at`, `updated_at`, `expires_at`) VALUES
+(1, 1, 'CHECKED_OUT', '2026-02-17 21:10:44', '2026-02-17 21:11:19', '2026-02-18 21:10:44'),
+(2, 1, 'CHECKED_OUT', '2026-02-19 19:59:23', '2026-02-19 20:00:38', '2026-02-20 19:59:23'),
+(3, 1, 'ACTIVE', '2026-02-19 23:51:23', '2026-02-19 23:51:23', '2026-02-20 23:51:23');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cart_items`
+--
+
+CREATE TABLE `cart_items` (
+  `id` int(11) NOT NULL,
+  `cart_id` int(11) NOT NULL,
+  `tool_id` int(11) NOT NULL,
+  `tool_name` varchar(100) NOT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 1,
+  `unit_price` decimal(12,2) NOT NULL COMMENT 'Sale price at time of adding',
+  `total_price` decimal(12,2) GENERATED ALWAYS AS (`quantity` * `unit_price`) STORED,
+  `added_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `cart_items`
+--
+
+INSERT INTO `cart_items` (`id`, `cart_id`, `tool_id`, `tool_name`, `quantity`, `unit_price`, `added_at`, `updated_at`) VALUES
+(1, 1, 9, 'Berryfruits', 2, 200000.00, '2026-02-17 21:10:44', '2026-02-17 21:10:57'),
+(5, 2, 5, 'APPLES', 1, 10000.00, '2026-02-19 20:00:09', '2026-02-19 20:00:09'),
+(6, 2, 9, 'Berryfruits', 1, 200000.00, '2026-02-19 20:00:11', '2026-02-19 20:00:11'),
+(7, 2, 10, 'Cinnamon Flour', 1, 40000.00, '2026-02-19 20:00:12', '2026-02-19 20:00:12'),
+(11, 3, 5, 'APPLES', 1, 10000.00, '2026-02-20 10:08:06', '2026-02-20 10:08:06'),
+(12, 3, 12, 'Wheelbarrow', 1, 10000.00, '2026-02-23 18:53:00', '2026-02-23 18:53:00'),
+(13, 3, 6, 'Silicone 500mg', 2, 10000.00, '2026-02-23 18:53:09', '2026-02-23 18:55:01'),
+(14, 3, 10, 'Cinnamon Flour', 3, 40000.00, '2026-02-23 18:55:55', '2026-02-23 18:55:58');
 
 -- --------------------------------------------------------
 
@@ -406,7 +740,62 @@ INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, 
 (25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
 (26, 1, 12, 'Wheelbarrow', 10, 'Very Good', 'In very good condition', '2026-02-28', 10000, 100000, 'Payment Cancelled', NULL, NULL, 'NONE', 0.00, NULL),
 (27, 1, 12, 'Wheelbarrow', 2, 'Very Good', 'In very good condition', '2026-02-28', 10000, 20000, 'Refunded', NULL, NULL, 'NONE', 0.00, NULL),
-(28, 1, 9, 'Berryfruits', 1, 'Very Good', 'Some of the berryfruits.', '2026-02-28', 200000, 200000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
+(28, 1, 9, 'Berryfruits', 1, 'Very Good', 'Some of the berryfruits.', '2026-02-28', 200000, 200000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
+(30, 1, NULL, 'Cart Order (3 items)', 3, 'Cart Order', 'Multi-item order from cart #2', '2026-02-19', 0, 250000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
+(31, 1, 12, 'Wheelbarrow', 1, 'Very Good', 'In very good condition', '2026-02-23', 10000, 10000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `order_items`
+--
+
+CREATE TABLE `order_items` (
+  `id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `tool_id` int(11) NOT NULL,
+  `tool_name` varchar(100) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `unit_price` decimal(12,2) NOT NULL COMMENT 'Sale price per unit',
+  `total_price` decimal(12,2) NOT NULL COMMENT 'Quantity x Unit Price',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `order_items`
+--
+
+INSERT INTO `order_items` (`id`, `order_id`, `tool_id`, `tool_name`, `quantity`, `unit_price`, `total_price`, `created_at`) VALUES
+(2, 30, 5, 'APPLES', 1, 10000.00, 10000.00, '2026-02-19 20:00:38'),
+(3, 30, 9, 'Berryfruits', 1, 200000.00, 200000.00, '2026-02-19 20:00:38'),
+(4, 30, 10, 'Cinnamon Flour', 1, 40000.00, 40000.00, '2026-02-19 20:00:38');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `order_item_batches`
+--
+
+CREATE TABLE `order_item_batches` (
+  `id` int(11) NOT NULL,
+  `order_item_id` int(11) NOT NULL,
+  `batch_id` int(11) NOT NULL,
+  `quantity_from_batch` int(11) NOT NULL COMMENT 'How many units came from this batch',
+  `purchase_price` decimal(12,2) NOT NULL COMMENT 'Cost price from batch (for profit calc)',
+  `sale_price` decimal(12,2) NOT NULL COMMENT 'Sale price charged to customer',
+  `profit_per_unit` decimal(12,2) GENERATED ALWAYS AS (`sale_price` - `purchase_price`) STORED,
+  `total_profit` decimal(12,2) GENERATED ALWAYS AS (`quantity_from_batch` * (`sale_price` - `purchase_price`)) STORED,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `order_item_batches`
+--
+
+INSERT INTO `order_item_batches` (`id`, `order_item_id`, `batch_id`, `quantity_from_batch`, `purchase_price`, `sale_price`, `created_at`) VALUES
+(1, 2, 1, 1, 8000.00, 10000.00, '2026-02-19 20:01:02'),
+(2, 3, 6, 1, 160000.00, 200000.00, '2026-02-19 20:01:02'),
+(3, 4, 7, 1, 32000.00, 40000.00, '2026-02-19 20:01:02');
 
 -- --------------------------------------------------------
 
@@ -620,7 +1009,8 @@ CREATE TABLE `stock_batches` (
   `location_id` int(11) DEFAULT 1,
   `expiry_date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    `net_value` decimal(12,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
@@ -628,13 +1018,13 @@ CREATE TABLE `stock_batches` (
 --
 
 INSERT INTO `stock_batches` (`id`, `tool_id`, `batch_number`, `quantity_received`, `quantity_remaining`, `purchase_price`, `batch_date`, `supplier`, `location_id`, `expiry_date`, `created_at`, `updated_at`) VALUES
-(1, 5, 'BATCH-0005-001', 11000, 11000, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
+(1, 5, 'BATCH-0005-001', 11000, 10999, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2026-02-19 20:01:02'),
 (2, 6, 'BATCH-0006-001', 2, 2, 8000.00, '2024-03-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
 (3, 7, 'BATCH-0007-001', 121212, 121212, 969.60, '2025-10-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
 (4, 5, 'BATCH-0005-002', 100, 100, 300000.00, '2025-12-03 19:56:59', '0', 6, '2026-01-01', '2025-12-03 17:56:59', '2025-12-03 17:56:59'),
 (5, 8, 'BATCH-INITIAL-0008', 100, 100, 1600.00, '2025-11-21 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
-(6, 9, 'BATCH-INITIAL-0009', 20, 20, 160000.00, '2025-12-02 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
-(7, 10, 'BATCH-INITIAL-0010', 30, 30, 32000.00, '2025-12-16 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58');
+(6, 9, 'BATCH-INITIAL-0009', 20, 19, 160000.00, '2025-12-02 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2026-02-19 20:01:02'),
+(7, 10, 'BATCH-INITIAL-0010', 30, 29, 32000.00, '2025-12-16 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2026-02-19 20:01:02');
 
 -- --------------------------------------------------------
 
@@ -663,7 +1053,10 @@ INSERT INTO `stock_movements` (`id`, `batch_id`, `order_id`, `movement_type`, `q
 (1, 1, NULL, 'IN', 11000, 8000.00, 'INITIAL-BATCH-0005-001', 'Initial stock entry', '2025-11-16 19:10:56', NULL),
 (2, 2, NULL, 'IN', 2, 8000.00, 'INITIAL-BATCH-0006-001', 'Initial stock entry', '2025-11-16 19:10:56', NULL),
 (3, 3, NULL, 'IN', 121212, 969.60, 'INITIAL-BATCH-0007-001', 'Initial stock entry', '2025-11-16 19:10:56', NULL),
-(4, 4, NULL, 'IN', 100, 300000.00, 'STOCK-IN-BATCH-0005-002', NULL, '2025-12-03 17:56:59', NULL);
+(4, 4, NULL, 'IN', 100, 300000.00, 'STOCK-IN-BATCH-0005-002', NULL, '2025-12-03 17:56:59', NULL),
+(5, 1, 30, 'OUT', 1, 8000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL),
+(6, 6, 30, 'OUT', 1, 160000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL),
+(7, 7, 30, 'OUT', 1, 32000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL);
 
 -- --------------------------------------------------------
 
@@ -705,23 +1098,25 @@ CREATE TABLE `tool` (
   `u_tooldescription` varchar(80) NOT NULL,
   `u_date` date NOT NULL,
   `u_price` int(80) NOT NULL,
-  `image_url` varchar(255) DEFAULT NULL
+  `purchase_price` decimal(12,2) DEFAULT NULL,
+    `image_url` varchar(255) DEFAULT NULL,
+    `net_value` decimal(12,2) GENERATED ALWAYS AS (`u_price` - IFNULL(`purchase_price`,0)) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `tool`
 --
 
-INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `image_url`) VALUES
-(5, 'APPLES', 11000, 'Very Good', 'I love these items', '2024-04-07', 10000, NULL),
-(6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, NULL),
-(7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, NULL),
-(8, 'Living Room Lamps', 99, 'Very Good', '100', '2025-11-21', 2000, NULL),
-(9, 'Berryfruits', 9, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL),
-(10, 'Cinnamon Flour', 30, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
-(11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 'uploads/tools/tool_1765848888_6940b73808f08.png'),
-(12, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-11', 10000, 'uploads/tools/tool_1770833411_698cc6038df53.jpeg'),
-(13, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-27', 10000, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
+INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `purchase_price`, `image_url`) VALUES
+(5, 'APPLES', 10999, 'Very Good', 'I love these items', '2024-04-07', 10000, NULL, NULL),
+(6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, NULL, NULL),
+(7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, NULL, NULL),
+(8, 'Living Room Lamps', 99, 'Very Good', '100', '2025-11-21', 2000, NULL, NULL),
+(9, 'Berryfruits', 8, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL, NULL),
+(10, 'Cinnamon Flour', 29, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, NULL, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
+(11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 9000.00, 'uploads/tools/tool_1765848888_6940b73808f08.png'),
+(12, 'Wheelbarrow', 999, 'Very Good', 'In very good condition', '2026-02-11', 10000, 9000.00, 'uploads/tools/tool_1770833411_698cc6038df53.jpeg'),
+(13, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-27', 10000, 9998.00, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
 
 -- --------------------------------------------------------
 
@@ -773,6 +1168,24 @@ INSERT INTO `user` (`id`, `u_name`, `u_email`, `u_phonenumber`, `u_address`, `u_
 (3, 'Test User', 'test123@test.com', '0781234567', 'Kigali', 'test123'),
 (4, 'TestUser', 'testuser999@test.com', '0781234567', 'Kigali', 'test123'),
 (5, 'Marie Claire', 'marieclaire@gmail.com', '0728375922', 'Kigali', 'majweuh4890239!');
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_cart_summary`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_cart_summary` (
+`cart_id` int(11)
+,`user_id` int(11)
+,`user_name` varchar(80)
+,`items_count` bigint(21)
+,`total_items` decimal(32,0)
+,`grand_total` decimal(34,2)
+,`status` enum('ACTIVE','CHECKED_OUT','ABANDONED','EXPIRED')
+,`created_at` timestamp
+,`updated_at` timestamp
+);
 
 -- --------------------------------------------------------
 
@@ -834,6 +1247,25 @@ CREATE TABLE `vw_lifo_stock_order` (
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `vw_order_profit_summary`
+-- (See below for the actual view)
+--
+CREATE TABLE `vw_order_profit_summary` (
+`order_id` int(11)
+,`user_id` int(11)
+,`customer_name` varchar(80)
+,`order_date` date
+,`order_total` int(100)
+,`total_cost` decimal(44,2)
+,`total_revenue` decimal(44,2)
+,`total_profit` decimal(34,2)
+,`profit_margin_percent` decimal(40,2)
+,`status` varchar(50)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Stand-in structure for view `vw_pending_refunds`
 -- (See below for the actual view)
 --
@@ -885,6 +1317,15 @@ CREATE TABLE `vw_user_refund_history` (
 -- --------------------------------------------------------
 
 --
+-- Structure for view `vw_cart_summary`
+--
+DROP TABLE IF EXISTS `vw_cart_summary`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_cart_summary`  AS SELECT `c`.`id` AS `cart_id`, `c`.`user_id` AS `user_id`, `u`.`u_name` AS `user_name`, count(`ci`.`id`) AS `items_count`, sum(`ci`.`quantity`) AS `total_items`, sum(`ci`.`total_price`) AS `grand_total`, `c`.`status` AS `status`, `c`.`created_at` AS `created_at`, `c`.`updated_at` AS `updated_at` FROM ((`cart` `c` join `user` `u` on(`c`.`user_id` = `u`.`id`)) left join `cart_items` `ci` on(`c`.`id` = `ci`.`cart_id`)) GROUP BY `c`.`id`, `c`.`user_id`, `u`.`u_name`, `c`.`status`, `c`.`created_at`, `c`.`updated_at` ;
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `vw_current_stock_by_method`
 --
 DROP TABLE IF EXISTS `vw_current_stock_by_method`;
@@ -908,6 +1349,15 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 DROP TABLE IF EXISTS `vw_lifo_stock_order`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_lifo_stock_order`  AS SELECT `sb`.`id` AS `batch_id`, `sb`.`tool_id` AS `tool_id`, `t`.`u_toolname` AS `tool_name`, `sb`.`batch_number` AS `batch_number`, `sb`.`quantity_remaining` AS `quantity_remaining`, `sb`.`purchase_price` AS `purchase_price`, `sb`.`batch_date` AS `batch_date`, `sb`.`supplier` AS `supplier`, `l`.`location_name` AS `location_name`, `im`.`method` AS `inventory_method`, row_number() over ( partition by `sb`.`tool_id` order by `sb`.`batch_date` desc) AS `lifo_order` FROM (((`stock_batches` `sb` join `tool` `t` on(`sb`.`tool_id` = `t`.`id`)) join `locations` `l` on(`sb`.`location_id` = `l`.`id`)) left join `inventory_method` `im` on(`sb`.`tool_id` = `im`.`tool_id`)) WHERE `sb`.`quantity_remaining` > 0 ORDER BY `sb`.`tool_id` ASC, `sb`.`batch_date` DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_order_profit_summary`
+--
+DROP TABLE IF EXISTS `vw_order_profit_summary`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_order_profit_summary`  AS SELECT `o`.`id` AS `order_id`, `o`.`user_id` AS `user_id`, `u`.`u_name` AS `customer_name`, `o`.`u_date` AS `order_date`, `o`.`u_totalprice` AS `order_total`, coalesce(sum(`oib`.`quantity_from_batch` * `oib`.`purchase_price`),0) AS `total_cost`, coalesce(sum(`oib`.`quantity_from_batch` * `oib`.`sale_price`),0) AS `total_revenue`, coalesce(sum(`oib`.`total_profit`),0) AS `total_profit`, CASE WHEN coalesce(sum(`oib`.`quantity_from_batch` * `oib`.`sale_price`),0) > 0 THEN round(coalesce(sum(`oib`.`total_profit`),0) / coalesce(sum(`oib`.`quantity_from_batch` * `oib`.`sale_price`),1) * 100,2) ELSE 0 END AS `profit_margin_percent`, `o`.`status` AS `status` FROM (((`order` `o` join `user` `u` on(`o`.`user_id` = `u`.`id`)) left join `order_items` `oi` on(`o`.`id` = `oi`.`order_id`)) left join `order_item_batches` `oib` on(`oi`.`id` = `oib`.`order_item_id`)) GROUP BY `o`.`id`, `o`.`user_id`, `u`.`u_name`, `o`.`u_date`, `o`.`u_totalprice`, `o`.`status` ;
 
 -- --------------------------------------------------------
 
@@ -948,6 +1398,23 @@ ALTER TABLE `admin`
   ADD UNIQUE KEY `u_phonenumber` (`u_phonenumber`);
 
 --
+-- Indexes for table `cart`
+--
+ALTER TABLE `cart`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_cart_user` (`user_id`),
+  ADD KEY `idx_cart_status` (`status`);
+
+--
+-- Indexes for table `cart_items`
+--
+ALTER TABLE `cart_items`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_cart_tool` (`cart_id`,`tool_id`),
+  ADD KEY `idx_cart_items_cart` (`cart_id`),
+  ADD KEY `idx_cart_items_tool` (`tool_id`);
+
+--
 -- Indexes for table `damaged_goods`
 --
 ALTER TABLE `damaged_goods`
@@ -983,6 +1450,22 @@ ALTER TABLE `order`
   ADD PRIMARY KEY (`id`),
   ADD KEY `order_ibfk_1` (`user_id`),
   ADD KEY `idx_order_tool_id` (`tool_id`);
+
+--
+-- Indexes for table `order_items`
+--
+ALTER TABLE `order_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_order_items_order` (`order_id`),
+  ADD KEY `idx_order_items_tool` (`tool_id`);
+
+--
+-- Indexes for table `order_item_batches`
+--
+ALTER TABLE `order_item_batches`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_oib_order_item` (`order_item_id`),
+  ADD KEY `idx_oib_batch` (`batch_id`);
 
 --
 -- Indexes for table `refund_audit_log`
@@ -1110,6 +1593,18 @@ ALTER TABLE `admin`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
+-- AUTO_INCREMENT for table `cart`
+--
+ALTER TABLE `cart`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `cart_items`
+--
+ALTER TABLE `cart_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
 -- AUTO_INCREMENT for table `damaged_goods`
 --
 ALTER TABLE `damaged_goods`
@@ -1137,7 +1632,19 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `order`
 --
 ALTER TABLE `order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+
+--
+-- AUTO_INCREMENT for table `order_items`
+--
+ALTER TABLE `order_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `order_item_batches`
+--
+ALTER TABLE `order_item_batches`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `refund_audit_log`
@@ -1197,7 +1704,7 @@ ALTER TABLE `stock_batches`
 -- AUTO_INCREMENT for table `stock_movements`
 --
 ALTER TABLE `stock_movements`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `stock_thresholds`
@@ -1222,6 +1729,19 @@ ALTER TABLE `user`
 --
 
 --
+-- Constraints for table `cart`
+--
+ALTER TABLE `cart`
+  ADD CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `cart_items`
+--
+ALTER TABLE `cart_items`
+  ADD CONSTRAINT `fk_cart_items_cart` FOREIGN KEY (`cart_id`) REFERENCES `cart` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cart_items_tool` FOREIGN KEY (`tool_id`) REFERENCES `tool` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `damaged_products`
 --
 ALTER TABLE `damaged_products`
@@ -1240,6 +1760,20 @@ ALTER TABLE `inventory_method`
 --
 ALTER TABLE `order`
   ADD CONSTRAINT `order_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
+
+--
+-- Constraints for table `order_items`
+--
+ALTER TABLE `order_items`
+  ADD CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `order` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_order_items_tool` FOREIGN KEY (`tool_id`) REFERENCES `tool` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `order_item_batches`
+--
+ALTER TABLE `order_item_batches`
+  ADD CONSTRAINT `fk_oib_batch` FOREIGN KEY (`batch_id`) REFERENCES `stock_batches` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_oib_order_item` FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `refund_requests`
