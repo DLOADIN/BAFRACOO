@@ -38,34 +38,34 @@
   if(isset($_POST['add_to_cart'])){
     $tool_id = (int)$_POST['tool_id'];
     $quantity = (int)$_POST['quantity'];
-    
-    // Get tool details
-    $tool_check = mysqli_query($con, "SELECT u_toolname, u_price, u_itemsnumber FROM tool WHERE id = $tool_id");
+
+    // Get tool details and aggregate stock for all rows with same tool name
+    $tool_check = mysqli_query($con, "SELECT u_toolname FROM tool WHERE id = $tool_id");
     $tool_data = mysqli_fetch_assoc($tool_check);
-    
+    $available = 0;
+    $tool_price = 0;
     if($tool_data) {
       $tool_name = mysqli_real_escape_string($con, $tool_data['u_toolname']);
-      $tool_price = (float)$tool_data['u_price'];
-      $available = (int)$tool_data['u_itemsnumber'];
-      
+      // Aggregate stock and get average price for all rows with this tool name
+      $agg_query = mysqli_query($con, "SELECT SUM(u_itemsnumber) as total_stock, ROUND(AVG(u_price)) as avg_price FROM tool WHERE u_toolname = '$tool_name'");
+      $agg_data = mysqli_fetch_assoc($agg_query);
+      $available = (int)$agg_data['total_stock'];
+      $tool_price = (float)$agg_data['avg_price'];
+
       // Get or create active cart
       $cart_result = mysqli_query($con, "SELECT id FROM cart WHERE user_id = $id AND status = 'ACTIVE' LIMIT 1");
-      
       if($cart_result && mysqli_num_rows($cart_result) > 0) {
         $cart_id = mysqli_fetch_assoc($cart_result)['id'];
       } else {
-        // Create new cart
         mysqli_query($con, "INSERT INTO cart (user_id, status, expires_at) VALUES ($id, 'ACTIVE', DATE_ADD(NOW(), INTERVAL 24 HOUR))");
         $cart_id = mysqli_insert_id($con);
       }
-      
-      // Check if item already in cart
-      $existing = mysqli_query($con, "SELECT id, quantity FROM cart_items WHERE cart_id = $cart_id AND tool_id = $tool_id");
-      
+
+      // Check if item already in cart (by tool name)
+      $existing = mysqli_query($con, "SELECT id, quantity FROM cart_items WHERE cart_id = $cart_id AND tool_name = '$tool_name'");
       if($existing && mysqli_num_rows($existing) > 0) {
         $existing_data = mysqli_fetch_assoc($existing);
         $new_qty = $existing_data['quantity'] + $quantity;
-        
         if($new_qty > $available) {
           $cart_message = "Cannot add more. You already have {$existing_data['quantity']} in cart. Only $available available.";
           $cart_message_type = 'error';
