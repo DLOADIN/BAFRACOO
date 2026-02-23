@@ -92,62 +92,51 @@
   // Handle form submission
   if(isset($_POST['order_tool'])){
     // Use the session user ID (already verified at top of file)
-    // The $id is already verified to exist in database if we got past the session check
     if(empty($id)) {
-      // This shouldn't happen if session is valid, but just in case
       $error_message = "User session invalid. Please <a href='loginuser.php'>login again</a>.";
     } else {
-      // Use the verified session user ID - it's already confirmed to exist in database
       $user_id = (int)$id;
       $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
       $tool_name = mysqli_real_escape_string($con, $_POST['u_toolname']);
       $quantity = (int)$_POST['u_itemsnumber'];
-      $location_id = isset($_POST['location_id']) ? (int)$_POST['location_id'] : 1; // Default location
+      $location_id = isset($_POST['location_id']) ? (int)$_POST['location_id'] : 1;
       $type = mysqli_real_escape_string($con, $_POST['u_type']);
       $description = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
       $price = (float)$_POST['u_price'];
       $total_price = $price * $quantity;
       $order_date = date('Y-m-d');
-      
+
       // Check available stock from tool table (u_itemsnumber)
       $stock_check = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
       $stock_row = mysqli_fetch_array($stock_check);
       $available_stock = (int)$stock_row['u_itemsnumber'];
-      
-      if($available_stock < $quantity) {
-        $error_message = "Insufficient stock! Only " . number_format($available_stock) . " items available.";
+
+      // Allow user to purchase any quantity up to available stock
+      if($quantity < 1) {
+        $error_message = "Please select at least 1 item.";
+      } else if($quantity > $available_stock) {
+        $error_message = "Cannot order $quantity items. Only " . number_format($available_stock) . " available.";
       } else {
-        // Insert order with 'Pending Payment' status - DO NOT deduct stock yet
-        // Stock will only be deducted after successful payment through Stripe
-        
-        // Ensure prices are integers (database expects INT, not DECIMAL)
         $price_int = (int)round($price);
         $total_price_int = (int)round($total_price);
-        
-        // Escape all values for SQL injection prevention
-        $user_id_escaped = (int)$user_id; // Already an integer from session
+        $user_id_escaped = (int)$user_id;
         $tool_id_escaped = mysqli_real_escape_string($con, $tool_id);
         $tool_name_escaped = mysqli_real_escape_string($con, $tool_name);
         $type_escaped = mysqli_real_escape_string($con, $type);
         $description_escaped = mysqli_real_escape_string($con, $description);
         $order_date_escaped = mysqli_real_escape_string($con, $order_date);
-        
+
         $order_query = "INSERT INTO `order` (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status) 
                         VALUES ('$user_id_escaped', '$tool_id_escaped', '$tool_name_escaped', '$quantity', '$type_escaped', '$description_escaped', '$order_date_escaped', '$price_int', '$total_price_int', 'Pending Payment')";
-        
+
         if(mysqli_query($con, $order_query)) {
           $order_id = mysqli_insert_id($con);
-          
-          // Redirect to payment page - stock will be deducted after successful payment
           header("Location: pay.php?o_id=" . $order_id);
           exit();
         } else {
-          // Get the actual MySQL error for debugging
           $mysql_error = mysqli_error($con);
           $error_message = "Error placing order: " . htmlspecialchars($mysql_error) . ". Please try again or contact support.";
-          
-        // Log error for debugging (remove in production or make it optional)
-        error_log("Order insertion failed: " . $mysql_error . " | Query: " . $order_query);
+          error_log("Order insertion failed: " . $mysql_error . " | Query: " . $order_query);
         }
       }
     }
