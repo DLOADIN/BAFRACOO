@@ -289,13 +289,13 @@
             </div>
           </div>
 
-          <div class="table-container">
-            <table class="modern-table">
+          <div class="table-container" style="overflow-x: auto;">
+            <table class="modern-table" style="min-width: 1200px;">
               <thead>
                 <tr>
                   <th>#</th>
                   <th>Tool Name</th>
-                  <th>Type</th>
+                  <!-- <th>Type</th> -->
                   <th>Quantity</th>
                   <th>Purchase Price</th>
                   <th>Sale Price</th>
@@ -359,7 +359,7 @@
                       </div>
                     </div>
                   </td>
-                  <td><?php echo htmlspecialchars($row['u_type']); ?></td>
+                  <!-- <td><?php echo htmlspecialchars($row['u_type']); ?></td> -->
                   <td>
                     <span style="font-weight: 600; color: <?php echo $row['u_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
                       <?php echo number_format($row['u_itemsnumber']); ?>
