@@ -58,20 +58,19 @@ if (isset($_POST['update_quantity'])) {
     $new_quantity = (int)$_POST['quantity'];
     $tool_id = (int)$_POST['tool_id'];
     $cart_id = getActiveCart($con, $id);
-    
     if ($cart_id && $new_quantity > 0) {
-        // Check available stock
-        $stock_check = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = $tool_id");
-        $available = mysqli_fetch_assoc($stock_check)['u_itemsnumber'];
-        
+        // Aggregate available stock for all rows with same tool name
+        $tool_name_query = mysqli_query($con, "SELECT tool_name FROM cart_items WHERE id = $cart_item_id");
+        $tool_name = mysqli_fetch_assoc($tool_name_query)['tool_name'];
+        $agg_query = mysqli_query($con, "SELECT SUM(u_itemsnumber) as total_stock FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'");
+        $available = (int)mysqli_fetch_assoc($agg_query)['total_stock'];
         if ($new_quantity > $available) {
             $message = "Cannot set quantity to $new_quantity. Only $available available.";
             $message_type = 'error';
         } else {
-            // Get current price
-            $price_check = mysqli_query($con, "SELECT u_price FROM tool WHERE id = $tool_id");
-            $current_price = mysqli_fetch_assoc($price_check)['u_price'];
-            
+            // Get average price for all rows with this tool name
+            $price_query = mysqli_query($con, "SELECT ROUND(AVG(u_price)) as avg_price FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'");
+            $current_price = (float)mysqli_fetch_assoc($price_query)['avg_price'];
             $update = mysqli_query($con, "UPDATE cart_items SET quantity = $new_quantity, unit_price = $current_price WHERE id = $cart_item_id AND cart_id = $cart_id");
             if ($update) {
                 $message = 'Quantity updated';
@@ -171,16 +170,18 @@ $cart_total = 0;
 $cart_count = 0;
 
 if ($cart_id) {
+    // Aggregate available stock for each cart item by tool name
     $items_query = mysqli_query($con, "
-        SELECT ci.*, t.u_itemsnumber as available_stock, t.image_url, t.u_type,
-               COALESCE(im.method, 'FIFO') as inventory_method
+        SELECT ci.*, 
+            (SELECT SUM(u_itemsnumber) FROM tool WHERE u_toolname = ci.tool_name) as available_stock,
+            t.image_url, t.u_type,
+            COALESCE(im.method, 'FIFO') as inventory_method
         FROM cart_items ci 
         JOIN tool t ON ci.tool_id = t.id 
         LEFT JOIN inventory_method im ON t.id = im.tool_id
         WHERE ci.cart_id = $cart_id
         ORDER BY ci.added_at DESC
     ");
-    
     if ($items_query) {
         while ($item = mysqli_fetch_assoc($items_query)) {
             $cart_items[] = $item;
@@ -758,68 +759,61 @@ $badge_count = count($cart_items);
                             <form method="POST">
                                 <button type="submit" name="checkout" class="btn-checkout">
                                     <ion-icon name="card-outline"></ion-icon>
-                                    Proceed to Checkout
-                                </button>
-                            </form>
-                            
-                            <form method="POST">
-                                <button type="submit" name="clear_cart" class="btn-clear" onclick="return confirm('Are you sure you want to clear your cart?');">
-                                    <ion-icon name="trash-outline"></ion-icon>
-                                    Clear Cart
-                                </button>
-                            </form>
-                            
-                            <div class="fifo-info">
-                                <ion-icon name="information-circle-outline"></ion-icon>
-                                <strong>FIFO System:</strong> Stock will be deducted from the oldest batches first for accurate inventory tracking.
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <?php else: ?>
-                    <!-- Empty Cart -->
-                    <div class="empty-cart">
-                        <ion-icon name="cart-outline"></ion-icon>
-                        <h3>Your cart is empty</h3>
-                        <p>Looks like you haven't added any items to your cart yet.</p>
-                        <a href="stock.php" class="btn-shop">
-                            <ion-icon name="cube-outline"></ion-icon>
-                            Start Shopping
-                        </a>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </main>
-    </div>
-    
-    <!-- Ionicons -->
-    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
-    
-    <script>
-        // Mobile sidebar toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
-            
-            // Create mobile menu button if not exists
-            if (!document.querySelector('.mobile-menu-btn')) {
-                const menuBtn = document.createElement('button');
-                menuBtn.className = 'mobile-menu-btn';
-                menuBtn.innerHTML = '<ion-icon name="menu-outline"></ion-icon>';
-                menuBtn.onclick = function() {
-                    sidebar.classList.toggle('active');
-                    overlay.classList.toggle('active');
-                };
-                document.querySelector('.main-content').prepend(menuBtn);
-            }
-            
-            overlay.onclick = function() {
+                                    if (isset($_POST['checkout'])) {
+                                        $cart_id = getActiveCart($con, $id);
+                                        if ($cart_id) {
+                                            // Get cart items with aggregated stock
+                                            $cart_items = mysqli_query($con, "SELECT ci.*, (SELECT SUM(u_itemsnumber) FROM tool WHERE u_toolname = ci.tool_name) as available_stock FROM cart_items ci WHERE ci.cart_id = $cart_id");
+                                            $items_valid = true;
+                                            $validation_errors = [];
+                                            $grand_total = 0;
+                                            $items_count = 0;
+                                            // Validate all items have enough stock
+                                            while ($item = mysqli_fetch_assoc($cart_items)) {
+                                                if ($item['quantity'] > $item['available_stock']) {
+                                                    $items_valid = false;
+                                                    $validation_errors[] = $item['tool_name'] . " only has " . $item['available_stock'] . " available";
+                                                }
+                                                $grand_total += $item['total_price'];
+                                                $items_count++;
+                                            }
+                                            if (!$items_valid) {
+                                                $message = "Stock issues: " . implode(", ", $validation_errors);
+                                                $message_type = 'error';
+                                            } elseif ($items_count == 0) {
+                                                $message = 'Your cart is empty';
+                                                $message_type = 'error';
+                                            } else {
+                                                // Create the main order
+                                                $order_date = date('Y-m-d');
+                                                $order_description = "Multi-item order from cart #$cart_id";
+                                                $insert_order = mysqli_query($con, "INSERT INTO `order` 
+                                                    (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status)
+                                                    VALUES ($id, NULL, 'Cart Order ($items_count items)', $items_count, 'Cart Order', '$order_description', '$order_date', 0, $grand_total, 'Pending Payment')");
+                                                if ($insert_order) {
+                                                    $order_id = mysqli_insert_id($con);
+                                                    // Create order items
+                                                    mysqli_data_seek($cart_items, 0); // Reset cursor
+                                                    $cart_items = mysqli_query($con, "SELECT * FROM cart_items WHERE cart_id = $cart_id");
+                                                    while ($item = mysqli_fetch_assoc($cart_items)) {
+                                                        $tool_id = $item['tool_id'];
+                                                        $tool_name = mysqli_real_escape_string($con, $item['tool_name']);
+                                                        $quantity = $item['quantity'];
+                                                        $unit_price = $item['unit_price'];
+                                                        $total_price = $item['total_price'];
+                                                        mysqli_query($con, "INSERT INTO order_items (order_id, tool_id, tool_name, quantity, unit_price, total_price)
+                                                                            VALUES ($order_id, $tool_id, '$tool_name', $quantity, $unit_price, $total_price)");
+                                                    }
+                                                    // Mark cart as checked out
+                                                    mysqli_query($con, "UPDATE cart SET status = 'CHECKED_OUT' WHERE id = $cart_id");
+                                                    // Redirect to payment
+                                                    header("Location: pay.php?o_id=$order_id&cart=1");
+                                                    exit();
+                                                } else {
+                                                    $message = 'Error creating order: ' . mysqli_error($con);
+                                                    $message_type = 'error';
+                                                }
+                                            }
+                                        }
+                                    }
                 sidebar.classList.remove('active');
-                overlay.classList.remove('active');
-            };
-        });
-    </script>
-</body>
-</html>
