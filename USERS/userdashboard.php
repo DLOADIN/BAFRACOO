@@ -286,26 +286,28 @@
             </thead>
             <tbody>
               <?php
-              // Get products grouped by name with total stock from ALL batches (user/shop view)
+              // Get ALL products grouped by name with total stock from ALL batches (user/shop view)
               // This aggregates all quantities from products with the same name (like overall-stock on admin side)
+              // No LIMIT - show all available products
               $available_products = mysqli_query($con, "
                 SELECT t.u_toolname,
                        SUM(t.u_itemsnumber) as total_stock,
                        ROUND(AVG(t.u_price)) as avg_price,
                        MAX(t.u_type) as u_type,
-                       MAX(t.image_url) as image_url
+                       MAX(t.image_url) as image_url,
+                       MIN(t.id) as first_tool_id
                 FROM `tool` t
                 GROUP BY t.u_toolname
                 HAVING SUM(t.u_itemsnumber) > 0
                 ORDER BY t.u_toolname ASC
-                LIMIT 6
               ");
               
               if($available_products && mysqli_num_rows($available_products) > 0):
                 while($product = mysqli_fetch_assoc($available_products)):
-                  // Get first tool ID for ordering
+                  // Get first tool ID for ordering (based on FIFO - oldest first)
                   $first_tool = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $product['u_toolname']) . "' AND u_itemsnumber > 0 ORDER BY u_date ASC LIMIT 1");
-                  $tool_id = mysqli_fetch_assoc($first_tool)['id'] ?? 0;
+                  $first_tool_result = mysqli_fetch_assoc($first_tool);
+                  $tool_id = $first_tool_result['id'] ?? $product['first_tool_id'] ?? 0;
               ?>
               <tr>
                 <td>

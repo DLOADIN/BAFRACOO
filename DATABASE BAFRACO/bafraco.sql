@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 10, 2026 at 07:36 PM
+-- Generation Time: Feb 28, 2026 at 08:36 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -402,8 +402,11 @@ CREATE TABLE `order` (
 INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `u_totalprice`, `status`, `stripe_payment_intent`, `stripe_charge_id`, `refund_status`, `refunded_amount`, `payment_date`) VALUES
 (9, 2, 5, 'APPLES', 11, 'Very Good', 'I love these items', '2024-04-10', 10000, 110000, 'Pending', NULL, NULL, 'NONE', 0.00, NULL),
 (11, 1, 6, 'Silicone 500mg', 5, 'Not Good', 'From China', '2024-04-12', 10000, 50000, 'Pending', NULL, NULL, 'NONE', 0.00, NULL),
-(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
-(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
+(24, 1, 6, 'Silicone 500mg', 1, 'Not Good', 'From China', '2025-12-04', 10000, 10000, 'Payment Cancelled', NULL, NULL, 'NONE', 0.00, NULL),
+(25, 1, 8, 'Living Room Lamps', 1, 'Very Good', '100', '2026-02-10', 2000, 2000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
+(26, 1, 12, 'Wheelbarrow', 10, 'Very Good', 'In very good condition', '2026-02-28', 10000, 100000, 'Payment Cancelled', NULL, NULL, 'NONE', 0.00, NULL),
+(27, 1, 12, 'Wheelbarrow', 2, 'Very Good', 'In very good condition', '2026-02-28', 10000, 20000, 'Refunded', NULL, NULL, 'NONE', 0.00, NULL),
+(28, 1, 9, 'Berryfruits', 1, 'Very Good', 'Some of the berryfruits.', '2026-02-28', 200000, 200000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
 
 -- --------------------------------------------------------
 
@@ -483,7 +486,8 @@ CREATE TABLE `refund_requests` (
 --
 
 INSERT INTO `refund_requests` (`id`, `order_id`, `user_id`, `tool_name`, `quantity`, `order_amount`, `refund_amount`, `refund_reason`, `reason_details`, `evidence_file`, `status`, `admin_notes`, `processed_by`, `stripe_refund_id`, `stripe_payment_intent`, `created_at`, `updated_at`, `processed_at`) VALUES
-(1, 25, 1, 'Living Room Lamps', 1, 2000.00, 2000.00, 'WRONG_PRODUCT', 'rrj', NULL, 'PENDING', NULL, NULL, NULL, '', '2026-02-10 18:34:22', '2026-02-10 18:34:22', NULL);
+(1, 25, 1, 'Living Room Lamps', 1, 2000.00, 2000.00, 'WRONG_PRODUCT', 'rrj', NULL, 'REJECTED', 'not valid', 9, NULL, '', '2026-02-10 18:34:22', '2026-02-10 18:40:23', NULL),
+(2, 27, 1, 'Wheelbarrow', 2, 20000.00, 20000.00, 'CHANGED_MIND', 'gjgjkghgj', NULL, 'PROCESSED', 'hghgjhg', 9, 're_2c0de1278a822a4fbc858b21', '', '2026-02-28 18:48:18', '2026-02-28 18:49:01', '2026-02-28 18:49:01');
 
 -- --------------------------------------------------------
 
@@ -501,6 +505,13 @@ CREATE TABLE `refund_transactions` (
   `status` varchar(50) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `refund_transactions`
+--
+
+INSERT INTO `refund_transactions` (`id`, `refund_request_id`, `order_id`, `user_id`, `amount`, `stripe_refund_id`, `status`, `created_at`) VALUES
+(1, 2, 27, 1, 20000.00, 're_2c0de1278a822a4fbc858b21', 'COMPLETED', '2026-02-28 18:49:01');
 
 -- --------------------------------------------------------
 
@@ -706,9 +717,11 @@ INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescri
 (6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, NULL),
 (7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, NULL),
 (8, 'Living Room Lamps', 99, 'Very Good', '100', '2025-11-21', 2000, NULL),
-(9, 'Berryfruits', 10, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL),
+(9, 'Berryfruits', 9, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL),
 (10, 'Cinnamon Flour', 30, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
-(11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 'uploads/tools/tool_1765848888_6940b73808f08.png');
+(11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 'uploads/tools/tool_1765848888_6940b73808f08.png'),
+(12, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-11', 10000, 'uploads/tools/tool_1770833411_698cc6038df53.jpeg'),
+(13, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-27', 10000, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
 
 -- --------------------------------------------------------
 
@@ -1124,7 +1137,7 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `order`
 --
 ALTER TABLE `order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `refund_audit_log`
@@ -1142,13 +1155,13 @@ ALTER TABLE `refund_policy_settings`
 -- AUTO_INCREMENT for table `refund_requests`
 --
 ALTER TABLE `refund_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `refund_transactions`
 --
 ALTER TABLE `refund_transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `returned_stock`
@@ -1196,7 +1209,7 @@ ALTER TABLE `stock_thresholds`
 -- AUTO_INCREMENT for table `tool`
 --
 ALTER TABLE `tool`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `user`
