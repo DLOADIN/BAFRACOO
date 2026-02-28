@@ -1,4 +1,4 @@
-Now make sure that the user can be able to logout and also we can allow people to create an account because it is failing when I try to login into the application<?php
+<?php
   require "connection.php";
   
   if(!empty($_SESSION["id"])){

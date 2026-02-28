@@ -286,16 +286,17 @@
             </thead>
             <tbody>
               <?php
-              // Get products grouped by name with total stock (user/shop view)
+              // Get products grouped by name with total stock from ALL batches (user/shop view)
+              // This aggregates all quantities from products with the same name (like overall-stock on admin side)
               $available_products = mysqli_query($con, "
                 SELECT t.u_toolname,
                        SUM(t.u_itemsnumber) as total_stock,
-                       AVG(t.u_price) as avg_price,
+                       ROUND(AVG(t.u_price)) as avg_price,
                        MAX(t.u_type) as u_type,
                        MAX(t.image_url) as image_url
                 FROM `tool` t
-                WHERE t.u_itemsnumber > 0
                 GROUP BY t.u_toolname
+                HAVING SUM(t.u_itemsnumber) > 0
                 ORDER BY t.u_toolname ASC
                 LIMIT 6
               ");

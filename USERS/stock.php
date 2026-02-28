@@ -307,86 +307,56 @@
             </thead>
             <tbody>
             <?php
-            // Group products by name - users only see ONE entry per product type
-            // This prevents duplicate entries like "Berryfruits" showing twice
-            // FIFO/LIFO: When one batch/row is depleted (0 stock), show the next one
+            // Get products grouped by name with TOTAL aggregated stock from ALL batches
+            // Users see ONE entry per product with the combined quantity (like overall-stock on admin side)
+            // No batches shown - just total units available
             
             $sql = mysqli_query($con, "
-                SELECT t.*, 
-                       COALESCE(im.method, 'FIFO') as inventory_method
+                SELECT 
+                    t.u_toolname,
+                    SUM(t.u_itemsnumber) as total_stock,
+                    ROUND(AVG(t.u_price)) as avg_price,
+                    MAX(t.u_type) as u_type,
+                    MAX(t.u_tooldescription) as u_tooldescription,
+                    MAX(t.image_url) as image_url,
+                    MIN(t.id) as first_tool_id,
+                    COALESCE(MAX(im.method), 'FIFO') as inventory_method,
+                    COUNT(*) as batch_count
                 FROM `tool` t
                 LEFT JOIN inventory_method im ON t.id = im.tool_id
                 GROUP BY t.u_toolname
+                HAVING SUM(t.u_itemsnumber) > 0
                 ORDER BY t.u_toolname ASC
             ");
             $row_count = mysqli_num_rows($sql);
             if($row_count){
-              while($tool_row=mysqli_fetch_array($sql))
+              $counter = 1;
+              while($product=mysqli_fetch_array($sql))
               { 
-                $product_name = $tool_row['u_toolname'];
-                $inventory_method = $tool_row['inventory_method'] ?? 'FIFO';
+                $product_name = $product['u_toolname'];
+                $total_stock = (int)$product['total_stock'];
+                $display_price = (int)$product['avg_price'];
+                $display_type = $product['u_type'];
+                $display_description = $product['u_tooldescription'];
+                $display_image = $product['image_url'];
+                $inventory_method = $product['inventory_method'] ?? 'FIFO';
+                $batch_count = (int)$product['batch_count'];
                 
-                // Get ALL tool entries with this product name, ordered by date (FIFO=oldest first, LIFO=newest first)
+                // Get the tool ID that should be used for ordering (based on FIFO/LIFO)
                 $order_direction = ($inventory_method === 'FIFO') ? 'ASC' : 'DESC';
-                
-                // Find the FIRST tool entry with stock > 0 based on FIFO/LIFO
-                $available_tool_query = mysqli_query($con, "
-                    SELECT t.*, COALESCE(im.method, 'FIFO') as inv_method
-                    FROM tool t
-                    LEFT JOIN inventory_method im ON t.id = im.tool_id
-                    WHERE t.u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
-                    AND t.u_itemsnumber > 0
-                    ORDER BY t.u_date $order_direction
-                    LIMIT 1
-                ");
-                
-                $available_tool = mysqli_fetch_assoc($available_tool_query);
-                
-                // If no tool entry has stock, skip this product entirely
-                if(!$available_tool || $available_tool['u_itemsnumber'] <= 0) {
-                    continue; // Skip - no stock available for this product
-                }
-                
-                // Use the available tool's data
-                $display_stock = (int)$available_tool['u_itemsnumber'];
-                $display_tool_id = $available_tool['id'];
-                $batch_date = $available_tool['u_date'];
-                $display_price = $available_tool['u_price'];
-                $display_type = $available_tool['u_type'];
-                $display_description = $available_tool['u_tooldescription'];
-                $display_image = $available_tool['image_url'];
-                
-                // Check if there's also a batch entry for more accurate tracking
-                $batch_query = mysqli_query($con, "
-                    SELECT sb.* 
-                    FROM stock_batches sb
-                    WHERE sb.tool_id = " . $display_tool_id . " AND sb.quantity_remaining > 0
-                    ORDER BY sb.batch_date $order_direction
-                    LIMIT 1
-                ");
-                $batch_info = mysqli_fetch_assoc($batch_query);
-                
-                if($batch_info && $batch_info['quantity_remaining'] > 0) {
-                    $batch_number = $batch_info['batch_number'];
-                    $batch_date = $batch_info['batch_date'];
-                    $has_batch = true;
-                } else {
-                    $batch_number = 'Stock Entry';
-                    $has_batch = false;
-                }
-                
-                // Count how many tool entries have stock for this product
-                $entries_with_stock = mysqli_query($con, "
-                    SELECT COUNT(*) as cnt 
-                    FROM tool 
+                $first_available = mysqli_query($con, "
+                    SELECT id, u_date FROM tool 
                     WHERE u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
                     AND u_itemsnumber > 0
+                    ORDER BY u_date $order_direction
+                    LIMIT 1
                 ");
-                $entries_count = mysqli_fetch_assoc($entries_with_stock);
-                $total_batches = (int)$entries_count['cnt'];
+                $first_tool = mysqli_fetch_assoc($first_available);
+                $display_tool_id = $first_tool['id'] ?? $product['first_tool_id'];
+                $oldest_date = $first_tool['u_date'] ?? date('Y-m-d');
             ?>
             <tr>
-              <td><?php echo $display_tool_id; ?></td>
+              <td><?php echo $counter++; ?></td>
               <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <?php if(!empty($display_image) && file_exists('../' . $display_image)): ?>
@@ -409,17 +379,12 @@
               </td>
               <td>
                 <div style="display: flex; align-items: center; gap: 6px; flex-direction: column;">
-                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $display_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
-                    <?php echo number_format($display_stock); ?> units
+                  <span style="display: inline-block; padding: 4px 10px; background: <?php echo $total_stock > 0 ? '#10b981' : '#ef4444'; ?>; color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 600;">
+                    <?php echo number_format($total_stock); ?> units
                   </span>
-                  <?php if($display_stock > 0 && $display_stock <= 10): ?>
+                  <?php if($total_stock > 0 && $total_stock <= 10): ?>
                   <small style="color: #f59e0b; font-size: 0.75rem; font-weight: 600;">
                     Low Stock
-                  </small>
-                  <?php endif; ?>
-                  <?php if($total_batches > 1): ?>
-                  <small style="color: #6b7280; font-size: 0.7rem;">
-                    (Current batch only)
                   </small>
                   <?php endif; ?>
                 </div>
@@ -433,7 +398,7 @@
                   <div class="batch-preview">
                     <ion-icon name="layers-outline"></ion-icon>
                     <?php echo $inventory_method === 'FIFO' ? 'Oldest' : 'Newest'; ?>: 
-                    <?php echo date('M d', strtotime($batch_date)); ?>
+                    <?php echo date('M d', strtotime($oldest_date)); ?>
                   </div>
                 </div>
               </td>
@@ -441,7 +406,7 @@
                 <strong style="color: var(--primary-color);">RWF <?php echo number_format($display_price); ?></strong>
               </td>
               <td>  
-                <?php if($display_stock > 0): ?>
+                <?php if($total_stock > 0): ?>
                 <a href="stock.php?id=<?php echo $display_tool_id; ?>" 
                   style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);"
                   onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.35)';"

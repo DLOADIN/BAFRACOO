@@ -60,13 +60,16 @@
       // Update existing tool
       $tool_id = mysqli_real_escape_string($con, $_POST['tool_id']);
       
+      // Get date from form
+      $date = isset($_POST['u_date']) && !empty($_POST['u_date']) ? mysqli_real_escape_string($con, $_POST['u_date']) : date('Y-m-d');
+      
       // Keep existing image if no new one uploaded
       if($image_url === null && isset($_POST['existing_image']) && !empty($_POST['existing_image'])){
         $image_url = mysqli_real_escape_string($con, $_POST['existing_image']);
       }
       
       $image_sql = $image_url ? ", image_url='$image_url'" : "";
-      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_price='$price'$image_sql WHERE id='$tool_id'");
+      $sql = mysqli_query($con, "UPDATE `tool` SET u_toolname='$toolname', u_itemsnumber='$itemsnumber', u_type='$type', u_tooldescription='$tooldescription', u_date='$date', u_price='$price'$image_sql WHERE id='$tool_id'");
       
       if($sql){
         header('Location: stock.php');
@@ -75,8 +78,8 @@
         echo "<script>alert('Error updating tool. Please try again.');</script>";
       }
     } else {
-      // Insert new tool
-      $date = date('Y-m-d');
+      // Insert new tool - use custom date from form or default to today
+      $date = isset($_POST['u_date']) && !empty($_POST['u_date']) ? mysqli_real_escape_string($con, $_POST['u_date']) : date('Y-m-d');
       $image_url_escaped = $image_url ? "'$image_url'" : "NULL";
       $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, image_url) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', $image_url_escaped)");
       
@@ -304,6 +307,24 @@
                     style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
                   >
                 </div>
+              </div>
+
+              <!-- Date Input -->
+              <div class="form-group" style="margin-bottom: var(--spacing-lg);">
+                <label for="u_date" class="form-label">
+                  <ion-icon name="calendar-outline" style="margin-right: 4px;"></ion-icon>
+                  Date *
+                </label>
+                <input 
+                  type="date" 
+                  id="u_date" 
+                  name="u_date" 
+                  class="form-control" 
+                  value="<?php echo $is_edit && $tool_data ? htmlspecialchars($tool_data['u_date']) : date('Y-m-d'); ?>"
+                  required
+                  style="width: 100%; padding: var(--spacing-md); border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 1rem;"
+                >
+                <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 4px; display: block;">Default is today's date. You can change it if needed.</small>
               </div>
 
               <!-- Description -->
