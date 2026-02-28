@@ -98,7 +98,8 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="../CSS/modern-dashboard.css">
-  <link rel="stylesheet" href="../CSS/enhanced-pages.css">
+  <link rel="stylesheet" href="../CSS/modern-tables.css">
+  <link rel="stylesheet" href="../CSS/modern-forms.css">
   <link rel="shortcut icon" href="../images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
   <title>BAFRACOO - Inter Purchases</title>
@@ -207,12 +208,12 @@
                 <span class="nav-text">My Orders</span>
               </a>
             </li>
-            <li class="nav-item">
+            <!-- <li class="nav-item">
               <a href="transactions.php" class="nav-link">
                 <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Transactions</span>
               </a>
-            </li>
+            </li> -->
             <li class="nav-item">
               <a href="refund-requests.php" class="nav-link">
                 <ion-icon name="card-outline" class="nav-icon"></ion-icon>
@@ -257,10 +258,6 @@
             <div class="user-role">Customer</div>
           </div>
         </div>
-        <a href="logout.php" class="logout-btn">
-          <ion-icon name="log-out-outline"></ion-icon>
-          <span>Logout</span>
-        </a>
       </div>
     </aside>
 
@@ -268,98 +265,115 @@
     <div class="sidebar-overlay"></div>
 
     <!-- Main Content -->
-    <main class="main-content" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
-      <!-- Page Banner -->
-      <div class="page-banner">
-        <h1><ion-icon name="storefront-outline"></ion-icon> Inter Purchases</h1>
-        <p>Browse and order construction tools and equipment</p>
-      </div>
-      
-      <?php if(isset($error_message)): ?>
-      <div class="page-content">
-        <div class="alert alert-error">
-          <ion-icon name="alert-circle-outline"></ion-icon>
-          <?php echo $error_message; ?>
+    <main class="main-content">
+      <header class="header">
+        <div class="header-left">
+          <button class="mobile-menu-btn">
+            <ion-icon name="menu-outline"></ion-icon>
+          </button>
+          <button class="sidebar-toggle">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+          <h1 class="page-title">Inter Purchases</h1>
         </div>
-      </div>
-      <?php endif; ?>
+        <div class="header-right">
+          <a href="logout.php" class="logout-btn">
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+          </a>
+        </div>
+      </header>
       
-      <!-- Products Table -->
-      <div class="page-content">
-        <div class="table-wrapper">
-          <div class="table-header">
-            <h3 class="table-title">
-              <ion-icon name="cube-outline"></ion-icon>
-              Available Products
-            </h3>
-          </div>
-          <table class="enhanced-table">
+      <!-- Page Content -->
+      <div class="content-wrapper">
+        <div class="content-header">
+          <h2 class="content-title">Available Tools & Equipment</h2>
+          <p class="content-subtitle">Browse and order construction tools</p>
+        </div>
+        
+        <div class="table-container">
+          <table class="modern-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Product</th>
+                <th>Tool Name</th>
                 <th>Type</th>
-                <th>Stock</th>
+                <th>Description</th>
+                <th>Quantity</th>
+                <th>Inventory Method</th>
                 <th>Price</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
             <?php
-            // Group products by name - users see ONE entry per product type with TOTAL stock
-            // Admin sees individual records, but users see aggregated view
-            // This is like a shop (iduka) - customers see total available, not warehouse batches
+            // Group products by name - users only see ONE entry per product type
+            // This prevents duplicate entries like "Berryfruits" showing twice
+            // FIFO/LIFO: When one batch/row is depleted (0 stock), show the next one
             
             $sql = mysqli_query($con, "
-                SELECT t.u_toolname,
-                       SUM(t.u_itemsnumber) as total_stock,
-                       MIN(t.u_price) as min_price,
-                       MAX(t.u_price) as max_price,
-                       AVG(t.u_price) as avg_price,
-                       MAX(t.u_type) as u_type,
-                       MAX(t.u_tooldescription) as u_tooldescription,
-                       MAX(t.image_url) as image_url,
-                       COALESCE(MAX(im.method), 'FIFO') as inventory_method,
-                       COUNT(*) as batch_count
+                SELECT t.*, 
+                       COALESCE(im.method, 'FIFO') as inventory_method
                 FROM `tool` t
                 LEFT JOIN inventory_method im ON t.id = im.tool_id
-                WHERE t.u_itemsnumber > 0
                 GROUP BY t.u_toolname
                 ORDER BY t.u_toolname ASC
             ");
             $row_count = mysqli_num_rows($sql);
-            $display_number = 0;
             if($row_count){
               while($tool_row=mysqli_fetch_array($sql))
               { 
-                $display_number++;
                 $product_name = $tool_row['u_toolname'];
                 $inventory_method = $tool_row['inventory_method'] ?? 'FIFO';
-                $total_stock = (int)$tool_row['total_stock'];
                 
-                // Skip if no stock
-                if($total_stock <= 0) continue;
-                
-                // Get the first available tool ID for ordering (based on FIFO/LIFO)
+                // Get ALL tool entries with this product name, ordered by date (FIFO=oldest first, LIFO=newest first)
                 $order_direction = ($inventory_method === 'FIFO') ? 'ASC' : 'DESC';
-                $first_tool_query = mysqli_query($con, "
-                    SELECT id, u_date, u_price FROM tool 
-                    WHERE u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
-                    AND u_itemsnumber > 0
-                    ORDER BY u_date $order_direction
+                
+                // Find the FIRST tool entry with stock > 0 based on FIFO/LIFO
+                $available_tool_query = mysqli_query($con, "
+                    SELECT t.*, COALESCE(im.method, 'FIFO') as inv_method
+                    FROM tool t
+                    LEFT JOIN inventory_method im ON t.id = im.tool_id
+                    WHERE t.u_toolname = '" . mysqli_real_escape_string($con, $product_name) . "' 
+                    AND t.u_itemsnumber > 0
+                    ORDER BY t.u_date $order_direction
                     LIMIT 1
                 ");
-                $first_tool = mysqli_fetch_assoc($first_tool_query);
-                $display_tool_id = $first_tool['id'];
-                $batch_date = $first_tool['u_date'];
                 
-                // Use aggregated data
-                $display_stock = $total_stock;
-                $display_price = (int)$tool_row['avg_price']; // Use average price for display
-                $display_type = $tool_row['u_type'];
-                $display_description = $tool_row['u_tooldescription'];
-                $display_image = $tool_row['image_url'];
-                $batch_count = (int)$tool_row['batch_count'];
+                $available_tool = mysqli_fetch_assoc($available_tool_query);
+                
+                // If no tool entry has stock, skip this product entirely
+                if(!$available_tool || $available_tool['u_itemsnumber'] <= 0) {
+                    continue; // Skip - no stock available for this product
+                }
+                
+                // Use the available tool's data
+                $display_stock = (int)$available_tool['u_itemsnumber'];
+                $display_tool_id = $available_tool['id'];
+                $batch_date = $available_tool['u_date'];
+                $display_price = $available_tool['u_price'];
+                $display_type = $available_tool['u_type'];
+                $display_description = $available_tool['u_tooldescription'];
+                $display_image = $available_tool['image_url'];
+                
+                // Check if there's also a batch entry for more accurate tracking
+                $batch_query = mysqli_query($con, "
+                    SELECT sb.* 
+                    FROM stock_batches sb
+                    WHERE sb.tool_id = " . $display_tool_id . " AND sb.quantity_remaining > 0
+                    ORDER BY sb.batch_date $order_direction
+                    LIMIT 1
+                ");
+                $batch_info = mysqli_fetch_assoc($batch_query);
+                
+                if($batch_info && $batch_info['quantity_remaining'] > 0) {
+                    $batch_number = $batch_info['batch_number'];
+                    $batch_date = $batch_info['batch_date'];
+                    $has_batch = true;
+                } else {
+                    $batch_number = 'Stock Entry';
+                    $has_batch = false;
+                }
                 
                 // Count how many tool entries have stock for this product
                 $entries_with_stock = mysqli_query($con, "
@@ -372,7 +386,7 @@
                 $total_batches = (int)$entries_count['cnt'];
             ?>
             <tr>
-              <td><?php echo $display_number; ?></td>
+              <td><?php echo $display_tool_id; ?></td>
               <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <?php if(!empty($display_image) && file_exists('../' . $display_image)): ?>
@@ -403,12 +417,25 @@
                     Low Stock
                   </small>
                   <?php endif; ?>
+                  <?php if($total_batches > 1): ?>
+                  <small style="color: #6b7280; font-size: 0.7rem;">
+                    (Current batch only)
+                  </small>
+                  <?php endif; ?>
                 </div>
               </td>
               <td>
-                <span style="display: inline-block; padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
-                  Available
-                </span>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span class="method-badge <?php echo strtolower($inventory_method); ?>">
+                    <ion-icon name="<?php echo $inventory_method === 'FIFO' ? 'arrow-forward-outline' : 'arrow-back-outline'; ?>"></ion-icon>
+                    <?php echo $inventory_method; ?>
+                  </span>
+                  <div class="batch-preview">
+                    <ion-icon name="layers-outline"></ion-icon>
+                    <?php echo $inventory_method === 'FIFO' ? 'Oldest' : 'Newest'; ?>: 
+                    <?php echo date('M d', strtotime($batch_date)); ?>
+                  </div>
+                </div>
               </td>
               <td>
                 <strong style="color: var(--primary-color);">RWF <?php echo number_format($display_price); ?></strong>

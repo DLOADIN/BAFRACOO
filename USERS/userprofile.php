@@ -73,12 +73,12 @@
                 <span class="nav-text">My Orders</span>
               </a>
             </li>
-            <li class="nav-item">
+            <!-- <li class="nav-item">
               <a href="transactions.php" class="nav-link">
                 <ion-icon name="analytics-outline" class="nav-icon"></ion-icon>
                 <span class="nav-text">Transactions</span>
               </a>
-            </li>
+            </li> -->
             <li class="nav-item">
               <a href="refund-requests.php" class="nav-link">
                 <ion-icon name="card-outline" class="nav-icon"></ion-icon>
