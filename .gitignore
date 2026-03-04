@@ -9,4 +9,9 @@ fix_inventory_method.sql
 
 # Stripe config with secrets - NEVER commit this!
 USERS/stripe_config.php
+
+# Environment file with API keys - NEVER commit this!
+
+
 /PITTS
+.env

@@ -6,6 +6,7 @@
  */
 require "connection.php";
 require "../EnhancedInventoryManager.php";
+require_once "cart_helpers.php";
 
 // Check if user is logged in
 if (empty($_SESSION["id"])) {
@@ -95,10 +96,10 @@ if (isset($_POST['checkout'])) {
     $cart_id = getActiveCart($con, $id);
     
     if ($cart_id) {
-        // Get cart items
-        $cart_items = mysqli_query($con, "SELECT ci.*, t.u_itemsnumber as available_stock 
+        // Get cart items with AGGREGATED stock per tool name
+        $cart_items = mysqli_query($con, "SELECT ci.*, 
+                                          (SELECT SUM(u_itemsnumber) FROM tool WHERE u_toolname = ci.tool_name) as available_stock 
                                           FROM cart_items ci 
-                                          JOIN tool t ON ci.tool_id = t.id 
                                           WHERE ci.cart_id = $cart_id");
         
         $items_valid = true;
@@ -759,61 +760,61 @@ $badge_count = count($cart_items);
                             <form method="POST">
                                 <button type="submit" name="checkout" class="btn-checkout">
                                     <ion-icon name="card-outline"></ion-icon>
-                                    if (isset($_POST['checkout'])) {
-                                        $cart_id = getActiveCart($con, $id);
-                                        if ($cart_id) {
-                                            // Get cart items with aggregated stock
-                                            $cart_items = mysqli_query($con, "SELECT ci.*, (SELECT SUM(u_itemsnumber) FROM tool WHERE u_toolname = ci.tool_name) as available_stock FROM cart_items ci WHERE ci.cart_id = $cart_id");
-                                            $items_valid = true;
-                                            $validation_errors = [];
-                                            $grand_total = 0;
-                                            $items_count = 0;
-                                            // Validate all items have enough stock
-                                            while ($item = mysqli_fetch_assoc($cart_items)) {
-                                                if ($item['quantity'] > $item['available_stock']) {
-                                                    $items_valid = false;
-                                                    $validation_errors[] = $item['tool_name'] . " only has " . $item['available_stock'] . " available";
-                                                }
-                                                $grand_total += $item['total_price'];
-                                                $items_count++;
-                                            }
-                                            if (!$items_valid) {
-                                                $message = "Stock issues: " . implode(", ", $validation_errors);
-                                                $message_type = 'error';
-                                            } elseif ($items_count == 0) {
-                                                $message = 'Your cart is empty';
-                                                $message_type = 'error';
-                                            } else {
-                                                // Create the main order
-                                                $order_date = date('Y-m-d');
-                                                $order_description = "Multi-item order from cart #$cart_id";
-                                                $insert_order = mysqli_query($con, "INSERT INTO `order` 
-                                                    (user_id, tool_id, u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, u_totalprice, status)
-                                                    VALUES ($id, NULL, 'Cart Order ($items_count items)', $items_count, 'Cart Order', '$order_description', '$order_date', 0, $grand_total, 'Pending Payment')");
-                                                if ($insert_order) {
-                                                    $order_id = mysqli_insert_id($con);
-                                                    // Create order items
-                                                    mysqli_data_seek($cart_items, 0); // Reset cursor
-                                                    $cart_items = mysqli_query($con, "SELECT * FROM cart_items WHERE cart_id = $cart_id");
-                                                    while ($item = mysqli_fetch_assoc($cart_items)) {
-                                                        $tool_id = $item['tool_id'];
-                                                        $tool_name = mysqli_real_escape_string($con, $item['tool_name']);
-                                                        $quantity = $item['quantity'];
-                                                        $unit_price = $item['unit_price'];
-                                                        $total_price = $item['total_price'];
-                                                        mysqli_query($con, "INSERT INTO order_items (order_id, tool_id, tool_name, quantity, unit_price, total_price)
-                                                                            VALUES ($order_id, $tool_id, '$tool_name', $quantity, $unit_price, $total_price)");
-                                                    }
-                                                    // Mark cart as checked out
-                                                    mysqli_query($con, "UPDATE cart SET status = 'CHECKED_OUT' WHERE id = $cart_id");
-                                                    // Redirect to payment
-                                                    header("Location: pay.php?o_id=$order_id&cart=1");
-                                                    exit();
-                                                } else {
-                                                    $message = 'Error creating order: ' . mysqli_error($con);
-                                                    $message_type = 'error';
-                                                }
-                                            }
-                                        }
-                                    }
+                                    Proceed to Checkout
+                                </button>
+                            </form>
+                            
+                            <form method="POST">
+                                <button type="submit" name="clear_cart" class="btn-clear">
+                                    <ion-icon name="trash-outline"></ion-icon>
+                                    Clear Cart
+                                </button>
+                            </form>
+                            
+                            <div class="fifo-info">
+                                <ion-icon name="information-circle-outline"></ion-icon>
+                                Stock is managed using FIFO/LIFO inventory methods. Oldest stock is sold first by default.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <?php else: ?>
+                    <!-- Empty Cart -->
+                    <div class="empty-cart">
+                        <ion-icon name="cart-outline"></ion-icon>
+                        <h3>Your cart is empty</h3>
+                        <p>Looks like you haven't added any items yet.</p>
+                        <a href="stock.php" class="btn-shop">
+                            <ion-icon name="cube-outline"></ion-icon>
+                            Browse Products
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script>
+        // Mobile sidebar toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            });
+        }
+        if (overlay) {
+            overlay.addEventListener('click', () => {
                 sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            });
+        }
+    </script>
+</body>
+</html>

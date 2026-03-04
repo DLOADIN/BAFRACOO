@@ -1,6 +1,7 @@
 <?php
   require "connection.php";
   require "../EnhancedInventoryManager.php"; // Include the enhanced inventory manager
+  require_once "cart_helpers.php";
   
   // Ensure session is started (connection.php should handle this, but double-check)
   if (session_status() == PHP_SESSION_NONE) {
@@ -106,10 +107,8 @@
       $total_price = $price * $quantity;
       $order_date = date('Y-m-d');
 
-      // Check available stock from tool table (u_itemsnumber)
-      $stock_check = mysqli_query($con, "SELECT u_itemsnumber FROM tool WHERE id = '$tool_id'");
-      $stock_row = mysqli_fetch_array($stock_check);
-      $available_stock = (int)$stock_row['u_itemsnumber'];
+      // Check available stock from tool table - AGGREGATED across all rows with same name
+      $available_stock = getAggregatedStock($con, $tool_name);
 
       // Allow user to purchase any quantity up to available stock
       if($quantity < 1) {

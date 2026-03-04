@@ -5,6 +5,7 @@
  */
 header('Content-Type: application/json');
 require "connection.php";
+require_once "cart_helpers.php";
 
 // Check if user is logged in
 if (empty($_SESSION["id"])) {
@@ -62,20 +63,25 @@ switch ($action) {
             exit();
         }
         
-        // Get tool details
-        $tool_result = mysqli_query($con, "SELECT u_toolname, u_price, u_itemsnumber FROM tool WHERE id = $tool_id");
+        // Get tool details (just the name from the clicked row)
+        $tool_result = mysqli_query($con, "SELECT u_toolname FROM tool WHERE id = $tool_id");
         if (!$tool_result || mysqli_num_rows($tool_result) == 0) {
             echo json_encode(['success' => false, 'message' => 'Tool not found']);
             exit();
         }
         
         $tool = mysqli_fetch_assoc($tool_result);
-        $available = (int)$tool['u_itemsnumber'];
+        $tool_name_raw = $tool['u_toolname'];
+        
+        // ---- AGGREGATED stock & price across ALL rows with this name ----
+        $available = getAggregatedStock($con, $tool_name_raw);
+        $avg_price = getAggregatedAvgPrice($con, $tool_name_raw);
         
         $cart_id = getOrCreateCart($con, $user_id);
         
-        // Check if already in cart
-        $existing = mysqli_query($con, "SELECT id, quantity FROM cart_items WHERE cart_id = $cart_id AND tool_id = $tool_id");
+        // Check if this product name is already in cart (match by tool_name, not tool_id)
+        $tool_name_safe = mysqli_real_escape_string($con, $tool_name_raw);
+        $existing = mysqli_query($con, "SELECT id, quantity FROM cart_items WHERE cart_id = $cart_id AND tool_name = '$tool_name_safe'");
         
         if ($existing && mysqli_num_rows($existing) > 0) {
             $existing_data = mysqli_fetch_assoc($existing);
@@ -89,18 +95,17 @@ switch ($action) {
                 exit();
             }
             
-            mysqli_query($con, "UPDATE cart_items SET quantity = $new_qty, unit_price = {$tool['u_price']} WHERE id = {$existing_data['id']}");
-            $message = "Updated: Now $new_qty × {$tool['u_toolname']} in cart";
+            mysqli_query($con, "UPDATE cart_items SET quantity = $new_qty, unit_price = $avg_price WHERE id = {$existing_data['id']}");
+            $message = "Updated: Now $new_qty × $tool_name_raw in cart";
         } else {
             if ($quantity > $available) {
                 echo json_encode(['success' => false, 'message' => "Only $available available"]);
                 exit();
             }
             
-            $tool_name = mysqli_real_escape_string($con, $tool['u_toolname']);
             mysqli_query($con, "INSERT INTO cart_items (cart_id, tool_id, tool_name, quantity, unit_price) 
-                               VALUES ($cart_id, $tool_id, '$tool_name', $quantity, {$tool['u_price']})");
-            $message = "Added $quantity × {$tool['u_toolname']} to cart";
+                               VALUES ($cart_id, $tool_id, '$tool_name_safe', $quantity, $avg_price)");
+            $message = "Added $quantity × $tool_name_raw to cart";
         }
         
         echo json_encode([
@@ -123,10 +128,9 @@ switch ($action) {
         
         // Get cart item and verify ownership
         $item_result = mysqli_query($con, "
-            SELECT ci.*, c.user_id, t.u_itemsnumber as available 
+            SELECT ci.*, c.user_id
             FROM cart_items ci 
             JOIN cart c ON ci.cart_id = c.id 
-            JOIN tool t ON ci.tool_id = t.id
             WHERE ci.id = $cart_item_id AND c.user_id = $user_id AND c.status = 'ACTIVE'
         ");
         
@@ -137,12 +141,15 @@ switch ($action) {
         
         $item = mysqli_fetch_assoc($item_result);
         
+        // ---- AGGREGATED available stock by tool name ----
+        $aggregated_available = getAggregatedStock($con, $item['tool_name']);
+        
         if ($quantity <= 0) {
             // Remove item
             mysqli_query($con, "DELETE FROM cart_items WHERE id = $cart_item_id");
             $message = "Item removed from cart";
-        } elseif ($quantity > $item['available']) {
-            echo json_encode(['success' => false, 'message' => "Only {$item['available']} available"]);
+        } elseif ($quantity > $aggregated_available) {
+            echo json_encode(['success' => false, 'message' => "Only $aggregated_available available"]);
             exit();
         } else {
             mysqli_query($con, "UPDATE cart_items SET quantity = $quantity WHERE id = $cart_item_id");
@@ -218,7 +225,9 @@ switch ($action) {
         $cart_id = mysqli_fetch_assoc($cart_result)['id'];
         
         $items_result = mysqli_query($con, "
-            SELECT ci.*, t.u_itemsnumber as available, t.image_url, t.u_type,
+            SELECT ci.*,
+                   (SELECT SUM(u_itemsnumber) FROM tool WHERE u_toolname = ci.tool_name) as available,
+                   t.image_url, t.u_type,
                    COALESCE(im.method, 'FIFO') as inventory_method
             FROM cart_items ci 
             JOIN tool t ON ci.tool_id = t.id 

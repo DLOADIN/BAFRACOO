@@ -143,6 +143,8 @@ switch($action){
  * Process refund through Stripe API
  */
 function processStripeRefund($payment_intent, $charge_id, $amount) {
+    // Load .env so getenv() picks up keys
+    require_once __DIR__ . '/env_loader.php';
     // Load Stripe API key
     $stripe_secret_key = getenv('STRIPE_SECRET_KEY') ?: 'sk_test_your_key_here';
     

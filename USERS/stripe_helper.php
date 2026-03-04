@@ -3,6 +3,9 @@
 // Secret key starts with sk_test_ (used for server-side API calls)
 // Publishable key starts with pk_test_ (used for client-side)
 
+// Load .env file so getenv() picks up the keys
+require_once dirname(__DIR__) . '/env_loader.php';
+
 // Try to load from environment variables first, then fall back to config file
 $stripe_secret = getenv('STRIPE_SECRET_KEY');
 $stripe_publishable = getenv('STRIPE_PUBLISHABLE_KEY');
@@ -51,14 +54,21 @@ function stripeRequest($endpoint, $method = 'POST', $data = []) {
  * Create a Stripe Checkout Session
  */
 function createStripeCheckoutSession($amount, $currency, $order_id, $customer_email, $customer_name, $item_name, $success_url, $cancel_url) {
-    // Convert amount to cents (Stripe uses smallest currency unit)
-    $amount_cents = (int)($amount * 100);
+    // Stripe zero-decimal currencies — amount is already in the smallest unit (no cents)
+    $zero_decimal_currencies = ['rwf','bif','clp','djf','gnf','jpy','kmf','krw','mga','pyg','vnd','vuv','xaf','xof','xpf'];
+    
+    if (in_array(strtolower($currency), $zero_decimal_currencies)) {
+        $amount_smallest = (int)$amount;
+    } else {
+        // For normal currencies (USD, EUR, etc.) multiply by 100 to get cents
+        $amount_smallest = (int)($amount * 100);
+    }
     
     $data = [
         'payment_method_types[]' => 'card',
         'line_items[0][price_data][currency]' => strtolower($currency),
         'line_items[0][price_data][product_data][name]' => $item_name,
-        'line_items[0][price_data][unit_amount]' => $amount_cents,
+        'line_items[0][price_data][unit_amount]' => $amount_smallest,
         'line_items[0][quantity]' => 1,
         'mode' => 'payment',
         'success_url' => $success_url,
