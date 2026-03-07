@@ -199,7 +199,9 @@
                 COALESCE(oi_agg.total_sale_amount, 0) AS oi_total_sale,
                 COALESCE(oi_agg.total_qty, 0) AS oi_total_qty,
                 COALESCE(batch_agg.total_purchase_cost, 0) AS batch_total_cost,
-                COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty
+                COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty,
+                COALESCE(tool_cost_agg.total_tool_purchase_cost, 0) AS tool_fallback_cost,
+                COALESCE(tool_cost_agg.total_tool_qty, 0) AS tool_fallback_qty
               FROM `order` o
               INNER JOIN user u ON o.user_id = u.id
               LEFT JOIN tool t ON o.tool_id = t.id
@@ -217,7 +219,15 @@
                 FROM order_item_batches oib
                 INNER JOIN order_items oi ON oib.order_item_id = oi.id
                 GROUP BY oi.order_id
-              ) batch_agg ON o.id = batch_agg.order_id";
+              ) batch_agg ON o.id = batch_agg.order_id
+              LEFT JOIN (
+                SELECT oi2.order_id,
+                  SUM(COALESCE(t2.purchase_price, 0) * oi2.quantity) AS total_tool_purchase_cost,
+                  SUM(oi2.quantity) AS total_tool_qty
+                FROM order_items oi2
+                LEFT JOIN tool t2 ON oi2.tool_id = t2.id
+                GROUP BY oi2.order_id
+              ) tool_cost_agg ON o.id = tool_cost_agg.order_id";
              
              // Add date filter if provided
              if(isset($_GET['start_date']) && isset($_GET['end_date'])){
@@ -228,6 +238,12 @@
              
              $sql .= " ORDER BY o.id DESC";
              $result = mysqli_query($con, $sql);
+                // Running grand totals
+                $grand_total_purchase = 0;
+                $grand_total_sale = 0;
+                $grand_total_profit = 0;
+                $orders_with_cost_data = 0;
+
                 if ($result && mysqli_num_rows($result) > 0) {
                 while ($row = mysqli_fetch_array($result)) {
                   $status_class = '';
@@ -256,12 +272,17 @@
                     $actual_qty = ($row['oi_total_qty'] > 0) ? intval($row['oi_total_qty']) : intval($row['u_itemsnumber']);
                     $sale_price_unit = ($actual_qty > 0) ? $total_customer_paid / $actual_qty : 0;
                     
-                    // Purchase cost from order_item_batches (FIFO tracked)
+                    // Purchase cost: prefer order_item_batches (FIFO), fallback to tool table
                     if ($row['batch_total_cost'] > 0) {
                       $total_purchase_cost = floatval($row['batch_total_cost']);
                       $purchase_price_unit = ($row['batch_total_qty'] > 0) ? $total_purchase_cost / floatval($row['batch_total_qty']) : 0;
+                    } elseif ($row['tool_fallback_cost'] > 0) {
+                      // Fallback: get purchase price from tool table via order_items
+                      $total_purchase_cost = floatval($row['tool_fallback_cost']);
+                      $fallback_qty = ($row['tool_fallback_qty'] > 0) ? floatval($row['tool_fallback_qty']) : $actual_qty;
+                      $purchase_price_unit = ($fallback_qty > 0) ? $total_purchase_cost / $fallback_qty : 0;
                     } else {
-                      // No batch data yet - show N/A
+                      // No purchase cost data available at all
                       $purchase_price_unit = null;
                       $total_purchase_cost = null;
                     }
@@ -282,6 +303,14 @@
                   
                   // Profit = Total Customer Paid - Total Purchase Cost
                   $profit = ($total_purchase_cost !== null) ? ($total_customer_paid - $total_purchase_cost) : null;
+                  
+                  // Accumulate grand totals
+                  $grand_total_sale += $total_customer_paid;
+                  if ($total_purchase_cost !== null) {
+                    $grand_total_purchase += $total_purchase_cost;
+                    $grand_total_profit += $profit;
+                    $orders_with_cost_data++;
+                  }
                 ?>
                 <tr>
                     <td><?php echo $row['id']; ?></td>
@@ -337,7 +366,78 @@
               }
               ?>
               </tbody>
+              <tfoot>
+                <tr style="background: var(--gray-100); font-weight: 700; font-size: 0.95rem;">
+                  <td colspan="8" style="text-align: right; padding: var(--spacing-md); color: var(--gray-900);">Grand Totals:</td>
+                  <td style="padding: var(--spacing-md); color: var(--gray-900);"><?php echo number_format($grand_total_purchase) . ' RWF'; ?></td>
+                  <td style="padding: var(--spacing-md); color: var(--gray-900);"><?php echo number_format($grand_total_sale) . ' RWF'; ?></td>
+                  <td style="padding: var(--spacing-md); font-weight: 700; <?php echo ($grand_total_profit > 0) ? 'color: #10b981;' : (($grand_total_profit < 0) ? 'color: #ef4444;' : 'color: var(--gray-900);'); ?>">
+                    <?php echo number_format($grand_total_profit) . ' RWF'; ?>
+                  </td>
+                  <td colspan="3"></td>
+                </tr>
+              </tfoot>
             </table>
+          </div>
+        </div>
+
+        <!-- Financial Summary Cards -->
+        <div class="dashboard-grid" style="margin-top: var(--spacing-xl); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: #6366f1;">
+                <ion-icon name="cart-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL PURCHASE COST</h3>
+                <div style="font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
+                  <?php echo number_format($grand_total_purchase) . ' RWF'; ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 500;">
+                  <ion-icon name="information-circle-outline" style="margin-right: 4px;"></ion-icon>
+                  Cost of goods for <?php echo $orders_with_cost_data; ?> order(s) with cost data
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: #0ea5e9;">
+                <ion-icon name="cash-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL SALES VALUE</h3>
+                <div style="font-size: 1.75rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
+                  <?php echo number_format($grand_total_sale) . ' RWF'; ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 500;">
+                  <ion-icon name="information-circle-outline" style="margin-right: 4px;"></ion-icon>
+                  Total amount customers paid across all orders
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-content">
+              <div class="card-icon" style="background: <?php echo ($grand_total_profit >= 0) ? '#10b981' : '#ef4444'; ?>;">
+                <ion-icon name="trending-up-outline"></ion-icon>
+              </div>
+              <div class="card-info">
+                <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL PROFIT (SALE - PURCHASE)</h3>
+                <div style="font-size: 1.75rem; font-weight: 700; color: <?php echo ($grand_total_profit >= 0) ? '#10b981' : '#ef4444'; ?>; margin-bottom: var(--spacing-sm);">
+                  <?php echo number_format($grand_total_profit) . ' RWF'; ?>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--gray-500); font-weight: 500;">
+                  <?php 
+                    $margin = ($grand_total_sale > 0) ? round(($grand_total_profit / $grand_total_sale) * 100, 1) : 0;
+                  ?>
+                  <ion-icon name="analytics-outline" style="margin-right: 4px;"></ion-icon>
+                  Profit margin: <?php echo $margin; ?>%
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
