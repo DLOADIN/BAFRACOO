@@ -199,7 +199,9 @@
                 COALESCE(oi_agg.total_sale_amount, 0) AS oi_total_sale,
                 COALESCE(oi_agg.total_qty, 0) AS oi_total_qty,
                 COALESCE(batch_agg.total_purchase_cost, 0) AS batch_total_cost,
-                COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty
+                COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty,
+                COALESCE(tool_cost_agg.total_tool_purchase_cost, 0) AS tool_fallback_cost,
+                COALESCE(tool_cost_agg.total_tool_qty, 0) AS tool_fallback_qty
               FROM `order` o
               INNER JOIN user u ON o.user_id = u.id
               LEFT JOIN tool t ON o.tool_id = t.id
@@ -217,7 +219,15 @@
                 FROM order_item_batches oib
                 INNER JOIN order_items oi ON oib.order_item_id = oi.id
                 GROUP BY oi.order_id
-              ) batch_agg ON o.id = batch_agg.order_id";
+              ) batch_agg ON o.id = batch_agg.order_id
+              LEFT JOIN (
+                SELECT oi2.order_id,
+                  SUM(COALESCE(t2.purchase_price, 0) * oi2.quantity) AS total_tool_purchase_cost,
+                  SUM(oi2.quantity) AS total_tool_qty
+                FROM order_items oi2
+                LEFT JOIN tool t2 ON oi2.tool_id = t2.id
+                GROUP BY oi2.order_id
+              ) tool_cost_agg ON o.id = tool_cost_agg.order_id";
              
              // Add date filter if provided
              if(isset($_GET['start_date']) && isset($_GET['end_date'])){
@@ -262,12 +272,17 @@
                     $actual_qty = ($row['oi_total_qty'] > 0) ? intval($row['oi_total_qty']) : intval($row['u_itemsnumber']);
                     $sale_price_unit = ($actual_qty > 0) ? $total_customer_paid / $actual_qty : 0;
                     
-                    // Purchase cost from order_item_batches (FIFO tracked)
+                    // Purchase cost: prefer order_item_batches (FIFO), fallback to tool table
                     if ($row['batch_total_cost'] > 0) {
                       $total_purchase_cost = floatval($row['batch_total_cost']);
                       $purchase_price_unit = ($row['batch_total_qty'] > 0) ? $total_purchase_cost / floatval($row['batch_total_qty']) : 0;
+                    } elseif (floatval($row['tool_fallback_cost']) > 0) {
+                      // Fallback: get purchase price from tool table via order_items
+                      $total_purchase_cost = floatval($row['tool_fallback_cost']);
+                      $fallback_qty = (floatval($row['tool_fallback_qty']) > 0) ? floatval($row['tool_fallback_qty']) : $actual_qty;
+                      $purchase_price_unit = ($fallback_qty > 0) ? $total_purchase_cost / $fallback_qty : 0;
                     } else {
-                      // No batch data yet - show N/A
+                      // No purchase cost data at all
                       $purchase_price_unit = null;
                       $total_purchase_cost = null;
                     }
