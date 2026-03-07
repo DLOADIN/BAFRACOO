@@ -76,6 +76,9 @@ function createStripeCheckoutSession($amount, $currency, $order_id, $customer_em
         'customer_email' => $customer_email,
         'metadata[order_id]' => $order_id,
         'metadata[customer_name]' => $customer_name,
+        // Send Stripe receipt email to customer after successful payment
+        'payment_intent_data[receipt_email]' => $customer_email,
+        'payment_intent_data[description]' => 'BAFRACOO Order #' . $order_id . ' - ' . $item_name,
     ];
     
     return stripeRequest('checkout/sessions', 'POST', $data);

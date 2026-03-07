@@ -563,10 +563,10 @@
                     Pay Now
                   </a>
                   <?php elseif($status == 'Paid' || $status == 'Completed'): ?>
-                  <span class="action-btn view" style="cursor: default;">
-                    <ion-icon name="checkmark-circle-outline"></ion-icon>
-                    Completed
-                  </span>
+                  <a href="../generate_receipt.php?order_id=<?php echo $order['id']; ?>" target="_blank" class="action-btn view" style="background: #d1fae5; color: #047857; cursor: pointer; text-decoration: none;">
+                    <ion-icon name="receipt-outline"></ion-icon>
+                    Receipt
+                  </a>
                   <?php else: ?>
                   <span class="action-btn view" style="cursor: default;">
                     <ion-icon name="time-outline"></ion-icon>

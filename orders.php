@@ -351,6 +351,11 @@
                     </td>
                     <td>
                       <div class="action-buttons">
+                        <?php if (in_array($status_text, ['Paid', 'Completed', 'Refunded'])): ?>
+                        <button class="btn-icon" style="background: #10b981; color: white;" onclick="window.open('generate_receipt.php?order_id=<?php echo $row['id']; ?>', '_blank')" title="Download Receipt">
+                          <ion-icon name="receipt-outline"></ion-icon>
+                        </button>
+                        <?php endif; ?>
                         <button class="btn-icon btn-edit" onclick="editOrder(<?php echo $row['id']; ?>)">
                           <ion-icon name="create-outline"></ion-icon>
                         </button>
