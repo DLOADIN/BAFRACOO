@@ -198,6 +198,7 @@
                 t.purchase_price AS tool_purchase_price,
                 COALESCE(oi_agg.total_sale_amount, 0) AS oi_total_sale,
                 COALESCE(oi_agg.total_qty, 0) AS oi_total_qty,
+                oi_agg.item_names AS cart_item_names,
                 COALESCE(batch_agg.total_purchase_cost, 0) AS batch_total_cost,
                 COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty,
                 COALESCE(tool_cost_agg.total_tool_purchase_cost, 0) AS tool_fallback_cost,
@@ -208,7 +209,8 @@
               LEFT JOIN (
                 SELECT order_id, 
                   SUM(total_price) AS total_sale_amount,
-                  SUM(quantity) AS total_qty
+                  SUM(quantity) AS total_qty,
+                  GROUP_CONCAT(DISTINCT tool_name ORDER BY tool_name SEPARATOR ', ') AS item_names
                 FROM order_items 
                 GROUP BY order_id
               ) oi_agg ON o.id = oi_agg.order_id
@@ -324,7 +326,13 @@
                         </div>
                       </div>
                     </td>
-                    <td><?php echo htmlspecialchars($row['u_toolname']); ?></td>
+                    <td><?php 
+                      if ($is_cart && !empty($row['cart_item_names'])) {
+                        echo htmlspecialchars($row['cart_item_names']);
+                      } else {
+                        echo htmlspecialchars($row['u_toolname']);
+                      }
+                    ?></td>
                     <td><?php echo htmlspecialchars($row['u_type']); ?></td>
                     <td><?php echo number_format($actual_qty); ?></td>
                     <td><?php echo htmlspecialchars($row['u_tooldescription']); ?></td>
