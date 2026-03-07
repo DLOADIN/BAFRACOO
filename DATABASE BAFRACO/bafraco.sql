@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 23, 2026 at 08:13 PM
+-- Generation Time: Mar 07, 2026 at 08:55 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -565,7 +565,10 @@ CREATE TABLE `cart` (
 INSERT INTO `cart` (`id`, `user_id`, `status`, `created_at`, `updated_at`, `expires_at`) VALUES
 (1, 1, 'CHECKED_OUT', '2026-02-17 21:10:44', '2026-02-17 21:11:19', '2026-02-18 21:10:44'),
 (2, 1, 'CHECKED_OUT', '2026-02-19 19:59:23', '2026-02-19 20:00:38', '2026-02-20 19:59:23'),
-(3, 1, 'ACTIVE', '2026-02-19 23:51:23', '2026-02-19 23:51:23', '2026-02-20 23:51:23');
+(3, 1, 'CHECKED_OUT', '2026-02-19 23:51:23', '2026-03-04 23:50:10', '2026-02-20 23:51:23'),
+(4, 1, 'CHECKED_OUT', '2026-03-04 23:52:15', '2026-03-04 23:52:20', '2026-03-05 23:52:15'),
+(5, 1, 'CHECKED_OUT', '2026-03-04 23:53:59', '2026-03-04 23:56:51', '2026-03-05 23:53:59'),
+(6, 1, 'CHECKED_OUT', '2026-03-07 19:33:03', '2026-03-07 19:33:09', '2026-03-08 19:33:03');
 
 -- --------------------------------------------------------
 
@@ -594,10 +597,10 @@ INSERT INTO `cart_items` (`id`, `cart_id`, `tool_id`, `tool_name`, `quantity`, `
 (5, 2, 5, 'APPLES', 1, 10000.00, '2026-02-19 20:00:09', '2026-02-19 20:00:09'),
 (6, 2, 9, 'Berryfruits', 1, 200000.00, '2026-02-19 20:00:11', '2026-02-19 20:00:11'),
 (7, 2, 10, 'Cinnamon Flour', 1, 40000.00, '2026-02-19 20:00:12', '2026-02-19 20:00:12'),
-(11, 3, 5, 'APPLES', 1, 10000.00, '2026-02-20 10:08:06', '2026-02-20 10:08:06'),
-(12, 3, 12, 'Wheelbarrow', 1, 10000.00, '2026-02-23 18:53:00', '2026-02-23 18:53:00'),
-(13, 3, 6, 'Silicone 500mg', 2, 10000.00, '2026-02-23 18:53:09', '2026-02-23 18:55:01'),
-(14, 3, 10, 'Cinnamon Flour', 3, 40000.00, '2026-02-23 18:55:55', '2026-02-23 18:55:58');
+(15, 3, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-04 23:49:59', '2026-03-04 23:49:59'),
+(16, 4, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-04 23:52:15', '2026-03-04 23:52:15'),
+(17, 5, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-04 23:53:59', '2026-03-04 23:53:59'),
+(18, 6, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-07 19:33:03', '2026-03-07 19:33:03');
 
 -- --------------------------------------------------------
 
@@ -742,7 +745,11 @@ INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, 
 (27, 1, 12, 'Wheelbarrow', 2, 'Very Good', 'In very good condition', '2026-02-28', 10000, 20000, 'Refunded', NULL, NULL, 'NONE', 0.00, NULL),
 (28, 1, 9, 'Berryfruits', 1, 'Very Good', 'Some of the berryfruits.', '2026-02-28', 200000, 200000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
 (30, 1, NULL, 'Cart Order (3 items)', 3, 'Cart Order', 'Multi-item order from cart #2', '2026-02-19', 0, 250000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
-(31, 1, 12, 'Wheelbarrow', 1, 'Very Good', 'In very good condition', '2026-02-23', 10000, 10000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL);
+(31, 1, 12, 'Wheelbarrow', 1, 'Very Good', 'In very good condition', '2026-02-23', 10000, 10000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
+(32, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #3', '2026-03-05', 0, 10990000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
+(33, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #4', '2026-03-05', 0, 10990000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
+(34, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #5', '2026-03-05', 0, 10990000, 'Payment Cancelled', NULL, NULL, 'NONE', 0.00, NULL),
+(35, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #6', '2026-03-07', 0, 10990000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
 
 -- --------------------------------------------------------
 
@@ -768,7 +775,11 @@ CREATE TABLE `order_items` (
 INSERT INTO `order_items` (`id`, `order_id`, `tool_id`, `tool_name`, `quantity`, `unit_price`, `total_price`, `created_at`) VALUES
 (2, 30, 5, 'APPLES', 1, 10000.00, 10000.00, '2026-02-19 20:00:38'),
 (3, 30, 9, 'Berryfruits', 1, 200000.00, 200000.00, '2026-02-19 20:00:38'),
-(4, 30, 10, 'Cinnamon Flour', 1, 40000.00, 40000.00, '2026-02-19 20:00:38');
+(4, 30, 10, 'Cinnamon Flour', 1, 40000.00, 40000.00, '2026-02-19 20:00:38'),
+(5, 32, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-04 23:50:10'),
+(6, 33, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-04 23:52:20'),
+(7, 34, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-04 23:56:51'),
+(8, 35, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-07 19:33:09');
 
 -- --------------------------------------------------------
 
@@ -1009,22 +1020,22 @@ CREATE TABLE `stock_batches` (
   `location_id` int(11) DEFAULT 1,
   `expiry_date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    `net_value` decimal(12,2) DEFAULT NULL
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `net_value` decimal(12,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `stock_batches`
 --
 
-INSERT INTO `stock_batches` (`id`, `tool_id`, `batch_number`, `quantity_received`, `quantity_remaining`, `purchase_price`, `batch_date`, `supplier`, `location_id`, `expiry_date`, `created_at`, `updated_at`) VALUES
-(1, 5, 'BATCH-0005-001', 11000, 10999, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2026-02-19 20:01:02'),
-(2, 6, 'BATCH-0006-001', 2, 2, 8000.00, '2024-03-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
-(3, 7, 'BATCH-0007-001', 121212, 121212, 969.60, '2025-10-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55'),
-(4, 5, 'BATCH-0005-002', 100, 100, 300000.00, '2025-12-03 19:56:59', '0', 6, '2026-01-01', '2025-12-03 17:56:59', '2025-12-03 17:56:59'),
-(5, 8, 'BATCH-INITIAL-0008', 100, 100, 1600.00, '2025-11-21 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58'),
-(6, 9, 'BATCH-INITIAL-0009', 20, 19, 160000.00, '2025-12-02 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2026-02-19 20:01:02'),
-(7, 10, 'BATCH-INITIAL-0010', 30, 29, 32000.00, '2025-12-16 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2026-02-19 20:01:02');
+INSERT INTO `stock_batches` (`id`, `tool_id`, `batch_number`, `quantity_received`, `quantity_remaining`, `purchase_price`, `batch_date`, `supplier`, `location_id`, `expiry_date`, `created_at`, `updated_at`, `net_value`) VALUES
+(1, 5, 'BATCH-0005-001', 11000, 10999, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2026-02-19 20:01:02', NULL),
+(2, 6, 'BATCH-0006-001', 2, 2, 8000.00, '2024-03-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55', NULL),
+(3, 7, 'BATCH-0007-001', 121212, 121212, 969.60, '2025-10-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55', NULL),
+(4, 5, 'BATCH-0005-002', 100, 100, 300000.00, '2025-12-03 19:56:59', '0', 6, '2026-01-01', '2025-12-03 17:56:59', '2025-12-03 17:56:59', NULL),
+(5, 8, 'BATCH-INITIAL-0008', 100, 100, 1600.00, '2025-11-21 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2025-12-16 00:48:58', NULL),
+(6, 9, 'BATCH-INITIAL-0009', 20, 19, 160000.00, '2025-12-02 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2026-02-19 20:01:02', NULL),
+(7, 10, 'BATCH-INITIAL-0010', 30, 29, 32000.00, '2025-12-16 00:00:00', 'Initial Stock', 1, NULL, '2025-12-16 00:48:58', '2026-02-19 20:01:02', NULL);
 
 -- --------------------------------------------------------
 
@@ -1099,8 +1110,8 @@ CREATE TABLE `tool` (
   `u_date` date NOT NULL,
   `u_price` int(80) NOT NULL,
   `purchase_price` decimal(12,2) DEFAULT NULL,
-    `image_url` varchar(255) DEFAULT NULL,
-    `net_value` decimal(12,2) GENERATED ALWAYS AS (`u_price` - IFNULL(`purchase_price`,0)) STORED
+  `image_url` varchar(255) DEFAULT NULL,
+  `net_value` decimal(12,2) GENERATED ALWAYS AS (`u_price` - ifnull(`purchase_price`,0)) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
@@ -1115,8 +1126,8 @@ INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescri
 (9, 'Berryfruits', 8, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL, NULL),
 (10, 'Cinnamon Flour', 29, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, NULL, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
 (11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 9000.00, 'uploads/tools/tool_1765848888_6940b73808f08.png'),
-(12, 'Wheelbarrow', 999, 'Very Good', 'In very good condition', '2026-02-11', 10000, 9000.00, 'uploads/tools/tool_1770833411_698cc6038df53.jpeg'),
-(13, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-27', 10000, 9998.00, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
+(12, 'Wheelbarrow', 0, 'Very Good', 'In very good condition', '2026-02-11', 10000, 9000.00, 'uploads/tools/tool_1770833411_698cc6038df53.jpeg'),
+(13, 'Wheelbarrow', 3, 'Very Good', 'In very good condition', '2026-02-27', 10000, 9998.00, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
 
 -- --------------------------------------------------------
 
@@ -1596,13 +1607,13 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `damaged_goods`
@@ -1632,13 +1643,13 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `order`
 --
 ALTER TABLE `order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `order_item_batches`

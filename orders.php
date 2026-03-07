@@ -137,7 +137,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL REVENUE</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $total_revenue = mysqli_query($con, "SELECT SUM(total_price) as total FROM `order` WHERE status='Completed'");
+                    $total_revenue = mysqli_query($con, "SELECT SUM(u_totalprice) as total FROM `order` WHERE status IN ('Completed','Paid')");
                     $revenue = $total_revenue ? mysqli_fetch_assoc($total_revenue)['total'] ?? 0 : 0;
                     echo number_format($revenue) . ' RWF';
                   ?>
@@ -183,7 +183,8 @@
                   <th>Purchase Price (RWF)</th>
                   <th>Sale Price (RWF)</th>
                   <th>Total Purchase Value</th>
-                  <th>Total Sale Value</th>
+                  <th>Total Customer Paid</th>
+                  <th>Total Sale Value (Profit)</th>
                   <th>Date</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -192,16 +193,40 @@
               <tbody>
             <?php
              // Build SQL query with optional date filtering
-             $sql = "SELECT `order`.*, user.u_name FROM `order` INNER JOIN user ON `order`.user_id = user.id";
+             // Joins: tool (for purchase_price), order_items aggregate (for cart orders), order_item_batches aggregate (for FIFO cost)
+             $sql = "SELECT o.*, u.u_name,
+                t.purchase_price AS tool_purchase_price,
+                COALESCE(oi_agg.total_sale_amount, 0) AS oi_total_sale,
+                COALESCE(oi_agg.total_qty, 0) AS oi_total_qty,
+                COALESCE(batch_agg.total_purchase_cost, 0) AS batch_total_cost,
+                COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty
+              FROM `order` o
+              INNER JOIN user u ON o.user_id = u.id
+              LEFT JOIN tool t ON o.tool_id = t.id
+              LEFT JOIN (
+                SELECT order_id, 
+                  SUM(total_price) AS total_sale_amount,
+                  SUM(quantity) AS total_qty
+                FROM order_items 
+                GROUP BY order_id
+              ) oi_agg ON o.id = oi_agg.order_id
+              LEFT JOIN (
+                SELECT oi.order_id,
+                  SUM(oib.purchase_price * oib.quantity_from_batch) AS total_purchase_cost,
+                  SUM(oib.quantity_from_batch) AS total_batch_qty
+                FROM order_item_batches oib
+                INNER JOIN order_items oi ON oib.order_item_id = oi.id
+                GROUP BY oi.order_id
+              ) batch_agg ON o.id = batch_agg.order_id";
              
              // Add date filter if provided
              if(isset($_GET['start_date']) && isset($_GET['end_date'])){
                $start_date = mysqli_real_escape_string($con, $_GET['start_date']);
                $end_date = mysqli_real_escape_string($con, $_GET['end_date']);
-               $sql .= " WHERE DATE(`order`.date) BETWEEN '$start_date' AND '$end_date'";
+               $sql .= " WHERE DATE(o.u_date) BETWEEN '$start_date' AND '$end_date'";
              }
              
-             $sql .= " ORDER BY `order`.id DESC";
+             $sql .= " ORDER BY o.id DESC";
              $result = mysqli_query($con, $sql);
                 if ($result && mysqli_num_rows($result) > 0) {
                 while ($row = mysqli_fetch_array($result)) {
@@ -221,6 +246,43 @@
                       $status_class = 'status-pending';
                   }
             ?>
+                <?php
+                  // === Compute purchase price, sale price, and totals ===
+                  $is_cart = empty($row['tool_id']);
+                  
+                  if ($is_cart) {
+                    // Cart order: prices come from order_items & order_item_batches
+                    $total_customer_paid = ($row['oi_total_sale'] > 0) ? floatval($row['oi_total_sale']) : floatval($row['u_totalprice']);
+                    $actual_qty = ($row['oi_total_qty'] > 0) ? intval($row['oi_total_qty']) : intval($row['u_itemsnumber']);
+                    $sale_price_unit = ($actual_qty > 0) ? $total_customer_paid / $actual_qty : 0;
+                    
+                    // Purchase cost from order_item_batches (FIFO tracked)
+                    if ($row['batch_total_cost'] > 0) {
+                      $total_purchase_cost = floatval($row['batch_total_cost']);
+                      $purchase_price_unit = ($row['batch_total_qty'] > 0) ? $total_purchase_cost / floatval($row['batch_total_qty']) : 0;
+                    } else {
+                      // No batch data yet - show N/A
+                      $purchase_price_unit = null;
+                      $total_purchase_cost = null;
+                    }
+                  } else {
+                    // Regular order: sale price from order, purchase from tool table
+                    $sale_price_unit = floatval($row['u_price']);
+                    $actual_qty = intval($row['u_itemsnumber']);
+                    $total_customer_paid = floatval($row['u_totalprice']);
+                    
+                    if ($row['tool_purchase_price'] !== null && floatval($row['tool_purchase_price']) > 0) {
+                      $purchase_price_unit = floatval($row['tool_purchase_price']);
+                      $total_purchase_cost = $purchase_price_unit * $actual_qty;
+                    } else {
+                      $purchase_price_unit = null;
+                      $total_purchase_cost = null;
+                    }
+                  }
+                  
+                  // Profit = Total Customer Paid - Total Purchase Cost
+                  $profit = ($total_purchase_cost !== null) ? ($total_customer_paid - $total_purchase_cost) : null;
+                ?>
                 <tr>
                     <td><?php echo $row['id']; ?></td>
                     <td>
@@ -235,12 +297,15 @@
                     </td>
                     <td><?php echo htmlspecialchars($row['u_toolname']); ?></td>
                     <td><?php echo htmlspecialchars($row['u_type']); ?></td>
-                    <td><?php echo $row['u_itemsnumber']; ?></td>
+                    <td><?php echo number_format($actual_qty); ?></td>
                     <td><?php echo htmlspecialchars($row['u_tooldescription']); ?></td>
-                    <td><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price']) : '-'; ?> RWF</td>
-                    <td><?php echo number_format($row['u_price']); ?> RWF</td>
-                    <td><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price'] * $row['u_itemsnumber']) : '-'; ?> RWF</td>
-                    <td><?php echo number_format($row['u_price'] * $row['u_itemsnumber']); ?> RWF</td>
+                    <td><?php echo ($purchase_price_unit !== null) ? number_format($purchase_price_unit) . ' RWF' : '<span style="color:#94a3b8;">N/A</span>'; ?></td>
+                    <td><?php echo number_format($sale_price_unit) . ' RWF'; ?></td>
+                    <td><?php echo ($total_purchase_cost !== null) ? number_format($total_purchase_cost) . ' RWF' : '<span style="color:#94a3b8;">N/A</span>'; ?></td>
+                    <td><?php echo number_format($total_customer_paid) . ' RWF'; ?></td>
+                    <td style="<?php echo ($profit !== null && $profit > 0) ? 'color: #10b981; font-weight: 600;' : (($profit !== null && $profit < 0) ? 'color: #ef4444; font-weight: 600;' : ''); ?>">
+                      <?php echo ($profit !== null) ? number_format($profit) . ' RWF' : '<span style="color:#94a3b8;">N/A</span>'; ?>
+                    </td>
                     <td><?php echo date('M d, Y', strtotime($row['u_date'])); ?></td>
                     <td>
                       <span class="status-badge <?php echo $status_class; ?>">
@@ -263,7 +328,7 @@
               } else {
               ?>
                 <tr>
-                  <td colspan="11" style="text-align: center; padding: var(--spacing-xl); color: var(--gray-600);">
+                  <td colspan="14" style="text-align: center; padding: var(--spacing-xl); color: var(--gray-600);">
                     <ion-icon name="document-outline" style="font-size: 3rem; margin-bottom: var(--spacing-md);"></ion-icon>
                     <div>No orders found yet. Orders will appear here once customers start placing them.</div>
                   </td>
