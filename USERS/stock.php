@@ -234,6 +234,8 @@
           border-radius: 16px;
           box-shadow: 0 2px 16px rgba(0,0,0,0.07);
           padding: 1.5rem 1.2rem;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
         }
         .cart-table-title {
           font-size: 1.2rem;
@@ -243,6 +245,7 @@
         }
         .cart-table {
           width: 100%;
+          min-width: 600px;
           border-collapse: collapse;
         }
         .cart-table th, .cart-table td {

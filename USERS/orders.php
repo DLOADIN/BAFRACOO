@@ -98,11 +98,14 @@
       background: white;
       border-radius: 16px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
     }
     
     .orders-table {
       width: 100%;
+      min-width: 750px;
       border-collapse: collapse;
     }
     

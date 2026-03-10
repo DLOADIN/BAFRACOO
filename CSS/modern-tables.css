@@ -8,9 +8,11 @@
 .table-container {
   background: var(--white);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--gray-200);
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-header {
@@ -37,6 +39,7 @@
 
 .modern-table {
   width: 100%;
+  min-width: 800px;
   border-collapse: collapse;
   font-size: 0.875rem;
 }

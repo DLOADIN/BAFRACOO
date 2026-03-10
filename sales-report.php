@@ -185,6 +185,34 @@
     .filter-bar .fg { display: flex; flex-direction: column; gap: 4px; }
     .filter-bar label { font-size: 0.8rem; font-weight: 600; color: var(--gray-600); }
     .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-md); font-size: 0.875rem; }
+    /* Force horizontal scrollbar to always be visible on the sales table */
+    .sales-table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sales-table-scroll::-webkit-scrollbar {
+      height: 10px;
+    }
+    .sales-table-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    .sales-table-scroll::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 8px;
+      border: 2px solid #f1f5f9;
+    }
+    .sales-table-scroll::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+    /* Firefox visible scrollbar */
+    .sales-table-scroll {
+      scrollbar-width: auto;
+      scrollbar-color: #94a3b8 #f1f5f9;
+    }
+    #salesTable {
+      min-width: 1400px;
+    }
     .profit-pos { color: #10b981; font-weight: 600; }
     .profit-neg { color: #ef4444; font-weight: 600; }
     .badge-refund { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
@@ -304,7 +332,7 @@
             </h3>
           </div>
 
-          <div class="table-container">
+          <div class="table-container sales-table-scroll">
             <table class="modern-table" id="salesTable">
               <thead>
                 <tr>

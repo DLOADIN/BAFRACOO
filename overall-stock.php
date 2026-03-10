@@ -124,7 +124,9 @@
       border-radius: 16px;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       border: 1px solid var(--gray-100);
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
     }
     .stock-table-header {
       padding: 20px 24px;
@@ -144,6 +146,7 @@
     }
     .stock-table {
       width: 100%;
+      min-width: 900px;
       border-collapse: collapse;
     }
     .stock-table thead th {
