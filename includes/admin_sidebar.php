@@ -47,6 +47,12 @@ $pending_refunds_count = $pending_refunds_query ? mysqli_fetch_assoc($pending_re
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="sales-report.php" class="nav-link <?php echo ($current_page == 'sales-report') ? 'active' : ''; ?>" data-tooltip="Sales Report">
+                        <ion-icon name="stats-chart-outline" class="nav-icon"></ion-icon>
+                        <span class="nav-text">Sales Report</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="stock.php" class="nav-link <?php echo ($current_page == 'stock') ? 'active' : ''; ?>" data-tooltip="Inventory">
                         <ion-icon name="cube-outline" class="nav-icon"></ion-icon>
                         <span class="nav-text">Inventory</span>

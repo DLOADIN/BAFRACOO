@@ -473,6 +473,138 @@ switch($export_type){
         }
         $table_html .= '</tbody>';
         break;
+
+    case 'sales_report':
+        $title = 'Sales Report';
+        
+        // Build WHERE clause from filters
+        $sr_where = [];
+        if(isset($_GET['start_date']) && isset($_GET['end_date'])){
+            $start_date = mysqli_real_escape_string($con, $_GET['start_date']);
+            $end_date   = mysqli_real_escape_string($con, $_GET['end_date']);
+            $sr_where[] = "DATE(o.u_date) BETWEEN '$start_date' AND '$end_date'";
+            $title .= ' (' . date('M d, Y', strtotime($start_date)) . ' - ' . date('M d, Y', strtotime($end_date)) . ')';
+        }
+        if(isset($_GET['status']) && $_GET['status'] !== ''){
+            $sr_status = mysqli_real_escape_string($con, $_GET['status']);
+            $sr_where[] = "o.status = '$sr_status'";
+        }
+        $sr_where_sql = count($sr_where) ? ' WHERE ' . implode(' AND ', $sr_where) : '';
+
+        $sr_sql = "SELECT o.*, u.u_name, u.u_email,
+            t.purchase_price AS tool_purchase_price,
+            COALESCE(oi_agg.total_sale_amount, 0) AS oi_total_sale,
+            COALESCE(oi_agg.total_qty, 0) AS oi_total_qty,
+            oi_agg.item_names AS cart_item_names,
+            COALESCE(batch_agg.total_purchase_cost, 0) AS batch_total_cost,
+            COALESCE(batch_agg.total_batch_qty, 0) AS batch_total_qty,
+            COALESCE(tool_cost_agg.total_tool_purchase_cost, 0) AS tool_fallback_cost,
+            COALESCE(tool_cost_agg.total_tool_qty, 0) AS tool_fallback_qty,
+            COALESCE(o.refunded_amount, 0) AS refund_amt
+          FROM `order` o
+          INNER JOIN user u ON o.user_id = u.id
+          LEFT JOIN tool t ON o.tool_id = t.id
+          LEFT JOIN (
+            SELECT order_id, SUM(total_price) AS total_sale_amount, SUM(quantity) AS total_qty,
+              GROUP_CONCAT(DISTINCT tool_name ORDER BY tool_name SEPARATOR ', ') AS item_names
+            FROM order_items GROUP BY order_id
+          ) oi_agg ON o.id = oi_agg.order_id
+          LEFT JOIN (
+            SELECT oi.order_id, SUM(oib.purchase_price * oib.quantity_from_batch) AS total_purchase_cost,
+              SUM(oib.quantity_from_batch) AS total_batch_qty
+            FROM order_item_batches oib INNER JOIN order_items oi ON oib.order_item_id = oi.id
+            GROUP BY oi.order_id
+          ) batch_agg ON o.id = batch_agg.order_id
+          LEFT JOIN (
+            SELECT oi2.order_id, SUM(COALESCE(t2.purchase_price,0)*oi2.quantity) AS total_tool_purchase_cost,
+              SUM(oi2.quantity) AS total_tool_qty
+            FROM order_items oi2 LEFT JOIN tool t2 ON oi2.tool_id = t2.id
+            GROUP BY oi2.order_id
+          ) tool_cost_agg ON o.id = tool_cost_agg.order_id
+          $sr_where_sql
+          ORDER BY o.id DESC";
+
+        $sr_result = mysqli_query($con, $sr_sql);
+
+        $table_html = '<thead><tr>
+            <th>Order #</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Product(s)</th>
+            <th>Qty</th>
+            <th>Purchase/Unit</th>
+            <th>Sale/Unit</th>
+            <th>Total Cost</th>
+            <th>Total Revenue</th>
+            <th>Gross Profit</th>
+            <th>Refund</th>
+            <th>Net Profit</th>
+            <th>Margin %</th>
+            <th>Status</th>
+        </tr></thead><tbody>';
+
+        $sr_grand_purchase = 0; $sr_grand_sale = 0; $sr_grand_profit = 0; $sr_grand_refunds = 0; $sr_grand_net = 0;
+
+        if($sr_result && mysqli_num_rows($sr_result) > 0){
+            while($r = mysqli_fetch_assoc($sr_result)){
+                $is_cart = empty($r['tool_id']);
+                if ($is_cart) {
+                    $total_customer_paid = ($r['oi_total_sale'] > 0) ? floatval($r['oi_total_sale']) : floatval($r['u_totalprice']);
+                    $actual_qty = ($r['oi_total_qty'] > 0) ? intval($r['oi_total_qty']) : intval($r['u_itemsnumber']);
+                    $sale_unit = ($actual_qty > 0) ? $total_customer_paid / $actual_qty : 0;
+                    if ($r['batch_total_cost'] > 0) { $total_purchase = floatval($r['batch_total_cost']); $ppu = ($r['batch_total_qty']>0)?$total_purchase/floatval($r['batch_total_qty']):0; }
+                    elseif (floatval($r['tool_fallback_cost'])>0) { $total_purchase = floatval($r['tool_fallback_cost']); $fbq = (floatval($r['tool_fallback_qty'])>0)?floatval($r['tool_fallback_qty']):$actual_qty; $ppu = ($fbq>0)?$total_purchase/$fbq:0; }
+                    else { $ppu = null; $total_purchase = null; }
+                } else {
+                    $sale_unit = floatval($r['u_price']); $actual_qty = intval($r['u_itemsnumber']); $total_customer_paid = floatval($r['u_totalprice']);
+                    if ($r['tool_purchase_price'] !== null && floatval($r['tool_purchase_price']) > 0) { $ppu = floatval($r['tool_purchase_price']); $total_purchase = $ppu * $actual_qty; }
+                    else { $ppu = null; $total_purchase = null; }
+                }
+                $gross = ($total_purchase !== null) ? ($total_customer_paid - $total_purchase) : null;
+                $refund = floatval($r['refund_amt']);
+                $net = ($gross !== null) ? ($gross - $refund) : null;
+                $margin = ($total_customer_paid > 0 && $gross !== null) ? round(($gross/$total_customer_paid)*100,1) : null;
+                $product_name = $is_cart && !empty($r['cart_item_names']) ? $r['cart_item_names'] : $r['u_toolname'];
+
+                $sr_grand_sale += $total_customer_paid; $sr_grand_refunds += $refund;
+                if ($total_purchase !== null) { $sr_grand_purchase += $total_purchase; $sr_grand_profit += $gross; }
+                $sr_grand_net += ($net !== null ? $net : 0);
+
+                $table_html .= '<tr>
+                    <td>#' . str_pad($r['id'], 5, '0', STR_PAD_LEFT) . '</td>
+                    <td>' . date('M d, Y', strtotime($r['u_date'])) . '</td>
+                    <td>' . htmlspecialchars($r['u_name']) . '</td>
+                    <td>' . htmlspecialchars($product_name) . '</td>
+                    <td>' . number_format($actual_qty) . '</td>
+                    <td>' . ($ppu !== null ? number_format($ppu) . ' RWF' : 'N/A') . '</td>
+                    <td>' . number_format($sale_unit) . ' RWF</td>
+                    <td>' . ($total_purchase !== null ? number_format($total_purchase) . ' RWF' : 'N/A') . '</td>
+                    <td>' . number_format($total_customer_paid) . ' RWF</td>
+                    <td style="' . ($gross !== null && $gross >= 0 ? 'color:#10b981;font-weight:600;' : ($gross !== null ? 'color:#ef4444;font-weight:600;' : '')) . '">'
+                        . ($gross !== null ? number_format($gross) . ' RWF' : 'N/A') . '</td>
+                    <td style="color:#ef4444;">' . ($refund > 0 ? '-' . number_format($refund) . ' RWF' : '0') . '</td>
+                    <td style="' . ($net !== null && $net >= 0 ? 'color:#10b981;font-weight:600;' : ($net !== null ? 'color:#ef4444;font-weight:600;' : '')) . '">'
+                        . ($net !== null ? number_format($net) . ' RWF' : 'N/A') . '</td>
+                    <td>' . ($margin !== null ? $margin . '%' : '—') . '</td>
+                    <td>' . htmlspecialchars($r['status']) . '</td>
+                </tr>';
+            }
+            // Totals row
+            $table_html .= '<tr style="background:#f3f4f6;font-weight:700;">
+                <td colspan="7" style="text-align:right;">Grand Totals:</td>
+                <td>' . number_format($sr_grand_purchase) . ' RWF</td>
+                <td>' . number_format($sr_grand_sale) . ' RWF</td>
+                <td style="color:' . ($sr_grand_profit >= 0 ? '#10b981' : '#ef4444') . ';">' . number_format($sr_grand_profit) . ' RWF</td>
+                <td style="color:#ef4444;">' . number_format($sr_grand_refunds) . ' RWF</td>
+                <td style="color:' . ($sr_grand_net >= 0 ? '#10b981' : '#ef4444') . ';">' . number_format($sr_grand_net) . ' RWF</td>
+                <td>' . ($sr_grand_sale > 0 ? round(($sr_grand_profit/$sr_grand_sale)*100,1) : 0) . '%</td>
+                <td></td>
+            </tr>';
+        } else {
+            $table_html .= '<tr><td colspan="14" style="text-align: center;">No orders found</td></tr>';
+        }
+        $table_html .= '</tbody>';
+        break;
         
     default:
         $title = 'BAFRACOO Report';
