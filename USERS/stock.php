@@ -408,37 +408,6 @@
       
       <!-- Page Content -->
       <div class="content-wrapper">
-        <!-- Cart Message Toast -->
-        <?php if(isset($cart_message)): ?>
-        <div id="cart-toast" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 16px 24px; border-radius: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); animation: slideIn 0.3s ease-out; <?php echo $cart_message_type == 'success' ? 'background: linear-gradient(135deg, #10b981, #059669); color: white;' : 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;'; ?>">
-          <ion-icon name="<?php echo $cart_message_type == 'success' ? 'checkmark-circle' : 'alert-circle'; ?>-outline" style="font-size: 1.5rem;"></ion-icon>
-          <span style="font-weight: 500;"><?php echo htmlspecialchars($cart_message); ?></span>
-          <?php if($cart_message_type == 'success'): ?>
-          <a href="cart.php" style="margin-left: 8px; padding: 6px 12px; background: rgba(255,255,255,0.2); border-radius: 6px; color: white; text-decoration: none; font-weight: 600; font-size: 0.875rem;">View Cart</a>
-          <?php endif; ?>
-          <button onclick="this.parentElement.style.display='none'" style="margin-left: 8px; background: none; border: none; cursor: pointer; opacity: 0.7;">
-            <ion-icon name="close-outline" style="font-size: 1.25rem; color: <?php echo $cart_message_type == 'success' ? 'white' : '#dc2626'; ?>;"></ion-icon>
-          </button>
-        </div>
-        <style>
-          @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        </style>
-        <script>setTimeout(() => { const toast = document.getElementById('cart-toast'); if(toast) toast.style.display = 'none'; }, 5000);</script>
-        <?php endif; ?>
-        
-        <!-- Cart Summary Bar -->
-        <?php if($cart_count > 0): ?>
-        <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <ion-icon name="cart" style="font-size: 1.5rem;"></ion-icon>
-            <span><strong><?php echo $cart_count; ?> item<?php echo $cart_count > 1 ? 's' : ''; ?></strong> in your cart</span>
-          </div>
-          <a href="cart.php" style="padding: 8px 20px; background: white; color: #059669; text-decoration: none; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-            <ion-icon name="eye-outline"></ion-icon>
-            View Cart & Checkout
-          </a>
-        </div>
-        <?php endif; ?>
         
         <div class="content-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
           <div>
@@ -677,83 +646,37 @@
           </div>
         </div>
 
-        <script>
-        function renderCartTable(cart) {
-          const wrapper = document.getElementById('cart-table-wrapper');
-          if (!cart.items || cart.items.length === 0) {
-            wrapper.innerHTML = '<div style="color:#64748b;text-align:center;padding:1.5rem 0;">Your cart is empty.</div>';
-            document.getElementById('cart-table-section').style.display = 'none';
-            return;
-          }
-          let html = `<table class="cart-table"><thead><tr>
-            <th>Item</th><th>Type</th><th>Price</th><th>Quantity</th><th>Total</th><th></th>
-          </tr></thead><tbody>`;
-          for (const item of cart.items) {
-            html += `<tr>
-              <td style="display:flex;align-items:center;gap:10px;">
-                ${item.image_url ? `<img src="../${item.image_url}" alt="${item.tool_name}">` : `<div style='width:48px;height:48px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;'><ion-icon name='construct-outline' style='font-size:1.5rem;color:#3b82f6;'></ion-icon></div>`}
-                <span>${item.tool_name}</span>
-              </td>
-              <td>${item.u_type || ''}</td>
-              <td>RWF ${parseInt(item.unit_price).toLocaleString('en-US')}</td>
-              <td>
-                <input type="number" min="1" max="${item.available}" value="${item.quantity}" style="width:55px;padding:3px 6px;border-radius:6px;border:1px solid #e5e7eb;text-align:center;font-weight:600;" onchange="updateCartItem(${item.id}, this.value)">
-              </td>
-              <td>RWF ${(item.unit_price * item.quantity).toLocaleString('en-US')}</td>
-              <td><button class="remove-btn" onclick="removeCartItem(${item.id})"><ion-icon name='trash-outline'></ion-icon></button></td>
-            </tr>`;
-          }
-          html += `</tbody><tfoot><tr><td colspan="4" style="text-align:right;">Total:</td><td colspan="2">RWF ${parseInt(cart.cart_total).toLocaleString('en-US')}</td></tr></tfoot></table>`;
-          wrapper.innerHTML = html;
-          document.getElementById('cart-table-section').style.display = '';
-        }
-
-        function fetchCartTable() {
-          fetch('cart_api.php?action=get')
-            .then(r => r.json())
-            .then(data => renderCartTable(data));
-        }
-
-        function updateCartItem(cart_item_id, quantity) {
-          fetch('cart_api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=update&cart_item_id=${cart_item_id}&quantity=${quantity}`
-          })
-          .then(r => r.json())
-          .then(data => fetchCartTable());
-        }
-
-        function removeCartItem(cart_item_id) {
-          fetch('cart_api.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=remove&cart_item_id=${cart_item_id}`
-          })
-          .then(r => r.json())
-          .then(data => fetchCartTable());
-        }
-
-        // Hook into Add to Cart forms to refresh cart table after add
-        document.addEventListener('DOMContentLoaded', function() {
-          fetchCartTable();
-          document.querySelectorAll('form').forEach(form => {
-            if (form.querySelector('button[name="add_to_cart"]')) {
-              form.addEventListener('submit', function(e) {
-                setTimeout(fetchCartTable, 500); // Delay to allow PHP to process
-              });
-            }
-          });
-        });
-        </script>
-
-        <!-- Live Cart Table (now under product cards) -->
-        <div class="cart-table-container" id="cart-table-section" style="display:none; margin-bottom:2.5rem;">
-          <div class="cart-table-title"><ion-icon name="cart-outline"></ion-icon> Your Cart</div>
-          <div id="cart-table-wrapper">
-            <!-- Cart table will be loaded here by JS -->
-          </div>
+        <!-- Cart Message Toast (centered under cart table) -->
+        <?php if(isset($cart_message)): ?>
+        <div id="cart-toast" style="max-width: 900px; margin: 0 auto 20px auto; padding: 16px 24px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease-out; <?php echo $cart_message_type == 'success' ? 'background: linear-gradient(135deg, #10b981, #059669); color: white;' : 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;'; ?>">
+          <ion-icon name="<?php echo $cart_message_type == 'success' ? 'checkmark-circle' : 'alert-circle'; ?>-outline" style="font-size: 1.5rem;"></ion-icon>
+          <span style="font-weight: 500;"><?php echo htmlspecialchars($cart_message); ?></span>
+          <?php if($cart_message_type == 'success'): ?>
+          <a href="cart.php" style="margin-left: 8px; padding: 6px 12px; background: rgba(255,255,255,0.2); border-radius: 6px; color: white; text-decoration: none; font-weight: 600; font-size: 0.875rem;">View Cart</a>
+          <?php endif; ?>
+          <button onclick="this.parentElement.style.display='none'" style="margin-left: 8px; background: none; border: none; cursor: pointer; opacity: 0.7;">
+            <ion-icon name="close-outline" style="font-size: 1.25rem; color: <?php echo $cart_message_type == 'success' ? 'white' : '#dc2626'; ?>;"></ion-icon>
+          </button>
         </div>
+        <style>
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        </style>
+        <script>setTimeout(() => { const toast = document.getElementById('cart-toast'); if(toast) { toast.style.transition = 'opacity 0.3s'; toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); } }, 5000);</script>
+        <?php endif; ?>
+
+        <!-- Cart Summary Bar (under Your Cart) -->
+        <?php if($cart_count > 0): ?>
+        <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <ion-icon name="cart" style="font-size: 1.5rem;"></ion-icon>
+            <span><strong><?php echo $cart_count; ?> item<?php echo $cart_count > 1 ? 's' : ''; ?></strong> in your cart</span>
+          </div>
+          <a href="cart.php" style="padding: 8px 20px; background: white; color: #059669; text-decoration: none; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            <ion-icon name="eye-outline"></ion-icon>
+            View Cart & Checkout
+          </a>
+        </div>
+        <?php endif; ?>
 
         <script>
         function renderCartTable(cart) {
