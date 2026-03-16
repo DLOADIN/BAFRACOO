@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 07, 2026 at 08:55 PM
+-- Generation Time: Mar 16, 2026 at 12:34 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -568,7 +568,10 @@ INSERT INTO `cart` (`id`, `user_id`, `status`, `created_at`, `updated_at`, `expi
 (3, 1, 'CHECKED_OUT', '2026-02-19 23:51:23', '2026-03-04 23:50:10', '2026-02-20 23:51:23'),
 (4, 1, 'CHECKED_OUT', '2026-03-04 23:52:15', '2026-03-04 23:52:20', '2026-03-05 23:52:15'),
 (5, 1, 'CHECKED_OUT', '2026-03-04 23:53:59', '2026-03-04 23:56:51', '2026-03-05 23:53:59'),
-(6, 1, 'CHECKED_OUT', '2026-03-07 19:33:03', '2026-03-07 19:33:09', '2026-03-08 19:33:03');
+(6, 1, 'CHECKED_OUT', '2026-03-07 19:33:03', '2026-03-07 19:33:09', '2026-03-08 19:33:03'),
+(7, 1, 'CHECKED_OUT', '2026-03-07 20:15:08', '2026-03-07 20:15:11', '2026-03-08 20:15:08'),
+(8, 1, 'CHECKED_OUT', '2026-03-07 22:05:47', '2026-03-07 22:05:50', '2026-03-08 22:05:47'),
+(9, 1, 'ACTIVE', '2026-03-11 12:47:04', '2026-03-11 12:47:04', '2026-03-12 12:47:04');
 
 -- --------------------------------------------------------
 
@@ -600,7 +603,9 @@ INSERT INTO `cart_items` (`id`, `cart_id`, `tool_id`, `tool_name`, `quantity`, `
 (15, 3, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-04 23:49:59', '2026-03-04 23:49:59'),
 (16, 4, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-04 23:52:15', '2026-03-04 23:52:15'),
 (17, 5, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-04 23:53:59', '2026-03-04 23:53:59'),
-(18, 6, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-07 19:33:03', '2026-03-07 19:33:03');
+(18, 6, 12, 'Wheelbarrow', 1099, 10000.00, '2026-03-07 19:33:03', '2026-03-07 19:33:03'),
+(19, 7, 12, 'Wheelbarrow', 2444, 10000.00, '2026-03-07 20:15:08', '2026-03-07 20:15:08'),
+(20, 8, 5, 'APPLES', 1, 10000.00, '2026-03-07 22:05:47', '2026-03-07 22:05:47');
 
 -- --------------------------------------------------------
 
@@ -749,7 +754,9 @@ INSERT INTO `order` (`id`, `user_id`, `tool_id`, `u_toolname`, `u_itemsnumber`, 
 (32, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #3', '2026-03-05', 0, 10990000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
 (33, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #4', '2026-03-05', 0, 10990000, 'Pending Payment', NULL, NULL, 'NONE', 0.00, NULL),
 (34, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #5', '2026-03-05', 0, 10990000, 'Payment Cancelled', NULL, NULL, 'NONE', 0.00, NULL),
-(35, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #6', '2026-03-07', 0, 10990000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
+(35, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #6', '2026-03-07', 0, 10990000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
+(36, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #7', '2026-03-07', 0, 24440000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL),
+(37, 1, NULL, 'Cart Order (1 items)', 1, 'Cart Order', 'Multi-item order from cart #8', '2026-03-07', 0, 10000, 'Paid', NULL, NULL, 'NONE', 0.00, NULL);
 
 -- --------------------------------------------------------
 
@@ -779,7 +786,9 @@ INSERT INTO `order_items` (`id`, `order_id`, `tool_id`, `tool_name`, `quantity`,
 (5, 32, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-04 23:50:10'),
 (6, 33, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-04 23:52:20'),
 (7, 34, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-04 23:56:51'),
-(8, 35, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-07 19:33:09');
+(8, 35, 12, 'Wheelbarrow', 1099, 10000.00, 10990000.00, '2026-03-07 19:33:09'),
+(9, 36, 12, 'Wheelbarrow', 2444, 10000.00, 24440000.00, '2026-03-07 20:15:11'),
+(10, 37, 5, 'APPLES', 1, 10000.00, 10000.00, '2026-03-07 22:05:50');
 
 -- --------------------------------------------------------
 
@@ -806,7 +815,8 @@ CREATE TABLE `order_item_batches` (
 INSERT INTO `order_item_batches` (`id`, `order_item_id`, `batch_id`, `quantity_from_batch`, `purchase_price`, `sale_price`, `created_at`) VALUES
 (1, 2, 1, 1, 8000.00, 10000.00, '2026-02-19 20:01:02'),
 (2, 3, 6, 1, 160000.00, 200000.00, '2026-02-19 20:01:02'),
-(3, 4, 7, 1, 32000.00, 40000.00, '2026-02-19 20:01:02');
+(3, 4, 7, 1, 32000.00, 40000.00, '2026-02-19 20:01:02'),
+(4, 10, 1, 1, 8000.00, 10000.00, '2026-03-07 22:06:25');
 
 -- --------------------------------------------------------
 
@@ -1029,7 +1039,7 @@ CREATE TABLE `stock_batches` (
 --
 
 INSERT INTO `stock_batches` (`id`, `tool_id`, `batch_number`, `quantity_received`, `quantity_remaining`, `purchase_price`, `batch_date`, `supplier`, `location_id`, `expiry_date`, `created_at`, `updated_at`, `net_value`) VALUES
-(1, 5, 'BATCH-0005-001', 11000, 10999, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2026-02-19 20:01:02', NULL),
+(1, 5, 'BATCH-0005-001', 11000, 10998, 8000.00, '2024-03-23 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2026-03-07 22:06:25', NULL),
 (2, 6, 'BATCH-0006-001', 2, 2, 8000.00, '2024-03-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55', NULL),
 (3, 7, 'BATCH-0007-001', 121212, 121212, 969.60, '2025-10-25 00:00:00', 'Default Supplier', 1, NULL, '2025-11-16 19:10:55', '2025-11-16 19:10:55', NULL),
 (4, 5, 'BATCH-0005-002', 100, 100, 300000.00, '2025-12-03 19:56:59', '0', 6, '2026-01-01', '2025-12-03 17:56:59', '2025-12-03 17:56:59', NULL),
@@ -1067,7 +1077,8 @@ INSERT INTO `stock_movements` (`id`, `batch_id`, `order_id`, `movement_type`, `q
 (4, 4, NULL, 'IN', 100, 300000.00, 'STOCK-IN-BATCH-0005-002', NULL, '2025-12-03 17:56:59', NULL),
 (5, 1, 30, 'OUT', 1, 8000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL),
 (6, 6, 30, 'OUT', 1, 160000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL),
-(7, 7, 30, 'OUT', 1, 32000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL);
+(7, 7, 30, 'OUT', 1, 32000.00, 'ORDER-000030', NULL, '2026-02-19 20:01:02', NULL),
+(8, 1, 37, 'OUT', 1, 8000.00, 'ORDER-000037', NULL, '2026-03-07 22:06:25', NULL);
 
 -- --------------------------------------------------------
 
@@ -1119,15 +1130,15 @@ CREATE TABLE `tool` (
 --
 
 INSERT INTO `tool` (`id`, `u_toolname`, `u_itemsnumber`, `u_type`, `u_tooldescription`, `u_date`, `u_price`, `purchase_price`, `image_url`) VALUES
-(5, 'APPLES', 10999, 'Very Good', 'I love these items', '2024-04-07', 10000, NULL, NULL),
-(6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, NULL, NULL),
-(7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, NULL, NULL),
-(8, 'Living Room Lamps', 99, 'Very Good', '100', '2025-11-21', 2000, NULL, NULL),
-(9, 'Berryfruits', 8, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, NULL, NULL),
-(10, 'Cinnamon Flour', 29, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, NULL, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
+(5, 'APPLES', 10998, 'Very Good', 'I love these items', '2024-04-07', 10000, 8000.00, NULL),
+(6, 'Silicone 500mg', 2, 'Not Good', 'From China', '2024-04-09', 10000, 8000.00, NULL),
+(7, 'Mangos', 121212, 'Mangos', '1212', '2025-11-09', 1212, 969.60, NULL),
+(8, 'Living Room Lamps', 99, 'Very Good', '100', '2025-11-21', 2000, 1600.00, NULL),
+(9, 'Berryfruits', 8, 'Very Good', 'Some of the berryfruits.', '2025-12-02', 200000, 160000.00, NULL),
+(10, 'Cinnamon Flour', 29, 'Very Good', 'Quality Cinnamon Flour', '2025-12-16', 40000, 32000.00, 'uploads/tools/tool_1765843444_6940a1f4d1fba.jpeg'),
 (11, 'Berryfruits', 10000, 'Very Good', 'Berryfruits are good for health', '2025-12-16', 900, 9000.00, 'uploads/tools/tool_1765848888_6940b73808f08.png'),
 (12, 'Wheelbarrow', 0, 'Very Good', 'In very good condition', '2026-02-11', 10000, 9000.00, 'uploads/tools/tool_1770833411_698cc6038df53.jpeg'),
-(13, 'Wheelbarrow', 3, 'Very Good', 'In very good condition', '2026-02-27', 10000, 9998.00, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
+(13, 'Wheelbarrow', 100, 'Very Good', 'In very good condition', '2026-02-27', 10000, 9997.00, 'uploads/tools/tool_1772302389_69a3303535e61.jpeg');
 
 -- --------------------------------------------------------
 
@@ -1607,13 +1618,13 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `damaged_goods`
@@ -1643,19 +1654,19 @@ ALTER TABLE `locations`
 -- AUTO_INCREMENT for table `order`
 --
 ALTER TABLE `order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `order_item_batches`
 --
 ALTER TABLE `order_item_batches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `refund_audit_log`
@@ -1715,7 +1726,7 @@ ALTER TABLE `stock_batches`
 -- AUTO_INCREMENT for table `stock_movements`
 --
 ALTER TABLE `stock_movements`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `stock_thresholds`
