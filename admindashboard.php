@@ -90,7 +90,7 @@
             </div>
             <div class="card-value">
               <?php
-                $total_tools_query = mysqli_query($con, "SELECT COUNT(*) as total FROM `tool`");
+                $total_tools_query = mysqli_query($con, "SELECT COUNT(DISTINCT u_toolname) as total FROM `tool`");
                 if($total_tools_query) {
                   $total_tools = mysqli_fetch_assoc($total_tools_query)['total'];
                   echo number_format($total_tools);
@@ -279,8 +279,17 @@
               <tbody>
                 <?php
                 $tools_query = mysqli_query($con, "
-                  SELECT * FROM `tool` 
-                  ORDER BY u_date DESC 
+                  SELECT
+                    MAX(id) as id,
+                    u_toolname,
+                    MAX(u_type) as u_type,
+                    SUM(u_itemsnumber) as u_itemsnumber,
+                    MAX(purchase_price) as purchase_price,
+                    MAX(u_price) as u_price,
+                    MAX(u_date) as u_date
+                  FROM `tool`
+                  GROUP BY u_toolname
+                  ORDER BY MAX(u_date) DESC
                   LIMIT 10
                 ");
                 

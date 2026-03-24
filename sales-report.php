@@ -24,7 +24,7 @@
   $filter_status = isset($_GET['status'])     ? mysqli_real_escape_string($con, $_GET['status'])     : '';
 
   if ($filter_start && $filter_end) {
-    $where_clauses[] = "DATE(o.u_date) BETWEEN '$filter_start' AND '$filter_end'";
+    $where_clauses[] = "DATE(COALESCE(o.payment_date, o.u_date)) BETWEEN '$filter_start' AND '$filter_end'";
   }
   if ($filter_status) {
     $where_clauses[] = "o.status = '$filter_status'";
@@ -42,7 +42,8 @@
             COALESCE(tool_cost_agg.total_tool_purchase_cost, 0) AS tool_fallback_cost,
             COALESCE(tool_cost_agg.total_tool_qty, 0) AS tool_fallback_qty,
             COALESCE(o.refunded_amount, 0) AS refund_amt,
-            o.refund_status
+            o.refund_status,
+            COALESCE(o.payment_date, o.u_date) AS transaction_date
           FROM `order` o
           INNER JOIN user u ON o.user_id = u.id
           LEFT JOIN tool t ON o.tool_id = t.id
@@ -143,7 +144,7 @@
         'net_revenue'         => $net_revenue,
         'net_profit'          => $net_profit,
         'margin_pct'          => $margin_pct,
-        'date'                => $r['u_date'],
+        'date'                => $r['transaction_date'],
         'status'              => $r['status'],
         'payment_date'        => $r['payment_date'],
         'stripe_pi'           => $r['stripe_payment_intent'],
@@ -371,7 +372,7 @@
                     ?>
                     <tr>
                       <td>#<?php echo str_pad($rd['id'], 5, '0', STR_PAD_LEFT); ?></td>
-                      <td><?php echo date('M d, Y', strtotime($rd['date'])); ?></td>
+                      <td><?php echo date('M d, Y H:i', strtotime($rd['date'])); ?></td>
                       <td>
                         <div style="display:flex;align-items:center;gap:6px;">
                           <div style="width:30px;height:30px;border-radius:50%;background:var(--primary-color);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:.7rem;">
@@ -463,7 +464,7 @@
       var html = '';
       var items = [
         ['Order ID',            '#' + String(d.id).padStart(5,'0')],
-        ['Order Date',          d.date ? new Date(d.date).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '—'],
+        ['Order Date',          d.date ? new Date(d.date).toLocaleString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'],
         ['Customer Name',       d.customer_name || '—'],
         ['Customer Email',      d.customer_email || '—'],
         ['Product(s)',          d.product_name || '—'],

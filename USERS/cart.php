@@ -69,9 +69,9 @@ if (isset($_POST['update_quantity'])) {
             $message = "Cannot set quantity to $new_quantity. Only $available available.";
             $message_type = 'error';
         } else {
-            // Get average price for all rows with this tool name
-            $price_query = mysqli_query($con, "SELECT ROUND(AVG(u_price)) as avg_price FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'");
-            $current_price = (float)mysqli_fetch_assoc($price_query)['avg_price'];
+            // Get highest price for all rows with this tool name
+            $price_query = mysqli_query($con, "SELECT MAX(u_price) as max_price FROM tool WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'");
+            $current_price = (float)mysqli_fetch_assoc($price_query)['max_price'];
             $update = mysqli_query($con, "UPDATE cart_items SET quantity = $new_quantity, unit_price = $current_price WHERE id = $cart_item_id AND cart_id = $cart_id");
             if ($update) {
                 $message = 'Quantity updated';

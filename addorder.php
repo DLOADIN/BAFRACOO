@@ -42,8 +42,23 @@
     $itemsnumber = mysqli_real_escape_string($con, $_POST['u_itemsnumber']);
     $type = mysqli_real_escape_string($con, $_POST['u_type']);
     $tooldescription = mysqli_real_escape_string($con, $_POST['u_tooldescription']);
-    $price = mysqli_real_escape_string($con, $_POST['u_price']); // Sale Price
+    $price = (int)round((float)$_POST['u_price']); // Sale Price
     $purchase_price = mysqli_real_escape_string($con, $_POST['purchase_price']);
+
+    // Enforce highest selling price per product name to avoid selling below existing product price
+    $max_price_query_sql = "SELECT MAX(u_price) as max_price FROM `tool` WHERE u_toolname='$toolname'";
+    if($is_edit && isset($_POST['tool_id'])) {
+      $exclude_id = mysqli_real_escape_string($con, $_POST['tool_id']);
+      $max_price_query_sql .= " AND id != '$exclude_id'";
+    }
+    $max_price_query = mysqli_query($con, $max_price_query_sql);
+    if($max_price_query && mysqli_num_rows($max_price_query) > 0) {
+      $max_price_data = mysqli_fetch_assoc($max_price_query);
+      $existing_max_price = (int)($max_price_data['max_price'] ?? 0);
+      if($existing_max_price > $price) {
+        $price = $existing_max_price;
+      }
+    }
     
     // Handle image upload
     $image_url = null;
@@ -87,12 +102,44 @@
       // Insert new tool - use custom date from form or default to today
       $date = isset($_POST['u_date']) && !empty($_POST['u_date']) ? mysqli_real_escape_string($con, $_POST['u_date']) : date('Y-m-d');
       $image_url_escaped = $image_url ? "'$image_url'" : "NULL";
-      $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, purchase_price, image_url) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', '$purchase_price', $image_url_escaped)");
-      
-      if($sql){
+
+      mysqli_autocommit($con, false);
+
+      try {
+        $sql = mysqli_query($con, "INSERT INTO `tool` (u_toolname, u_itemsnumber, u_type, u_tooldescription, u_date, u_price, purchase_price, image_url) VALUES ('$toolname', '$itemsnumber', '$type', '$tooldescription', '$date', '$price', '$purchase_price', $image_url_escaped)");
+
+        if(!$sql) {
+          throw new Exception('Failed to insert tool record');
+        }
+
+        $new_tool_id = mysqli_insert_id($con);
+        $batch_number = 'BATCH-' . str_pad($new_tool_id, 4, '0', STR_PAD_LEFT) . '-001';
+        $batch_date = $date . ' 00:00:00';
+        $items_qty = (int)$itemsnumber;
+
+        $batch_sql = mysqli_query($con, "INSERT INTO stock_batches (tool_id, batch_number, quantity_received, quantity_remaining, purchase_price, batch_date, supplier, location_id)
+                                        VALUES ($new_tool_id, '$batch_number', $items_qty, $items_qty, '$purchase_price', '$batch_date', 'Admin Purchase', 1)");
+
+        if(!$batch_sql) {
+          throw new Exception('Failed to insert stock batch');
+        }
+
+        $batch_id = mysqli_insert_id($con);
+        $reference = mysqli_real_escape_string($con, 'STOCK-IN-' . $batch_number);
+        $movement_sql = mysqli_query($con, "INSERT INTO stock_movements (batch_id, movement_type, quantity, unit_cost, reference)
+                                           VALUES ($batch_id, 'IN', $items_qty, '$purchase_price', '$reference')");
+
+        if(!$movement_sql) {
+          throw new Exception('Failed to insert stock movement');
+        }
+
+        mysqli_commit($con);
+        mysqli_autocommit($con, true);
         header('Location: stock.php');
         exit();
-      } else {
+      } catch (Exception $e) {
+        mysqli_rollback($con);
+        mysqli_autocommit($con, true);
         echo "<script>alert('Error adding tool. Please try again.');</script>";
       }
     }

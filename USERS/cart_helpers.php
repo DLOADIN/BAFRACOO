@@ -32,14 +32,14 @@ function getAggregatedStock($con, $tool_id_or_name): int {
 }
 
 /**
- * Get the averaged unit price for a product across all rows sharing
- * the same u_toolname. Result is rounded to the nearest integer.
+ * Get the highest unit selling price for a product across all rows sharing
+ * the same u_toolname.
  *
  * @param mysqli $con
  * @param mixed  $tool_id_or_name
  * @return float
  */
-function getAggregatedAvgPrice($con, $tool_id_or_name): float {
+function getAggregatedMaxPrice($con, $tool_id_or_name): float {
     if (is_numeric($tool_id_or_name)) {
         $name_q = mysqli_query($con, "SELECT u_toolname FROM tool WHERE id = " . (int)$tool_id_or_name);
         if (!$name_q || mysqli_num_rows($name_q) === 0) return 0;
@@ -49,9 +49,16 @@ function getAggregatedAvgPrice($con, $tool_id_or_name): float {
     }
 
     $safe = mysqli_real_escape_string($con, $tool_name);
-    $res  = mysqli_query($con, "SELECT ROUND(AVG(u_price)) AS avg_price FROM tool WHERE u_toolname = '$safe'");
+    $res  = mysqli_query($con, "SELECT MAX(u_price) AS max_price FROM tool WHERE u_toolname = '$safe'");
     if (!$res) return 0;
-    return (float)(mysqli_fetch_assoc($res)['avg_price'] ?? 0);
+    return (float)(mysqli_fetch_assoc($res)['max_price'] ?? 0);
+}
+
+/**
+ * Backward-compatible wrapper. Uses highest selling price policy.
+ */
+function getAggregatedAvgPrice($con, $tool_id_or_name): float {
+    return getAggregatedMaxPrice($con, $tool_id_or_name);
 }
 
 /**

@@ -25,8 +25,25 @@
     header('Content-Type: application/json');
     $tool_id = (int)$_POST['tool_id'];
     $method = mysqli_real_escape_string($con, $_POST['method']);
+    $tool_name = isset($_POST['tool_name']) ? mysqli_real_escape_string($con, $_POST['tool_name']) : '';
     
-    if($inventoryManager->setInventoryMethod($tool_id, $method)) {
+    $updated = false;
+    if($tool_name !== '') {
+      $tools_result = mysqli_query($con, "SELECT id FROM tool WHERE u_toolname = '$tool_name'");
+      if($tools_result && mysqli_num_rows($tools_result) > 0) {
+        $updated = true;
+        while($tool_row = mysqli_fetch_assoc($tools_result)) {
+          if(!$inventoryManager->setInventoryMethod((int)$tool_row['id'], $method)) {
+            $updated = false;
+            break;
+          }
+        }
+      }
+    } else {
+      $updated = $inventoryManager->setInventoryMethod($tool_id, $method);
+    }
+
+    if($updated) {
       echo json_encode(['success' => true, 'message' => 'Inventory method updated to ' . $method]);
     } else {
       echo json_encode(['success' => false, 'message' => 'Failed to update inventory method']);
@@ -148,7 +165,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL TOOLS</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $total_tools = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool`");
+                    $total_tools = mysqli_query($con, "SELECT COUNT(DISTINCT u_toolname) as count FROM `tool`");
                     echo $total_tools ? mysqli_fetch_assoc($total_tools)['count'] : '0';
                   ?>
                 </div>
@@ -169,7 +186,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">LOW STOCK</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $low_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE u_itemsnumber < 10");
+                    $low_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM (SELECT u_toolname, SUM(u_itemsnumber) as total_qty FROM `tool` GROUP BY u_toolname HAVING total_qty < 10) grouped_tools");
                     echo $low_stock ? mysqli_fetch_assoc($low_stock)['count'] : '0';
                   ?>
                 </div>
@@ -190,7 +207,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">IN STOCK</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $in_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM `tool` WHERE u_itemsnumber >= 10");
+                    $in_stock = mysqli_query($con, "SELECT COUNT(*) as count FROM (SELECT u_toolname, SUM(u_itemsnumber) as total_qty FROM `tool` GROUP BY u_toolname HAVING total_qty >= 10) grouped_tools");
                     echo $in_stock ? mysqli_fetch_assoc($in_stock)['count'] : '0';
                   ?>
                 </div>
@@ -211,7 +228,7 @@
                 <h3 style="margin: 0 0 var(--spacing-sm) 0; color: var(--gray-600); font-size: 0.875rem; font-weight: 500;">TOTAL VALUE</h3>
                 <div style="font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: var(--spacing-sm);">
                   <?php
-                    $total_value = mysqli_query($con, "SELECT SUM(u_price * u_itemsnumber) as total FROM `tool`");
+                    $total_value = mysqli_query($con, "SELECT SUM(max_price * total_qty) as total FROM (SELECT u_toolname, MAX(u_price) as max_price, SUM(u_itemsnumber) as total_qty FROM `tool` GROUP BY u_toolname) grouped_tools");
                     $value = $total_value ? mysqli_fetch_assoc($total_value)['total'] ?? 0 : 0;
                     echo number_format($value) . ' RWF';
                   ?>
@@ -310,28 +327,39 @@
               </thead>
               <tbody>
                 <?php
-                // Build SQL query with optional date filtering
-                $sql = "SELECT t.*, COALESCE(im.method, 'FIFO') as inventory_method 
-                        FROM `tool` t 
-                        LEFT JOIN `inventory_method` im ON t.id = im.tool_id";
-                
-                // Add date filter if provided
+                // Build grouped SQL query with optional date filtering
+                $sql = "SELECT 
+                          MIN(t.id) as id,
+                          t.u_toolname,
+                          MAX(t.u_type) as u_type,
+                          MAX(t.u_tooldescription) as u_tooldescription,
+                          MAX(t.image_url) as image_url,
+                          SUM(t.u_itemsnumber) as total_quantity,
+                          MAX(t.purchase_price) as purchase_price,
+                          MAX(t.u_price) as u_price,
+                          MAX(COALESCE(im.method, 'FIFO')) as inventory_method,
+                          MAX(t.u_date) as last_added_date
+                        FROM `tool` t
+                        LEFT JOIN `inventory_method` im ON t.id = im.tool_id
+                        GROUP BY t.u_toolname";
+
+                // Add date filter if provided (uses latest product row date)
                 if(isset($_GET['start_date']) && isset($_GET['end_date'])){
                   $start_date = mysqli_real_escape_string($con, $_GET['start_date']);
                   $end_date = mysqli_real_escape_string($con, $_GET['end_date']);
-                  $sql .= " WHERE DATE(t.u_date) BETWEEN '$start_date' AND '$end_date'";
+                  $sql .= " HAVING DATE(last_added_date) BETWEEN '$start_date' AND '$end_date'";
                 }
-                
-                $sql .= " ORDER BY t.u_date DESC";
+
+                $sql .= " ORDER BY last_added_date DESC";
                 $result = mysqli_query($con, $sql);
                 if ($result && mysqli_num_rows($result) > 0) {
                   while ($row = mysqli_fetch_array($result)) {
                     $status_class = '';
                     $status_text = '';
-                    if ($row['u_itemsnumber'] <= 0) {
+                    if ($row['total_quantity'] <= 0) {
                       $status_class = 'status-out-of-stock';
                       $status_text = 'Out of Stock';
-                    } elseif ($row['u_itemsnumber'] < 10) {
+                    } elseif ($row['total_quantity'] < 10) {
                       $status_class = 'status-low-stock';
                       $status_text = 'Low Stock';
                     } else {
@@ -361,33 +389,34 @@
                   </td>
                   <!-- <td><?php echo htmlspecialchars($row['u_type']); ?></td> -->
                   <td>
-                    <span style="font-weight: 600; color: <?php echo $row['u_itemsnumber'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
-                      <?php echo number_format($row['u_itemsnumber']); ?>
+                    <span style="font-weight: 600; color: <?php echo $row['total_quantity'] < 10 ? 'var(--warning-color)' : 'var(--success-color)'; ?>;">
+                      <?php echo number_format($row['total_quantity']); ?>
                     </span>
                   </td>
                   <td><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price']) . ' RWF' : '-'; ?></td>
                   <td><?php echo number_format($row['u_price']); ?> RWF</td>
-                  <td style="font-weight: 600;"><?php echo number_format($row['u_price'] * $row['u_itemsnumber']); ?> RWF</td>
-                  <td style="font-weight: 600;"><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price'] * $row['u_itemsnumber']) . ' RWF' : '-'; ?></td>
-                  <td style="font-weight: 600; color: <?php echo ($row['net_value'] > 0) ? 'var(--success-color)' : 'var(--warning-color)'; ?>;">
-                    <?php echo isset($row['net_value']) ? number_format($row['net_value']) . ' RWF' : '-'; ?>
+                  <td style="font-weight: 600;"><?php echo number_format($row['u_price'] * $row['total_quantity']); ?> RWF</td>
+                  <td style="font-weight: 600;"><?php echo isset($row['purchase_price']) ? number_format($row['purchase_price'] * $row['total_quantity']) . ' RWF' : '-'; ?></td>
+                  <td style="font-weight: 600; color: <?php echo isset($row['purchase_price']) && (($row['u_price'] - $row['purchase_price']) >= 0) ? 'var(--success-color)' : 'var(--warning-color)'; ?>;">
+                    <?php echo isset($row['purchase_price']) ? number_format(($row['u_price'] - $row['purchase_price']) * $row['total_quantity']) . ' RWF' : '-'; ?>
                   </td>
                   <td>
-                    <div class="method-toggle" data-tool-id="<?php echo $row['id']; ?>">
+                    <div class="method-toggle" data-tool-id="<?php echo $row['id']; ?>" data-tool-name="<?php echo htmlspecialchars($row['u_toolname']); ?>">
                       <button class="method-btn fifo <?php echo $current_method === 'FIFO' ? 'active' : ''; ?>" 
-                              onclick="updateInventoryMethod(<?php echo $row['id']; ?>, 'FIFO', this)"
+                              onclick="updateInventoryMethod(<?php echo $row['id']; ?>, 'FIFO', this, <?php echo json_encode($row['u_toolname']); ?>)"
                               title="First In, First Out - Oldest stock sold first">
                         FIFO
                       </button>
                       <button class="method-btn lifo <?php echo $current_method === 'LIFO' ? 'active' : ''; ?>"
-                              onclick="updateInventoryMethod(<?php echo $row['id']; ?>, 'LIFO', this)"
+                              onclick="updateInventoryMethod(<?php echo $row['id']; ?>, 'LIFO', this, <?php echo json_encode($row['u_toolname']); ?>)"
                               title="Last In, First Out - Newest stock sold first">
                         LIFO
                       </button>
                     </div>
                     <?php 
-                    // Get batch count for this tool
-                    $batch_count_query = mysqli_query($con, "SELECT COUNT(*) as cnt FROM stock_batches WHERE tool_id = " . $row['id'] . " AND quantity_remaining > 0");
+                    // Get batch count for this grouped product
+                    $safe_product_name = mysqli_real_escape_string($con, $row['u_toolname']);
+                    $batch_count_query = mysqli_query($con, "SELECT COUNT(*) as cnt FROM stock_batches sb INNER JOIN tool t2 ON sb.tool_id = t2.id WHERE t2.u_toolname = '$safe_product_name' AND sb.quantity_remaining > 0");
                     $batch_count = mysqli_fetch_assoc($batch_count_query)['cnt'] ?? 0;
                     ?>
                     <div class="batch-info" style="display: flex; align-items: center; gap: 4px;">
@@ -400,7 +429,7 @@
                       <?php endif; ?>
                     </div>
                   </td>
-                  <td><?php echo date('M d, Y', strtotime($row['u_date'])); ?></td>
+                  <td><?php echo date('M d, Y', strtotime($row['last_added_date'])); ?></td>
                   <td>
                     <span class="status-badge <?php echo $status_class; ?>">
                       <?php echo $status_text; ?>
@@ -456,7 +485,7 @@
     }
     
     // Update inventory method via AJAX
-    function updateInventoryMethod(toolId, method, btn) {
+    function updateInventoryMethod(toolId, method, btn, toolName = '') {
       const toggle = btn.closest('.method-toggle');
       const buttons = toggle.querySelectorAll('.method-btn');
       const batchInfo = toggle.nextElementSibling;
@@ -469,7 +498,7 @@
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `action=update_method&tool_id=${toolId}&method=${method}`
+        body: `action=update_method&tool_id=${toolId}&method=${method}&tool_name=${encodeURIComponent(toolName)}`
       })
       .then(response => response.json())
       .then(data => {

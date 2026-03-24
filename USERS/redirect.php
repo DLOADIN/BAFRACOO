@@ -135,7 +135,7 @@ if ($status == 'success' && $payment_verified) {
             // Check if order is not already processed
             if($order['status'] != 'Paid' && $order['status'] != 'Completed') {
                 // Update order status to 'Paid'
-                mysqli_query($con, "UPDATE `order` SET status = 'Paid' WHERE id = '$order_id'");
+                mysqli_query($con, "UPDATE `order` SET status = 'Paid', payment_date = NOW() WHERE id = '$order_id'");
                 
                 // Deduct stock from inventory
                 deductStock($con, $order_id);
