@@ -230,6 +230,28 @@
     .detail-grid .dg-label { font-size: 0.75rem; text-transform: uppercase; color: var(--gray-500); font-weight: 600; }
     .detail-grid .dg-value { font-size: 0.95rem; font-weight: 500; color: var(--gray-900); margin-top: 2px; }
     @media (max-width: 640px) { .detail-grid { grid-template-columns: 1fr; } }
+    .view-toggle { display: flex; gap: 8px; margin-bottom: var(--spacing-lg); }
+    .view-toggle button { padding: 8px 16px; border-radius: var(--radius-md); border: 1px solid var(--gray-300); background: white; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; }
+    .view-toggle button.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+    .transaction-card { background: white; border-radius: var(--radius-lg); padding: var(--spacing-lg); margin-bottom: var(--spacing-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); border-left: 4px solid var(--primary-color); }
+    .transaction-card.income-positive { border-left-color: #10b981; }
+    .transaction-card.income-negative { border-left-color: #ef4444; }
+    .transaction-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); }
+    .transaction-header h3 { margin: 0; color: var(--gray-900); font-size: 1.1rem; }
+    .transaction-header .order-id { font-size: 0.8rem; color: var(--gray-500); }
+    .transaction-body { display: grid; gap: var(--spacing-sm); }
+    .trans-item { display: flex; justify-content: space-between; align-items: flex-start; }
+    .trans-label { color: var(--gray-600); font-size: 0.9rem; font-weight: 500; }
+    .trans-value { color: var(--gray-900); font-weight: 600; text-align: right; font-size: 0.95rem; }
+    .trans-value.income { color: #10b981; }
+    .trans-value.loss { color: #ef4444; }
+    .trans-divider { height: 1px; background: var(--gray-200); margin: var(--spacing-sm) 0; }
+    .detailed-view { display: none; }
+    .detailed-view.active { display: block; }
+    .table-view.hidden { display: none; }
+    .narrative-text { color: var(--gray-700); line-height: 1.6; margin-bottom: var(--spacing-sm); font-size: 0.95rem; }
+    .narrative-highlight { font-weight: 600; color: var(--gray-900); }
+    .summary-highlight { padding: 12px; background: var(--gray-50); border-radius: var(--radius-md); border-left: 3px solid var(--primary-color); margin-top: var(--spacing-sm); }
   </style>
 </head>
 <body>
@@ -286,6 +308,16 @@
           </button>
         </form>
 
+        <!-- View Toggle -->
+        <div class="view-toggle">
+          <button class="active" onclick="toggleView('summary')">
+            <ion-icon name="list-outline" style="margin-right: 6px;"></ion-icon> Standard View
+          </button>
+          <button onclick="toggleView('narrative')">
+            <ion-icon name="document-text-outline" style="margin-right: 6px;"></ion-icon> Detailed Narrative
+          </button>
+        </div>
+
         <!-- Summary Cards -->
         <div class="summary-grid">
           <div class="summary-card">
@@ -325,7 +357,7 @@
         </div>
 
         <!-- Sales Table -->
-        <div class="dashboard-card">
+        <div class="dashboard-card table-view">
           <div class="card-header">
             <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">
               <ion-icon name="list-outline" style="margin-right: var(--spacing-sm);"></ion-icon>
@@ -435,6 +467,170 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- Detailed Narrative View -->
+      <div class="detailed-view" id="narrativeView">
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">
+              <ion-icon name="document-text-outline" style="margin-right: var(--spacing-sm);"></ion-icon>
+              Detailed Transaction History & Summary
+            </h3>
+          </div>
+
+          <div style="padding: var(--spacing-lg);">
+            <?php if (count($rows_data) > 0): ?>
+              <?php foreach ($rows_data as $rd): 
+                $isPositive = $rd['net_profit'] !== null && $rd['net_profit'] >= 0;
+                $cardClass = $isPositive ? 'transaction-card income-positive' : 'transaction-card income-negative';
+              ?>
+                <div class="<?php echo $cardClass; ?>">
+                  <div class="transaction-header">
+                    <div>
+                      <h3>
+                        <ion-icon name="person-circle-outline" style="margin-right: 6px; vertical-align: middle;"></ion-icon>
+                        <span class="narrative-highlight"><?php echo htmlspecialchars($rd['customer_name']); ?></span>
+                      </h3>
+                      <div class="order-id">Order #<?php echo str_pad($rd['id'], 5, '0', STR_PAD_LEFT); ?> • <?php echo date('M d, Y H:i', strtotime($rd['date'])); ?></div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 4px;"><?php echo ucfirst($rd['status']); ?></div>
+                      <div style="font-size: 1.1rem; font-weight: 700; color: <?php echo $isPositive ? '#10b981' : '#ef4444'; ?>;">
+                        <?php echo number_format($rd['net_profit'] !== null ? $rd['net_profit'] : 0); ?> RWF
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="transaction-body">
+                    <!-- Purchase Description -->
+                    <div class="narrative-text">
+                      <span class="narrative-highlight"><?php echo htmlspecialchars($rd['customer_name']); ?></span> made a purchase on 
+                      <span class="narrative-highlight"><?php echo date('F d, Y \a\t g:i A', strtotime($rd['date'])); ?></span>
+                      from BAFRACOO. The customer purchased 
+                      <span class="narrative-highlight"><?php echo number_format($rd['quantity']); ?> unit(s)</span> of 
+                      <span class="narrative-highlight"><?php echo htmlspecialchars($rd['product_name']); ?></span>.
+                    </div>
+
+                    <!-- Payment Details -->
+                    <div class="trans-divider"></div>
+                    <div class="trans-item">
+                      <span class="trans-label">💳 Amount Paid by Customer</span>
+                      <span class="trans-value"><?php echo number_format($rd['total_customer_paid']); ?> RWF</span>
+                    </div>
+                    
+                    <?php if ($rd['refund_amt'] > 0): ?>
+                      <div class="trans-item">
+                        <span class="trans-label">♻️ Refund Issued</span>
+                        <span class="trans-value loss">-<?php echo number_format($rd['refund_amt']); ?> RWF</span>
+                      </div>
+                      <div class="trans-item">
+                        <span class="trans-label">Net Revenue (After Refund)</span>
+                        <span class="trans-value"><?php echo number_format($rd['net_revenue']); ?> RWF</span>
+                      </div>
+                    <?php endif; ?>
+
+                    <!-- Cost Breakdown -->
+                    <div class="trans-divider"></div>
+                    <div class="trans-item">
+                      <span class="trans-label">💰 Purchase Cost (COGS)</span>
+                      <span class="trans-value"><?php echo ($rd['total_purchase_cost'] !== null) ? number_format($rd['total_purchase_cost']) : 'N/A'; ?> RWF</span>
+                    </div>
+                    
+                    <?php if ($rd['purchase_price_unit'] !== null): ?>
+                      <div class="trans-item">
+                        <span class="trans-label">Unit Cost</span>
+                        <span class="trans-value"><?php echo number_format($rd['purchase_price_unit']); ?> RWF/unit</span>
+                      </div>
+                    <?php endif; ?>
+
+                    <div class="trans-item">
+                      <span class="trans-label">Unit Selling Price</span>
+                      <span class="trans-value"><?php echo number_format($rd['sale_price_unit']); ?> RWF/unit</span>
+                    </div>
+
+                    <!-- Profit Summary -->
+                    <div class="trans-divider"></div>
+                    <div class="trans-item">
+                      <span class="trans-label">📊 Gross Profit</span>
+                      <span class="trans-value <?php echo ($rd['gross_profit'] !== null && $rd['gross_profit'] >= 0) ? 'income' : 'loss'; ?>">
+                        <?php echo ($rd['gross_profit'] !== null) ? number_format($rd['gross_profit']) : 'N/A'; ?> RWF
+                      </span>
+                    </div>
+
+                    <?php if ($rd['margin_pct'] !== null): ?>
+                      <div class="trans-item">
+                        <span class="trans-label">Profit Margin</span>
+                        <span class="trans-value"><?php echo $rd['margin_pct']; ?>%</span>
+                      </div>
+                    <?php endif; ?>
+
+                    <!-- Final Net Income -->
+                    <div class="summary-highlight">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                          <div style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 6px;">Final Net Income (After All Costs & Refunds)</div>
+                          <div style="font-size: 1.3rem; font-weight: 700; color: <?php echo ($rd['net_profit'] !== null && $rd['net_profit'] >= 0) ? '#10b981' : '#ef4444'; ?>;">
+                            <?php echo ($rd['net_profit'] !== null) ? number_format($rd['net_profit']) : 'N/A'; ?> RWF
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Payment Status -->
+                    <div class="trans-divider"></div>
+                    <div class="trans-item">
+                      <span class="trans-label">Status</span>
+                      <span class="trans-value" style="color: var(--gray-700);">
+                        <?php 
+                          $statusIcon = '';
+                          if (strtolower($rd['status']) === 'paid' || strtolower($rd['status']) === 'completed') {
+                            $statusIcon = '✅';
+                          } elseif (strtolower($rd['status']) === 'pending') {
+                            $statusIcon = '⏳';
+                          } elseif (strtolower($rd['status']) === 'refunded') {
+                            $statusIcon = '🔄';
+                          }
+                          echo $statusIcon . ' ' . ucfirst($rd['status']);
+                        ?>
+                      </span>
+                    </div>
+
+                    <?php if ($rd['payment_date']): ?>
+                      <div class="trans-item">
+                        <span class="trans-label">Payment Confirmed</span>
+                        <span class="trans-value" style="color: var(--gray-700);"><?php echo date('M d, Y g:i A', strtotime($rd['payment_date'])); ?></span>
+                      </div>
+                    <?php endif; ?>
+
+                    <?php if ($rd['refund_status'] && $rd['refund_status'] !== 'NONE'): ?>
+                      <div class="trans-item">
+                        <span class="trans-label">Refund Status</span>
+                        <span class="trans-value" style="color: <?php echo ($rd['refund_status'] === 'FULL') ? '#ef4444' : '#f59e0b'; ?>;">
+                          <?php echo htmlspecialchars($rd['refund_status']); ?>
+                        </span>
+                      </div>
+                    <?php endif; ?>
+
+                    <!-- Customer Contact -->
+                    <div class="trans-divider"></div>
+                    <div class="trans-item">
+                      <span class="trans-label">📧 Customer Email</span>
+                      <span class="trans-value" style="color: var(--gray-700); word-break: break-all;"><?php echo htmlspecialchars($rd['customer_email']); ?></span>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div style="text-align: center; padding: var(--spacing-xl); color: var(--gray-600);">
+                <ion-icon name="document-outline" style="font-size: 3rem; margin-bottom: var(--spacing-md);"></ion-icon>
+                <div>No transactions match the current filters.</div>
+              </div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+
       </div><!-- /content-area -->
     </main>
   </div>
@@ -458,6 +654,24 @@
 
   <script>
     function fmt(n){ return n !== null && n !== undefined ? Number(n).toLocaleString() + ' RWF' : 'N/A'; }
+
+    function toggleView(viewType) {
+      // Update button styles
+      document.querySelectorAll('.view-toggle button').forEach(btn => btn.classList.remove('active'));
+      event.target.closest('button').classList.add('active');
+
+      // Toggle views
+      const tableView = document.querySelector('.table-view');
+      const narrativeView = document.getElementById('narrativeView');
+
+      if (viewType === 'summary') {
+        tableView.style.display = 'block';
+        narrativeView.classList.remove('active');
+      } else {
+        tableView.style.display = 'none';
+        narrativeView.classList.add('active');
+      }
+    }
 
     function showOrderDetail(d) {
       document.getElementById('dm-title').textContent = 'Order #' + String(d.id).padStart(5,'0');
