@@ -45,21 +45,6 @@
     $price = (int)round((float)$_POST['u_price']); // Sale Price
     $purchase_price = mysqli_real_escape_string($con, $_POST['purchase_price']);
 
-    // Enforce highest selling price per product name to avoid selling below existing product price
-    $max_price_query_sql = "SELECT MAX(u_price) as max_price FROM `tool` WHERE u_toolname='$toolname'";
-    if($is_edit && isset($_POST['tool_id'])) {
-      $exclude_id = mysqli_real_escape_string($con, $_POST['tool_id']);
-      $max_price_query_sql .= " AND id != '$exclude_id'";
-    }
-    $max_price_query = mysqli_query($con, $max_price_query_sql);
-    if($max_price_query && mysqli_num_rows($max_price_query) > 0) {
-      $max_price_data = mysqli_fetch_assoc($max_price_query);
-      $existing_max_price = (int)($max_price_data['max_price'] ?? 0);
-      if($existing_max_price > $price) {
-        $price = $existing_max_price;
-      }
-    }
-    
     // Handle image upload
     $image_url = null;
     if(isset($_FILES['tool_image']) && $_FILES['tool_image']['error'] == 0){

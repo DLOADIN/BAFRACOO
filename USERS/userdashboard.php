@@ -309,7 +309,7 @@
               $available_products = mysqli_query($con, "
                 SELECT t.u_toolname,
                        SUM(t.u_itemsnumber) as total_stock,
-                    MAX(t.u_price) as max_price,
+                      ROUND(SUM(t.u_price * t.u_itemsnumber) / NULLIF(SUM(t.u_itemsnumber), 0)) as avg_price,
                        MAX(t.u_type) as u_type,
                        MAX(t.image_url) as image_url,
                        MIN(t.id) as first_tool_id
@@ -345,7 +345,7 @@
                     <?php echo number_format($product['total_stock']); ?> units
                   </span>
                 </td>
-                <td class="price"><?php echo number_format($product['max_price']); ?><span class="currency">RWF</span></td>
+                <td class="price"><?php echo number_format($product['avg_price']); ?><span class="currency">RWF</span></td>
                 <td>
                   <a href="stock.php?id=<?php echo $tool_id; ?>" class="btn btn-primary btn-sm">
                     <ion-icon name="cart-outline"></ion-icon> Order

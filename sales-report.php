@@ -163,6 +163,99 @@
   }
 
   $grand_margin = ($grand_total_sale > 0) ? round(($grand_total_profit / $grand_total_sale) * 100, 1) : 0;
+
+  // ── FIFO Batch-Level Sales Report (required detailed fields) ──
+  $batch_rows = [];
+  $batch_total_profit = 0;
+
+  $batch_sql = "SELECT
+                  o.id AS order_id,
+                  COALESCE(o.payment_date, o.u_date) AS transaction_date,
+                  o.status,
+                  u.u_name AS customer_name,
+                  COALESCE(oi.tool_name, o.u_toolname) AS item_name,
+                  COALESCE(sb.batch_date, t.u_date) AS purchase_date,
+                  oib.quantity_from_batch AS qty_sold,
+                  oib.purchase_price AS cost_price,
+                  COALESCE(oib.sale_price, oi.unit_price, 0) AS avg_selling_price
+                FROM order_item_batches oib
+                INNER JOIN order_items oi ON oi.id = oib.order_item_id
+                INNER JOIN `order` o ON o.id = oi.order_id
+                INNER JOIN user u ON u.id = o.user_id
+                LEFT JOIN stock_batches sb ON sb.id = oib.batch_id
+                LEFT JOIN tool t ON t.id = sb.tool_id
+                $where_sql
+                ORDER BY o.id DESC, purchase_date ASC";
+
+  $batch_result = mysqli_query($con, $batch_sql);
+  if ($batch_result) {
+    while ($br = mysqli_fetch_assoc($batch_result)) {
+      $qty = (int)($br['qty_sold'] ?? 0);
+      $cost = (float)($br['cost_price'] ?? 0);
+      $avg_sell = (float)($br['avg_selling_price'] ?? 0);
+      $profit = ($avg_sell - $cost) * $qty;
+
+      $batch_rows[] = [
+        'order_id' => (int)$br['order_id'],
+        'date' => $br['transaction_date'],
+        'status' => $br['status'],
+        'customer_name' => $br['customer_name'],
+        'item_name' => $br['item_name'],
+        'purchase_date' => $br['purchase_date'],
+        'qty_sold' => $qty,
+        'cost_price' => $cost,
+        'avg_selling_price' => $avg_sell,
+        'profit' => $profit,
+      ];
+
+      $batch_total_profit += $profit;
+    }
+  }
+
+  // Fallback for old single-item orders without order_items/order_item_batches rows
+  $single_where_sql = $where_sql ? ($where_sql . " AND oi_exist.id IS NULL") : " WHERE oi_exist.id IS NULL";
+
+  $single_sql = "SELECT
+                    o.id AS order_id,
+                    COALESCE(o.payment_date, o.u_date) AS transaction_date,
+                    o.status,
+                    u.u_name AS customer_name,
+                    o.u_toolname AS item_name,
+                    t.u_date AS purchase_date,
+                    o.u_itemsnumber AS qty_sold,
+                    COALESCE(t.purchase_price, 0) AS cost_price,
+                    o.u_price AS avg_selling_price
+                  FROM `order` o
+                  INNER JOIN user u ON u.id = o.user_id
+                  LEFT JOIN tool t ON t.id = o.tool_id
+                  LEFT JOIN order_items oi_exist ON oi_exist.order_id = o.id
+                  $single_where_sql
+                  ORDER BY o.id DESC";
+
+  $single_result = mysqli_query($con, $single_sql);
+  if ($single_result) {
+    while ($sr = mysqli_fetch_assoc($single_result)) {
+      $qty = (int)($sr['qty_sold'] ?? 0);
+      $cost = (float)($sr['cost_price'] ?? 0);
+      $avg_sell = (float)($sr['avg_selling_price'] ?? 0);
+      $profit = ($avg_sell - $cost) * $qty;
+
+      $batch_rows[] = [
+        'order_id' => (int)$sr['order_id'],
+        'date' => $sr['transaction_date'],
+        'status' => $sr['status'],
+        'customer_name' => $sr['customer_name'],
+        'item_name' => $sr['item_name'],
+        'purchase_date' => $sr['purchase_date'],
+        'qty_sold' => $qty,
+        'cost_price' => $cost,
+        'avg_selling_price' => $avg_sell,
+        'profit' => $profit,
+      ];
+
+      $batch_total_profit += $profit;
+    }
+  }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -175,7 +268,7 @@
   <link rel="stylesheet" href="./CSS/enhanced-pages.css">
   <link rel="shortcut icon" href="./images/Capture.JPG" type="image/x-icon">
   <script src="https://kit.fontawesome.com/14ff3ea278.js" crossorigin="anonymous"></script>
-  <title>BAFRACOO - Sales Report</title>
+  <title>BAFRACOO - FIFO Batch Sales Report</title>
   <style>
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl); }
     .summary-card { background: white; border-radius: var(--radius-lg); padding: var(--spacing-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); }
@@ -271,9 +364,9 @@
       <div class="page-banner">
         <h1 class="page-banner-title">
           <ion-icon name="stats-chart-outline"></ion-icon>
-          Sales Report
+          FIFO Batch Sales Report
         </h1>
-        <p class="page-banner-subtitle">Detailed financial breakdown per order — purchase cost, revenue, profit &amp; refunds</p>
+        <p class="page-banner-subtitle">FIFO batch-level sales report using purchase date, average selling price, and per-batch profit</p>
       </div>
 
       <div class="content-area">
@@ -310,10 +403,10 @@
 
         <!-- View Toggle -->
         <div class="view-toggle">
-          <button class="active" onclick="toggleView('summary')">
+          <button class="active" onclick="toggleView('summary', this)">
             <ion-icon name="list-outline" style="margin-right: 6px;"></ion-icon> Standard View
           </button>
-          <button onclick="toggleView('narrative')">
+          <button onclick="toggleView('narrative', this)">
             <ion-icon name="document-text-outline" style="margin-right: 6px;"></ion-icon> Detailed Narrative
           </button>
         </div>
@@ -361,7 +454,7 @@
           <div class="card-header">
             <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--gray-900); margin: 0;">
               <ion-icon name="list-outline" style="margin-right: var(--spacing-sm);"></ion-icon>
-              Order-Level Sales Breakdown
+              FIFO Batch Sales Breakdown
             </h3>
           </div>
 
@@ -370,96 +463,60 @@
               <thead>
                 <tr>
                   <th>Order #</th>
-                  <th>Date</th>
-                  <th>Customer</th>
-                  <th>Product(s)</th>
-                  <th>Qty</th>
-                  <th>Purchase Price/Unit</th>
-                  <th>Sale Price/Unit</th>
-                  <th>Total Cost (RWF)</th>
-                  <th>Total Revenue (RWF)</th>
-                  <th>Gross Profit (RWF)</th>
-                  <th>Refund (RWF)</th>
-                  <th>Net Profit (RWF)</th>
-                  <th>Margin %</th>
+                  <th>Transaction Date</th>
+                  <th>Customer Name</th>
+                  <th>Item Name</th>
+                  <th>Purchase Date</th>
+                  <th>Qty Sold</th>
+                  <th>Cost Price</th>
+                  <th>Selling Price (Average)</th>
+                  <th>Profit</th>
+                  <th>Description</th>
                   <th>Status</th>
-                  <th>Details</th>
                 </tr>
               </thead>
               <tbody>
-                <?php if (count($rows_data) > 0): ?>
-                  <?php foreach ($rows_data as $rd): ?>
+                <?php if (count($batch_rows) > 0): ?>
+                  <?php foreach ($batch_rows as $br): ?>
                     <?php
                       $status_class = '';
-                      switch(strtolower($rd['status'])) {
+                      switch(strtolower($br['status'])) {
                         case 'completed': $status_class = 'status-completed'; break;
                         case 'paid':      $status_class = 'status-completed'; break;
                         case 'pending':   $status_class = 'status-pending'; break;
                         default:          $status_class = 'status-pending';
                       }
-                      $refund_badge = 'none';
-                      if ($rd['refund_status'] === 'PARTIAL') $refund_badge = 'partial';
-                      elseif ($rd['refund_status'] === 'FULL') $refund_badge = 'full';
-                      elseif ($rd['refund_status'] === 'PENDING') $refund_badge = 'pending';
                     ?>
                     <tr>
-                      <td>#<?php echo str_pad($rd['id'], 5, '0', STR_PAD_LEFT); ?></td>
-                      <td><?php echo date('M d, Y H:i', strtotime($rd['date'])); ?></td>
+                      <td>#<?php echo str_pad($br['order_id'], 5, '0', STR_PAD_LEFT); ?></td>
+                      <td><?php echo !empty($br['date']) ? date('M d, Y H:i', strtotime($br['date'])) : '—'; ?></td>
+                      <td><?php echo htmlspecialchars($br['customer_name']); ?></td>
+                      <td><?php echo htmlspecialchars($br['item_name']); ?></td>
+                      <td><?php echo !empty($br['purchase_date']) ? date('M d, Y', strtotime($br['purchase_date'])) : '—'; ?></td>
+                      <td><?php echo number_format($br['qty_sold']); ?></td>
+                      <td><?php echo number_format($br['cost_price']); ?> RWF</td>
+                      <td><?php echo number_format($br['avg_selling_price']); ?> RWF</td>
+                      <td class="<?php echo ($br['profit'] >= 0) ? 'profit-pos' : 'profit-neg'; ?>"><?php echo number_format($br['profit']); ?> RWF</td>
                       <td>
-                        <div style="display:flex;align-items:center;gap:6px;">
-                          <div style="width:30px;height:30px;border-radius:50%;background:var(--primary-color);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:.7rem;">
-                            <?php echo strtoupper(substr($rd['customer_name'], 0, 2)); ?>
-                          </div>
-                          <span style="font-weight:500;"><?php echo htmlspecialchars($rd['customer_name']); ?></span>
-                        </div>
+                        <?php echo htmlspecialchars($br['customer_name']); ?> purchased <?php echo number_format($br['qty_sold']); ?> of <?php echo htmlspecialchars($br['item_name']); ?> from stock added on <?php echo !empty($br['purchase_date']) ? date('M d, Y', strtotime($br['purchase_date'])) : 'N/A'; ?>.
                       </td>
-                      <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<?php echo htmlspecialchars($rd['product_name']); ?>"><?php echo htmlspecialchars($rd['product_name']); ?></td>
-                      <td><?php echo number_format($rd['quantity']); ?></td>
-                      <td><?php echo ($rd['purchase_price_unit'] !== null) ? number_format($rd['purchase_price_unit']) : '<span style="color:#94a3b8;">N/A</span>'; ?></td>
-                      <td><?php echo number_format($rd['sale_price_unit']); ?></td>
-                      <td><?php echo ($rd['total_purchase_cost'] !== null) ? number_format($rd['total_purchase_cost']) : '<span style="color:#94a3b8;">N/A</span>'; ?></td>
-                      <td><?php echo number_format($rd['total_customer_paid']); ?></td>
-                      <td class="<?php echo ($rd['gross_profit'] !== null && $rd['gross_profit'] >= 0) ? 'profit-pos' : (($rd['gross_profit'] !== null) ? 'profit-neg' : ''); ?>">
-                        <?php echo ($rd['gross_profit'] !== null) ? number_format($rd['gross_profit']) : '<span style="color:#94a3b8;">N/A</span>'; ?>
-                      </td>
-                      <td>
-                        <?php if ($rd['refund_amt'] > 0): ?>
-                          <span style="color:#ef4444;font-weight:600;">-<?php echo number_format($rd['refund_amt']); ?></span>
-                        <?php else: ?>
-                          <span style="color:#94a3b8;">0</span>
-                        <?php endif; ?>
-                      </td>
-                      <td class="<?php echo ($rd['net_profit'] !== null && $rd['net_profit'] >= 0) ? 'profit-pos' : (($rd['net_profit'] !== null) ? 'profit-neg' : ''); ?>">
-                        <?php echo ($rd['net_profit'] !== null) ? number_format($rd['net_profit']) : '<span style="color:#94a3b8;">N/A</span>'; ?>
-                      </td>
-                      <td><?php echo ($rd['margin_pct'] !== null) ? $rd['margin_pct'] . '%' : '<span style="color:#94a3b8;">—</span>'; ?></td>
-                      <td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($rd['status']); ?></span></td>
-                      <td>
-                        <button class="btn-icon btn-edit" onclick='showOrderDetail(<?php echo json_encode($rd, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' title="View Details">
-                          <ion-icon name="eye-outline"></ion-icon>
-                        </button>
-                      </td>
+                      <td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($br['status']); ?></span></td>
                     </tr>
                   <?php endforeach; ?>
                 <?php else: ?>
                   <tr>
-                    <td colspan="15" style="text-align:center;padding:var(--spacing-xl);color:var(--gray-600);">
+                    <td colspan="11" style="text-align:center;padding:var(--spacing-xl);color:var(--gray-600);">
                       <ion-icon name="document-outline" style="font-size:3rem;margin-bottom:var(--spacing-md);"></ion-icon>
                       <div>No orders match the current filters.</div>
                     </td>
                   </tr>
                 <?php endif; ?>
               </tbody>
-              <?php if (count($rows_data) > 0): ?>
+              <?php if (count($batch_rows) > 0): ?>
               <tfoot>
                 <tr style="background:var(--gray-100);font-weight:700;font-size:.9rem;">
-                  <td colspan="7" style="text-align:right;padding:var(--spacing-md);color:var(--gray-900);">Grand Totals:</td>
-                  <td style="padding:var(--spacing-md);"><?php echo number_format($grand_total_purchase); ?></td>
-                  <td style="padding:var(--spacing-md);"><?php echo number_format($grand_total_sale); ?></td>
-                  <td class="<?php echo ($grand_total_profit >= 0) ? 'profit-pos' : 'profit-neg'; ?>" style="padding:var(--spacing-md);"><?php echo number_format($grand_total_profit); ?></td>
-                  <td style="padding:var(--spacing-md);color:#ef4444;"><?php echo number_format($grand_total_refunds); ?></td>
-                  <td class="<?php echo ($grand_total_net >= 0) ? 'profit-pos' : 'profit-neg'; ?>" style="padding:var(--spacing-md);"><?php echo number_format($grand_total_net); ?></td>
-                  <td style="padding:var(--spacing-md);"><?php echo $grand_margin; ?>%</td>
+                  <td colspan="8" style="text-align:right;padding:var(--spacing-md);color:var(--gray-900);">Total Profit (FIFO Batch Report):</td>
+                  <td class="<?php echo ($batch_total_profit >= 0) ? 'profit-pos' : 'profit-neg'; ?>" style="padding:var(--spacing-md);"><?php echo number_format($batch_total_profit); ?> RWF</td>
                   <td colspan="2"></td>
                 </tr>
               </tfoot>
@@ -655,10 +712,12 @@
   <script>
     function fmt(n){ return n !== null && n !== undefined ? Number(n).toLocaleString() + ' RWF' : 'N/A'; }
 
-    function toggleView(viewType) {
+    function toggleView(viewType, buttonEl) {
       // Update button styles
       document.querySelectorAll('.view-toggle button').forEach(btn => btn.classList.remove('active'));
-      event.target.closest('button').classList.add('active');
+      if (buttonEl) {
+        buttonEl.classList.add('active');
+      }
 
       // Toggle views
       const tableView = document.querySelector('.table-view');

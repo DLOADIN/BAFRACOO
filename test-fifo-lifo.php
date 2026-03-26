@@ -125,8 +125,10 @@ if (!empty($fifo_batches)) {
         echo "<tr><th>Batch Order</th><th>Batch Date</th><th>Available</th><th>Would Use</th></tr>";
         $remaining_need = $test_quantity;
         $batch_count = 0;
-        mysqli_data_seek($fifo_batches_sorted, 0);
-        while($batch = mysqli_fetch_array($fifo_batches_sorted) && $remaining_need > 0) {
+        if ($fifo_batches_sorted) {
+            mysqli_data_seek($fifo_batches_sorted, 0);
+        }
+        while($remaining_need > 0 && ($batch = mysqli_fetch_array($fifo_batches_sorted))) {
             $batch_count++;
             $would_use = min($remaining_need, $batch['quantity_remaining']);
             $remaining_need -= $would_use;
@@ -146,8 +148,10 @@ if (!empty($fifo_batches)) {
         echo "<tr><th>Batch Order</th><th>Batch Date</th><th>Available</th><th>Would Use</th></tr>";
         $remaining_need = $test_quantity;
         $batch_count = 0;
-        mysqli_data_seek($lifo_batches_sorted, 0);
-        while($batch = mysqli_fetch_array($lifo_batches_sorted) && $remaining_need > 0) {
+        if ($lifo_batches_sorted) {
+            mysqli_data_seek($lifo_batches_sorted, 0);
+        }
+        while($remaining_need > 0 && ($batch = mysqli_fetch_array($lifo_batches_sorted))) {
             $batch_count++;
             $would_use = min($remaining_need, $batch['quantity_remaining']);
             $remaining_need -= $would_use;

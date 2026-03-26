@@ -47,11 +47,20 @@
     $tool_price = 0;
     if($tool_data) {
       $tool_name = mysqli_real_escape_string($con, $tool_data['u_toolname']);
-      // Aggregate stock and get highest price for all rows with this tool name
-      $agg_query = mysqli_query($con, "SELECT SUM(u_itemsnumber) as total_stock, MAX(u_price) as max_price FROM tool WHERE u_toolname = '$tool_name'");
+      // Aggregate stock and get weighted average price for all rows with this tool name
+      $agg_query = mysqli_query($con, "
+        SELECT
+          SUM(u_itemsnumber) as total_stock,
+          CASE
+            WHEN SUM(u_itemsnumber) > 0 THEN SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
+            ELSE 0
+          END as avg_price
+        FROM tool
+        WHERE u_toolname = '$tool_name'
+      ");
       $agg_data = mysqli_fetch_assoc($agg_query);
       $available = (int)$agg_data['total_stock'];
-      $tool_price = (float)$agg_data['max_price'];
+      $tool_price = (float)$agg_data['avg_price'];
 
       // Get or create active cart
       $cart_result = mysqli_query($con, "SELECT id FROM cart WHERE user_id = $id AND status = 'ACTIVE' LIMIT 1");
@@ -557,7 +566,7 @@
             SELECT 
                 t.u_toolname,
                 SUM(t.u_itemsnumber) as total_stock,
-                MAX(t.u_price) as max_price,
+                ROUND(SUM(t.u_price * t.u_itemsnumber) / NULLIF(SUM(t.u_itemsnumber), 0)) as avg_price,
                 MAX(t.u_type) as u_type,
                 MAX(t.u_tooldescription) as u_tooldescription,
                 MAX(t.image_url) as image_url,
@@ -576,7 +585,7 @@
           { 
             $product_name = $product['u_toolname'];
             $total_stock = (int)$product['total_stock'];
-            $display_price = (int)$product['max_price'];
+            $display_price = (int)$product['avg_price'];
             $display_type = $product['u_type'];
             $display_description = $product['u_tooldescription'];
             $display_image = $product['image_url'];
@@ -757,11 +766,19 @@
           $tool_row = mysqli_fetch_array($tool_sql);
           if ($tool_row && !empty($tool_row['u_toolname'])) {
             $safe_tool_name = mysqli_real_escape_string($con, $tool_row['u_toolname']);
-            $max_price_query = mysqli_query($con, "SELECT MAX(u_price) AS max_price FROM tool WHERE u_toolname = '$safe_tool_name'");
-            if ($max_price_query) {
-              $max_price_data = mysqli_fetch_assoc($max_price_query);
-              if (isset($max_price_data['max_price']) && $max_price_data['max_price'] !== null) {
-                $tool_row['u_price'] = (int)$max_price_data['max_price'];
+            $avg_price_query = mysqli_query($con, "
+              SELECT
+                CASE
+                  WHEN SUM(u_itemsnumber) > 0 THEN SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
+                  ELSE 0
+                END AS avg_price
+              FROM tool
+              WHERE u_toolname = '$safe_tool_name'
+            ");
+            if ($avg_price_query) {
+              $avg_price_data = mysqli_fetch_assoc($avg_price_query);
+              if (isset($avg_price_data['avg_price']) && $avg_price_data['avg_price'] !== null) {
+                $tool_row['u_price'] = (int)round($avg_price_data['avg_price']);
               }
             }
           }
