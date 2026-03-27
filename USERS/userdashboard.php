@@ -309,7 +309,7 @@
               $available_products = mysqli_query($con, "
                 SELECT t.u_toolname,
                        SUM(t.u_itemsnumber) as total_stock,
-                      ROUND(SUM(t.u_price * t.u_itemsnumber) / NULLIF(SUM(t.u_itemsnumber), 0)) as avg_price,
+                       ROUND(AVG(t.u_price)) as avg_price,
                        MAX(t.u_type) as u_type,
                        MAX(t.image_url) as image_url,
                        MIN(t.id) as first_tool_id

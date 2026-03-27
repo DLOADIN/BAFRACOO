@@ -71,11 +71,7 @@ if (isset($_POST['update_quantity'])) {
         } else {
             // Get weighted average price for all rows with this tool name
             $price_query = mysqli_query($con, "
-                SELECT
-                    CASE
-                        WHEN SUM(u_itemsnumber) > 0 THEN SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
-                        ELSE 0
-                    END as avg_price
+                SELECT COALESCE(AVG(u_price), 0) as avg_price
                 FROM tool
                 WHERE u_toolname = '" . mysqli_real_escape_string($con, $tool_name) . "'
             ");

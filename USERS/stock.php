@@ -51,10 +51,7 @@
       $agg_query = mysqli_query($con, "
         SELECT
           SUM(u_itemsnumber) as total_stock,
-          CASE
-            WHEN SUM(u_itemsnumber) > 0 THEN SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
-            ELSE 0
-          END as avg_price
+          COALESCE(AVG(u_price), 0) as avg_price
         FROM tool
         WHERE u_toolname = '$tool_name'
       ");
@@ -566,7 +563,7 @@
             SELECT 
                 t.u_toolname,
                 SUM(t.u_itemsnumber) as total_stock,
-                ROUND(SUM(t.u_price * t.u_itemsnumber) / NULLIF(SUM(t.u_itemsnumber), 0)) as avg_price,
+              ROUND(AVG(t.u_price)) as avg_price,
                 MAX(t.u_type) as u_type,
                 MAX(t.u_tooldescription) as u_tooldescription,
                 MAX(t.image_url) as image_url,
@@ -767,11 +764,7 @@
           if ($tool_row && !empty($tool_row['u_toolname'])) {
             $safe_tool_name = mysqli_real_escape_string($con, $tool_row['u_toolname']);
             $avg_price_query = mysqli_query($con, "
-              SELECT
-                CASE
-                  WHEN SUM(u_itemsnumber) > 0 THEN SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
-                  ELSE 0
-                END AS avg_price
+              SELECT COALESCE(AVG(u_price), 0) AS avg_price
               FROM tool
               WHERE u_toolname = '$safe_tool_name'
             ");

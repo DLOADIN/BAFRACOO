@@ -35,7 +35,10 @@ function getAggregatedStock($con, $tool_id_or_name): int {
  * Get the weighted average unit selling price for a product across all rows sharing
  * the same u_toolname.
  *
- * Formula: SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
+ * Stable policy formula: AVG(u_price)
+ *
+ * This keeps selling price policy unchanged when quantities are sold,
+ * because selling only changes quantities, not the configured batch prices.
  *
  * @param mysqli $con
  * @param mixed  $tool_id_or_name
@@ -51,15 +54,7 @@ function getAggregatedAveragePrice($con, $tool_id_or_name): float {
     }
 
     $safe = mysqli_real_escape_string($con, $tool_name);
-    $res  = mysqli_query($con, "
-        SELECT
-            CASE
-                WHEN SUM(u_itemsnumber) > 0 THEN SUM(u_price * u_itemsnumber) / SUM(u_itemsnumber)
-                ELSE 0
-            END AS avg_price
-        FROM tool
-        WHERE u_toolname = '$safe'
-    ");
+    $res  = mysqli_query($con, "SELECT COALESCE(AVG(u_price), 0) AS avg_price FROM tool WHERE u_toolname = '$safe'");
     if (!$res) return 0;
     return (float)(mysqli_fetch_assoc($res)['avg_price'] ?? 0);
 }
